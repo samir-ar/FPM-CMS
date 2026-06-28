@@ -1,0 +1,608 @@
+/*----------------------------------------*/
+
+
+/*  large Layout: 1370px
+/*----------------------------------------*/
+
+@media only screen and (min-width: 1370px) {
+    .way-to-work-banner {
+        display: none;
+    }
+}
+
+
+/*----------------------------------------*/
+
+
+/*  Medium Layout: 1368px
+/*----------------------------------------*/
+
+@media only screen and (max-width: 1368px) {
+    .apps-for-large {
+        display: none;
+    }
+}
+
+
+/*----------------------------------------*/
+
+
+/*  Medium Layout: 1367px
+/*----------------------------------------*/
+
+@media only screen and (min-width: 1200px) and (max-width: 1400px) {
+    .awesome-apps .awesome-banner {
+        position: absolute;
+        right: 0px;
+        bottom: 22px;
+    }
+}
+
+
+/*----------------------------------------*/
+
+
+/*  Medium Layout: 1280px.
+/*----------------------------------------*/
+
+@media only screen and (min-width: 992px) and (max-width: 1199px) {
+    .awesome-apps .awesome-banner {
+        position: absolute;
+        right: 0px;
+        bottom: 22px;
+    }
+    header ul.navbar-right li a {
+        font-size: 18px;
+        padding-left: 10px;
+        padding-right: 10px;
+        margin-left: 3px;
+    }
+    .way-to-work-banner {
+        right: -25px;
+        top: 300px;
+    }
+    .awesome-apps .awesome-banner {
+        position: absolute;
+        right: -98px;
+        bottom: 10px;
+    }
+    .apps-btn.btn--small {
+        min-width: 230px;
+        height: 75px;
+    }
+    .screenshot-mobile {
+        width: 36%;
+    }
+    .footer-menu h3 {
+        font-size: 20px;
+    }
+    .footer-menu ul li a {
+        font-size: 15px;
+        padding: 0px;
+        margin-bottom: 1px;
+    }
+}
+
+
+/*----------------------------------------*/
+
+
+/*  Tablet Layout: 768px.
+/*----------------------------------------*/
+
+@media only screen and (min-width: 768px) and (max-width: 1024px) {
+    /*----------------------------------------*/
+    /*  AD.First Landing Page
+/*----------------------------------------*/
+    header ul.navbar-right li a {
+        font-size: 17px;
+        padding-left: 11px;
+        padding-right: 11px;
+    }
+    .header-contents h2 {
+        font-size: 47px;
+    }
+    .header-contents p {
+        font-size: 15px;
+        line-height: 25px;
+        padding-bottom: 50px;
+    }
+    .header-contents h4 {
+        padding-top: 130px;
+    }
+    .header-one-banner {
+        margin-top: 30px;
+        position: relative;
+        right: 12px;
+    }
+    .apps-btn .btn__storename {
+        font-size: 22px;
+    }
+    .btn-share-link {
+        padding-top: 65px;
+    }
+    .apps-btn {
+        width: 224px;
+        min-width: 100%;
+    }
+    .way-to-work-banner {
+        position: relative;
+        right: -58px;
+        content: "";
+        top: 60px;
+    }
+    .screenshot-mobile {
+        max-width: 340px;
+    }
+    .awesome-apps .awesome-banner {
+        position: absolute;
+        right: 0px;
+        bottom: 55px;
+    }
+    .awesome-apps .awesome-banner {
+        width: 35%;
+    }
+    .screenshot-slider .owl-theme .owl-controls {
+        display: none !important
+    }
+    /*----------------------------------------*/
+    /*  AD.Second Landing Page
+/*----------------------------------------*/
+    .second-header .sd-header-img {
+        position: relative;
+        right: 0px;
+    }
+    #index-two .btn-share-link {
+        padding-top: 60px;
+        margin: 0px auto;
+        text-align: center;
+    }
+    .btn-2nd-radius {}
+    #index-two .second-header ul.navbar-right li a {
+        font-size: 15px;
+        padding-left: 8px;
+        padding-right: 8px;
+    }
+}
+
+
+/*----------------------------------------*/
+
+
+/*  Tablet Layout: 1023px.
+/*----------------------------------------*/
+
+@media only screen and (min-width: 991px) and (max-width: 1023px) {
+    .screenshot-mobile {
+        max-width: 338px;
+    }
+}
+
+
+/*----------------------------------------*/
+
+
+/*  Tablet Layout:990px.
+/*----------------------------------------*/
+
+@media only screen and (min-width: 769px) and (max-width: 990px) {
+    .screenshot-mobile {
+        max-width: 260px;
+    }
+    header ul.navbar-right li a {
+        font-size: 14px;
+        padding-left: 5px;
+        padding-right: 5px;
+    }
+    .awesome-apps .awesome-banner {
+        width: 63%;
+    }
+}
+
+
+/*----------------------------------------*/
+
+
+/*  Tablet Layout: 1023px.
+/*----------------------------------------*/
+
+@media only screen and (min-width: 760px) and (max-width: 770px) {
+    header ul.navbar-right li a {
+        font-size: 14px;
+        padding-left: 5px;
+        padding-right: 5px;
+    }
+    .screenshots-slider-carousel .carousel-common img {
+        display: block;
+        margin: 0px auto;
+        max-width: 310px;
+    }
+    .awesome-apps .awesome-banner {
+        width: 62%;
+    }
+}
+
+
+/*----------------------------------------*/
+
+
+/*  Tablet Layout: 1280px.
+/*----------------------------------------*/
+
+@media only screen and (min-width: 1280px) and (max-width: 1360px) {
+    .awesome-apps .awesome-banner {
+        width: 34%;
+    }
+    .way-to-work-banner {
+        right: -38px;
+    }
+    .awesome-apps .awesome-banner {
+        position: absolute;
+        right: 78px;
+        bottom: 22px;
+    }
+}
+
+
+/*----------------------------------------*/
+
+
+/*  Tablet Layout: 1280px.
+/*----------------------------------------*/
+
+@media only screen and (min-width: 880px) and (max-width: 1279px) {
+    .awesome-apps .awesome-banner {
+        width: 54%;
+    }
+    .way-to-work-banner {
+        right: -138px;
+    }
+}
+
+
+/*----------------------------------------*/
+
+
+/*  Mobile Layout: 320px.
+/*----------------------------------------*/
+
+@media only screen and (max-width: 767px) {
+    /*----------------------------------------*/
+    /*  AD.First Landing Page
+/*----------------------------------------*/
+    header .navbar-toggle {
+        border: 1px solid #fff;
+    }
+    header .navbar-toggle .icon-bar {
+        color: #fff;
+        border: 1px solid #fff;
+    }
+    header .navbar-fixed-top {
+        padding-top: 0px;
+        padding-bottom: 0px;
+    }
+    header .navbar-collapse {
+        -webkit-box-shadow: inset 0 1px 0 rgba(255, 255, 255, .0);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, .0);
+        text-align: center;
+    }
+    header .navbar-toggle {
+        margin-top: 17px;
+    }
+    .header-contents h4 {
+        font-size: 24px;
+        padding-top: 50px;
+    }
+    header .navbar-brand>img {
+        margin-top: 0px;
+    }
+    .offer-item {
+        margin-top: 50px;
+    }
+    .feture-item {
+        margin-top: 50px;
+    }
+    .feture-item p {
+        font-size: 16px;
+        line-height: 24px;
+    }
+    .header-one-banner {
+        position: relative;
+        right: 0;
+    }
+    .header-contents h2 {
+        font-size: 30px;
+        padding-top: 7px;
+        padding-bottom: 20px;
+    }
+    .header-contents p {
+        font-size: 17px;
+        padding-top: 30px;
+        line-height: 29px;
+        padding-bottom: 70px;
+    }
+    .screenshot-all-img {
+        display: none;
+    }
+    .btn-share-link {
+        padding-top: 0px;
+    }
+    .btn-play {
+        margin-left: 8px;
+    }
+    .way-contents h3 {
+        font-weight: 700;
+        font-size: 21px;
+        text-align: center;
+    }
+    .way-contents h4 {
+        font-size: 17px;
+        width: 94%;
+        text-align: center;
+    }
+    .way-contents {
+        padding-bottom: 30px;
+    }
+    .way-contents p {
+        padding-bottom: 40px;
+    }
+    .screenshot-slider {
+        margin-top: 103px;
+    }
+    .screenshot-mobile {
+        position: absolute;
+        display: inherit;
+        top: -8.8%;
+        left: 0;
+        transform: translate(1.4%, -11%);
+    }
+    .screenshots-slider-carousel .carousel-common img {
+        padding-left: 45px;
+        padding-right: 38px;
+    }
+    .pricing-item h2 {
+        font-size: 30px;
+        line-height: 40px;
+    }
+    .pricing-item ul li {
+        font-size: 14px;
+        padding: 5px 0px;
+    }
+    .client-feedback {
+        width: 100%;
+        margin: 0px auto;
+        margin-top: 20px;
+        padding-top: 17px;
+    }
+    .feedbacks h3 {
+        font-size: 18px;
+        padding-bottom: 7px;
+        line-height: 20px;
+    }
+    .feedbacks p {
+        font-size: 14px;
+        padding-bottom: 10px;
+        line-height: 20px;
+    }
+    .awesome-apps .awesome-banner {
+        display: none;
+    }
+    .awesome-apps h3 {
+        padding-bottom: 40px;
+        text-align: center;
+        font-size: 22px;
+        line-height: 30px;
+    }
+    .btn-share-link-awesome a {
+        height: 60px;
+        margin-bottom: 24px;
+        width: auto;
+    }
+    .btn-share-link-awesome .btn-banner img {
+        top: 6px;
+    }
+    .btn-share-link-awesome .a-btn-text {
+        padding-top: 11px;
+    }
+    .footer-menu {
+        clear: both;
+    }
+    .footer-menu h3 {
+        padding-bottom: 10px;
+        padding-top: 30px;
+        font-size: 20px;
+    }
+    .footer-menu ul li a {
+        font-size: 14px;
+        padding: 4px 0px;
+    }
+    .way-to-work-banner {
+        position: relative;
+        top: 50px;
+    }
+    .navbar-fixed-top {
+        padding: 0px 0px 13px !important;
+    }
+    .screenshot-slider .owl-theme .owl-controls {
+        display: none !important
+    }
+    header .banner-contents .header-contents .typed {
+        min-height: 165px;
+    }
+    header .banner-contents .header-contents .typed-contents {
+        min-height: 178px;
+    }
+    /*----------------------------------------*/
+    /*  AD.Second Landing Page
+/*----------------------------------------*/
+    #index-two header .navbar {
+        padding-top: 0;
+    }
+    #index-two .second-header ul.navbar-right li a {
+        font-size: 16px;
+        border-right: 0;
+        text-align: center;
+        float: none;
+        width: inherit;
+        display: inline-block;
+    }
+    #index-two .second-header .navbar-right {
+        margin-right: -5px;
+        padding: 20px;
+    }
+    #index-two .second-header ul.navbar-right li a::after {
+        top: -10px;
+    }
+    #index-two header .navbar-toggle {
+        border: 0px;
+        padding: 8px 19px 35px 6px;
+        margin-right: 17px;
+    }
+    #index-two header .navbar-toggle .icon-bar {
+        border: 0px;
+    }
+    #index-two .clicnt-photos {
+        width: 18%;
+    }
+    #index-two .client-feedback-sceond {
+        background-size: cover;
+    }
+    #index-two .feedbacks-second {
+        padding-top: 0px;
+    }
+    #index-two .feedbacks h3 {
+        padding-top: 10px;
+    }
+    #index-two .second-header .sd-header-img {
+        position: relative;
+        right: 0;
+    }
+    #index-two .btn-share-link {
+        padding-top: 40px;
+    }
+    #index-two .header-contents h2 {
+        padding-top: 45px;
+        font-size: 40px;
+        line-height: 45px;
+    }
+    #index-two .banner-way img {
+        display: block;
+        margin: opx auto;
+        width: 90%;
+    }
+    #index-two .way-contents {
+        padding-right: 6%;
+        padding-left: 5%;
+        margin-top: 45px;
+    }
+    #index-two .second-header .navbar-toggle {
+        padding: 26px;
+        margin-top: -8px;
+        margin-right: 15px;
+    }
+    #index-two .awesome-apps-second img {
+        display: block;
+        float: none;
+        margin-right: 30px;
+        margin: 0px auto;
+    }
+    #index-two .offer-item {
+        margin-top: 120px;
+    }
+    #countdown .cd-box {
+        width: 100%;
+        float: none;
+    }
+    .coming-soon-banner {
+        display: block;
+        position: absolute;
+        margin: 0px auto;
+        text-align: center;
+        margin-top: 30px;
+        margin-bottom: 18px;
+        top: 54px;
+        margin: 0px auto;
+        left: 31%;
+    }
+    .coming-soon-title {
+        padding-top: 180px;
+        padding-bottom: 80px;
+    }
+    .comming-soon {
+        height: 100% !important;
+    }
+    #countdown .cd-box:after {
+        content: "";
+    }
+}
+
+
+/*----------------------------------------*/
+
+
+/*  Wide Mobile Layout: 480px.
+/*----------------------------------------*/
+
+@media only screen and (min-width: 501px) and (max-width: 600px) {
+    .screenshots-slider-carousel .carousel-common img {
+        max-width: 376px;
+        display: block;
+        margin: 0px auto;
+    }
+    .screenshot-mobile {
+        position: absolute;
+        display: inherit;
+        top: -8.8%;
+        left: 36px;
+        transform: translate(1.4%, -11%);
+    }
+}
+
+
+/*----------------------------------------*/
+
+
+/*  Wide Mobile Layout: 480px.
+/*----------------------------------------*/
+
+@media only screen and (min-width: 479px) and (max-width: 500px) {
+    .screenshots-slider-carousel .carousel-common img {
+        padding-left: 67px;
+        padding-right: 91px;
+    }
+}
+
+
+/*----------------------------------------*/
+
+
+/*  Wide Mobile Layout: 480px.
+/*----------------------------------------*/
+
+@media only screen and (min-width: 400px) and (max-width:478px) {
+    .screenshots-slider-carousel .carousel-common img {
+        padding-left: 71px;
+        padding-right: 61px;
+    }
+}
+
+
+/*----------------------------------------*/
+
+
+/*  Wide Mobile Layout: 480px.
+/*----------------------------------------*/
+
+@media only screen and (min-width: 240px) and (max-width: 480px) {
+    .navbar-fixed-top {
+        padding: 0px 0px 13px !important;
+    }
+    .way-to-work-banner {
+        position: relative;
+        top: 15px;
+        right: 0px;
+    }
+    header .banner-contents .header-contents .typed {
+        min-height: 205px;
+    }
+}

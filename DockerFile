@@ -1,0 +1,82 @@
+FROM php:7.4-fpm
+
+# Set PHP configurations
+RUN echo "upload_max_filesize=200M" > /usr/local/etc/php/conf.d/uploads.ini \
+    && echo "post_max_size=200M" >> /usr/local/etc/php/conf.d/uploads.ini \
+    && echo "memory_limit=-1" >> /usr/local/etc/php/conf.d/uploads.ini
+
+# Copy and composer.json
+COPY composer.json /var/www/
+
+# Set working directory
+WORKDIR /var/www
+
+# Download composer
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libpng-dev \
+    libjpeg62-turbo-dev \
+    libfreetype6-dev \
+    locales \
+    zip \
+    jpegoptim optipng pngquant gifsicle \
+    vim \
+    unzip \
+    git \
+    curl \
+    libzip-dev \
+    libpq-dev \
+    libmagickwand-dev \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j$(nproc) gd \
+    && docker-php-ext-install pdo pdo_mysql pdo_pgsql zip \
+    && pecl install imagick \
+    && docker-php-ext-enable imagick \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Install extensions
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg && \
+    docker-php-ext-install pdo_pgsql gd zip pcntl
+
+RUN docker-php-ext-configure pcntl --enable-pcntl
+
+# Enable the exif PHP extension
+RUN docker-php-ext-install exif && docker-php-ext-enable exif
+
+# Add user for laravel application
+RUN groupadd -g 1000 www
+RUN useradd -u 1000 -ms /bin/bash -g www www
+
+# Copy existing application directory contents
+COPY . /var/www
+
+# Delete vendor directory
+RUN rm -rf /var/www/vendor
+
+# Install dependencies without optimization
+RUN composer install
+
+# Copy existing application directory permissions
+COPY --chown=www-data:www-data . /var/www
+
+# Laravel Comands
+RUN php artisan storage:link
+RUN php artisan key:generate
+
+# Set files and folders permissions
+RUN find * -type d -print0 | xargs -0 chmod 0755
+RUN find . -type f -print0 | xargs -0 chmod 0644
+RUN chown -R www-data:www-data .
+
+# Change current user to root
+USER www-data
+
+#To write logs
+RUN chown -R www-data:www-data storage
+
+# Expose port 9000 and start php-fpm server
+EXPOSE 9000
+CMD ["php-fpm"]

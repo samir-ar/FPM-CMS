@@ -1,0 +1,1635 @@
+/*-----------------------------------------------------------------------------------
+
+    Template Name:
+    Template URI:
+    Description: This is html5 template
+    Author: Themecooker
+    Author URI:
+    Version: 1.0
+
+-----------------------------------------------------------------------------------
+
+    CSS INDEX
+    ===================
+    1.  Theme default CSS
+    2.  Button Style
+    3.  Header area start
+    4.  Offer area start
+    5.  Feature Area start
+    6.  Download area start
+    7.  Screenshots area start
+    8.  Pricing area start
+    9.  Client review area start
+    10. Contact area start
+    11. footer area start
+    12. Copyright area start
+    13. 404 Page
+    14. Coming Soon Page
+    15. Back to top area
+
+-----------------------------------------------------------------------------------*/
+
+
+/*----------------------------------------*/
+
+
+/*  1. Theme default CSS
+/*----------------------------------------*/
+
+a,
+a:hover,
+a:focus,
+a:active {
+    outline: 0 !important;
+    text-decoration: none;
+}
+
+.clear {
+    clear: both
+}
+
+::-moz-selection {
+    background: #00b0ff;
+    color: #fff;
+    text-shadow: none;
+}
+
+::selection {
+    background: #00b0ff;
+    color: #fff;
+    text-shadow: none;
+}
+
+
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+    cursor: pointer;
+    background: #;
+}
+
+::selection {
+    background-color: #1e2e7d;
+    color: #fff;
+}
+
+-webkit-::selection {
+    background-color: #1e2e7d;
+    color: #fff;
+}
+
+::-moz-selection {
+    background-color: #1e2e7d;
+    color: #fff;
+}
+
+
+.no-mar {
+    margin: 0!important;
+}
+
+.no-pad {
+    padding: 0!important;
+}
+
+.padding-botom-0 {
+    padding-bottom: 0 !important;
+}
+
+.padding-top-0 {
+    padding-top: 0 !important;
+}
+
+div#preloader {
+    background: rgba(30, 46, 125, 0.9) url("../img/loader.gif") no-repeat scroll center center;
+    height: 100%;
+    left: 0;
+    overflow: visible;
+    position: fixed;
+    top: 0;
+    width: 100%;
+    z-index: 999;
+}
+
+header.navbar-fixed-top {
+    animation-duration: 0.8s;
+    animation-name: fadeInDown;
+    animation-timing-function: ease-in-out;
+    box-shadow: 0 4px 12px -4px rgba(0, 0, 0, 0.75);
+    left: 0;
+    position: fixed !important;
+    right: 0;
+    top: 0;
+    width: 100%;
+    z-index: 999;
+    background: #fff;
+}
+
+.mar-bot-50 {
+    margin-bottom: 50px;
+}
+
+.mar-bot-40 {
+    margin-bottom: 40px;
+}
+
+.mar-bot-35 {
+    margin-bottom: 35px;
+}
+
+.mar-bot-30 {
+    margin-bottom: 30px;
+}
+
+.mar-top-30 {
+    margin-top: 30px;
+}
+
+.mar-top-80 {
+    margin-top: 80px;
+}
+
+.mar-top-80 {
+    margin-top: 80px;
+}
+
+.mar-top-55 {
+    margin-top: 55px;
+}
+
+.mar-top-108 {
+    margin-top: 108px;
+}
+
+.text-left {
+    text-align: left;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.text-right {
+    text-align: right;
+}
+
+*,
+*:before,
+*:after {
+    -moz-box-sizing: border-box;
+    -webkit-box-sizing: border-box;
+    box-sizing: border-box;
+}
+
+*:focus {
+    outline: 0;
+}
+
+html {
+    font-size: 62.5%;
+    -webkit-font-smoothing: antialiased;
+}
+
+body {
+    background: #fff;
+    font-weight: normal;
+    font-size: 15px;
+    letter-spacing: 1.5px;
+    color: #888;
+    line-height: 30px;
+    -webkit-font-smoothing: antialiased;
+    /* Fix for webkit rendering */
+    -webkit-text-size-adjust: 100%;
+}
+
+img {
+    max-width: 100%;
+    height: auto;
+}
+
+button,
+input,
+textarea {
+    letter-spacing: 1px;
+}
+
+.h1,
+.h2,
+.h3,
+.h4,
+.h5,
+.h6,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p {
+    margin: 0;
+    padding: 0;
+}
+
+ul,
+ol {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    overflow-x: hidden;
+    max-width: 100%;
+}
+
+
+/*----------------------------------------*/
+
+
+/* 2. Button Style
+/*----------------------------------------*/
+
+.apps-btn {
+    box-sizing: border-box;
+    display: inline-block;
+    text-align: left;
+    white-space: nowrap;
+    text-decoration: none;
+    vertical-align: middle;
+    -ms-touch-action: manipulation;
+    touch-action: manipulation;
+    cursor: pointer;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    border: 1px solid #1b3764;
+    padding: 4px 8px;
+    margin: 5px auto;
+    border-radius: 4px;
+    color: #fff;
+    fill: #fff;
+    background: #1b3764;
+    line-height: 1em;
+    min-width: 240px;
+    height: 80px;
+    -webkit-transition: 0.2s ease-out;
+    transition: 0.2s ease-out;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+    font-family: $btn-font;
+    font-weight: 500;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    -moz-font-feature-settings: 'liga', 'kern';
+}
+
+.apps-btn:hover,
+.apps-btn:focus {
+    background: #013981;
+    color: #fff;
+    fill: #fff;
+    border-color: #1858e2;
+}
+
+.apps-btn:active {
+    outline: 0;
+    background: #013981;
+    -webkit-transition: none;
+    transition: none;
+}
+
+.apps-btn .btn__icon,
+.apps-btn .btn__text,
+.apps-btn .btn__storename {
+    display: inline-block;
+    vertical-align: top;
+}
+
+.apps-btn .btn__icon {
+    width: 46px;
+    height: 46px;
+    margin-right: 5px;
+    margin-top: 10px;
+}
+
+.apps-btn .btn__icon--amazon {
+    -webkit-transform: scale(0.85);
+    transform: scale(0.85);
+}
+
+.apps-btn .btn__text {
+    font-family: 'Roboto', sans-serif;
+    font-weight: 300;
+    letter-spacing: 0.08em;
+    margin-top: 1em;
+    font-size: 14px;
+    margin-left: 5px;
+}
+
+.apps-btn .btn__storename {
+    font-family: 'Roboto', sans-serif;
+    font-weight: 900;
+    display: block;
+    margin-left: 60px;
+    margin-top: -19px;
+    font-size: 25px;
+    letter-spacing: -0.03em;
+}
+
+.apps-btn.btn--small {
+    padding: 2px 8px;
+    min-width: 264px;
+    height: 80px;
+    border-radius: 50px;
+}
+
+.apps-btn.btn--small .btn__icon {
+    margin: 13px 10px 0px 13px;
+    width: 42px;
+    height: 42px;
+}
+
+.apps-btn.btn--small .btn__text {
+    display: none;
+}
+
+.apps-btn.btn--small .btn__storename {
+    font-family: 'Poppins', sans-serif;
+    font-weight: 500;
+    font-size: 28px;
+    display: inline-block;
+    margin: 0;
+    margin-top: 28px;
+}
+
+
+/* 2nd page button style */
+
+.btn-2nd-radius {
+    background-color: transparent;
+    border: 1px solid #fff;
+    border-radius: 50px;
+    width: auto !important;
+    min-width: auto !important;
+    padding-right: 35px;
+    padding-left: 8px;
+}
+
+.btn-2nd-radius:hover {
+    border: 1px solid #fff;
+    background-color: #f5f5f5;
+    color: #1e2e7d;
+    border-radius: 50px;
+}
+
+.btn-2nd-radius:hover path {
+    fill: #1e2e7d;
+}
+
+.btn-2nd-radius .btn__icon {
+    margin-left: 10px;
+}
+
+.btn-2nd-radius .btn__storename {
+    margin-left: 72px;
+}
+
+section {
+    padding: 115px 0px;
+    background-color: #fff;
+    clear: both;
+    display: block;
+    width: 100%;
+}
+
+
+/*----------------------------------------*/
+
+
+/*  3. Header area start
+/*----------------------------------------*/
+
+header {
+    background-image: url(../img/bg/apps-header-one.jpg);
+    padding-bottom: 80px;
+    background-size: contain;
+}
+
+header ul.navbar-right li a {
+    position: relative;
+    font-family: 'Poppins', sans-serif;
+    font-size: 20px;
+    color: #fff;
+    padding-left: 15px;
+    padding-right: 15px;
+    margin-left: 5px;
+    font-weight: 400;
+}
+
+header ul.navbar-right li a:hover,
+header ul.navbar-right li a:focus,
+header ul.navbar-right li a:active {
+    background-color: transparent !important;
+}
+
+header ul.navbar-right li a:after {
+    position: absolute;
+    top: -7px;
+    content: "\f111";
+    font-family: 'FontAwesome';
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 5px;
+    opacity: 0;
+    transition: all 0.4s;
+}
+
+header ul.navbar-right li:hover a:after,
+header ul.navbar-right li:focus a:after,
+header ul.navbar-right li:active a:after {
+    opacity: 1;
+    transition: all 0.4s;
+}
+
+header .navbar {
+    padding-top: 80px;
+    position: static;
+}
+
+header .navbar-brand>img {
+    margin-top: -12px;
+}
+
+.ad-background-video .header-one-banner {
+    margin-top: 90px;
+}
+
+.header-one-banner {
+    margin-top: 30px;
+    position: absolute;
+    right: -70px;
+}
+
+header .banner-contents .header-contents .typed {
+    min-height: 245px;
+}
+
+header .banner-contents .header-contents .typed-contents {
+    min-height: 260px;
+    padding-bottom: 0px;
+}
+
+.title-contents {
+    text-align: center;
+    z-index: 99;
+    position: relative;
+}
+
+.title {
+    color: #434343;
+    font-size: 35px;
+    position: relative;
+    padding-bottom: 40px;
+    font-family: 'Roboto', sans-serif;
+    font-weight: 400;
+}
+
+.title-white {
+    color: #fff;
+    font-size: 35px;
+    position: relative;
+    padding-bottom: 40px;
+    font-family: 'Roboto', sans-serif;
+    font-weight: 400;
+}
+
+.title:after {
+    position: absolute;
+    content: url(../img/bg/title-border-offer.png);
+    left: 50%;
+    -webkit-transform: translateX(-50%);
+    transform: translateX(-50%);
+    bottom: 0;
+}
+
+.title-white:after {
+    position: absolute;
+    content: url(../img/bg/title-border.png);
+    left: 50%;
+    -webkit-transform: translateX(-50%);
+    transform: translateX(-50%);
+    bottom: 0;
+}
+
+.subtitle {
+    padding-top: 10px;
+    max-width: 746px;
+    margin: 0px auto;
+    text-align: center;
+    color: #6f6f6f;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 400;
+    font-size: 16px;
+}
+
+.subtitle-white {
+    padding-top: 10px;
+    max-width: 646px;
+    margin: 0px auto;
+    text-align: center;
+    color: #f28c00;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 400;
+    font-size: 16px;
+}
+
+.header-contents h4 {
+    color: #f28c00;
+    font-family: 'Roboto', sans-serif;
+    font-weight: 300;
+    font-size: 40px;
+    padding-top: 195px;
+}
+
+.header-contents h2 {
+    color: #f28c00;
+    font-family: 'Roboto', sans-serif;
+    font-weight: 900;
+    font-size: 65px;
+    padding-top: 12px;
+}
+
+.header-contents p {
+    font-family: 'Poppins', sans-serif;
+    color: #f28c00;
+    font-size: 20px;
+    padding-top: 60px;
+    line-height: 30px;
+    font-weight: 400;
+    padding-bottom: 170px;
+}
+
+.banner-contents .modal-body {
+    padding: 0;
+    margin: 0;
+    line-height: 0;
+}
+
+.btn-play {
+    font-family: 'Poppins', sans-serif;
+    color: #1b3764 !important;
+    font-size: 20px !important;
+    font-weight: 400;
+}
+
+.btn-play-close {
+    background-color: #0c54b2;
+    border: 1px solid #0c54b2;
+    color: #fff;
+    transition: all 0.3s;
+}
+
+.btn-play-close:hover,
+.btn-play-close:active,
+.btn-play-close:focus {
+    border: 1px solid #ff4537;
+    background-color: #ff4537;
+    color: #fff;
+    transition: all 0.3s;
+}
+
+.banner-contents .modal-header {
+    padding: 9px 10px 6px;
+    border: 0;
+    color: #0c54b2;
+    font-size: 13px;
+}
+
+.banner-contents .modal-footer {
+    padding: 7px 10px 5px;
+}
+
+.banner-contents .modal-header h2 {
+    font-family: 'Poppins', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+.apps-screenshots {
+    background-color: #f9f9f9;
+}
+
+.screenshot-all-img {
+    height: 600px;
+    width: 320px;
+    float: right;
+    margin-top: 94px;
+    overflow: hidden;
+    margin-right: -20px;
+}
+
+.screenshot-mobile-img {
+    right: -57px;
+    position: absolute;
+    top: 50px;
+    z-index: 1;
+}
+
+.btn-play .fa {
+    width: 37px;
+    height: 36px;
+    border: 1px solid #fff;
+    border-radius: 50%;
+    text-align: center;
+    padding: 8px 13px;
+    font-size: 17px;
+    margin-right: 16px;
+}
+
+.btn-share-link {
+    padding-top: 210px;
+}
+
+.navbar-fixed-top {
+    position: fixed !important;
+    padding: 10px 0px 7px!important;
+    background-color: rgba(12, 41, 93, 0.9);
+    border-bottom: 1px solid #013880;
+    transition: all 0.9s;
+    animation-direction: alternate-reverse;
+}
+
+
+/* 2nd page header area */
+
+.heading-second {
+    margin-bottom: 45px;
+}
+
+#index-two .second-header {
+    position: relative;
+    background: #013c88 url(../img/second/header-bg.jpg) no-repeat top left;
+}
+
+#index-two .second-header .navbar-header {
+    float: none;
+}
+
+.second-header .navbar-toggle {
+    display: block;
+}
+
+#index-two .second-header .navbar-collapse.collapse {
+    display: none!important;
+}
+
+#index-two .second-header .sd-header-img {
+    position: absolute;
+    right: -20px;
+}
+
+#index-two .second-header .navbar-collapse.collapse.in {
+    display: block !important;
+}
+
+#index-two .second-header .navbar-toggle {
+    border: 1px solid transperent;
+    padding: 26px;
+    margin-top: -23px;
+    margin-right: -9px;
+}
+
+.second-header .navbar-toggle .icon-bar {
+    color: #fff;
+    font-size: 40px;
+    margin-top: -7px;
+}
+
+#index-two .second-banner {
+    vertical-align: middle;
+    margin-top: 10%;
+}
+
+#index-two .second-header .navbar-right {
+    overflow: hidden;
+    background-color: rgba(30, 46, 125, 0.7);
+    position: relative;
+}
+
+#index-two .second-header ul.navbar-right li a {
+    float: left;
+    border-right: 1px solid #083c7f;
+}
+
+#index-two .second-header ul.navbar-right li:last-child a {
+    border-right: 0;
+}
+
+#index-two .second-header ul.navbar-right li a:after {
+    top: -4px;
+}
+
+#index-two .header-contents h2 {
+    padding-top: 100px;
+    font-size: 60px;
+    line-height: 72px;
+}
+
+
+/*----------------------------------------*/
+
+
+/*  4. What we Offer
+/*----------------------------------------*/
+
+.offer-item {
+    margin-top: 100px;
+    text-align: center;
+}
+
+.offer-item img,
+.feture-item img {
+    display: block;
+    margin: 0px auto;
+}
+
+.offer-item h4 {
+    padding: 30px 0px 13px 0px;
+    color: #434343;
+    font-family: 'Roboto', sans-serif;
+    font-weight: 500;
+}
+
+.offer-item p {
+    font-family: 'Poppins', sans-serif;
+    font-size: 16px;
+    color: #6f6f6f;
+}
+
+
+/* 2nd page Offer area */
+
+#index-two .offer-item {
+    background-color: #fff;
+    text-align: center;
+    padding: 20px;
+    position: relative;
+    border-radius: 6px;
+    transition: all 0.5s;
+}
+
+.btn-2nd-play .fa-play {
+    background-color: #fff;
+    color: #1e2e7d !important;
+}
+
+#index-two .offer-item:hover {
+    background-color: #106be1;
+    transition: all 0.5s;
+}
+
+#index-two .offer-item:hover .caption,
+#index-two .offer-item:hover .caption h4,
+#index-two .offer-item:hover .caption p {
+    color: #fff;
+}
+
+#index-two .btn-share-link {
+    padding-top: 140px;
+}
+
+#index-two .offer-item .offer-thumb {
+    position: absolute;
+    top: -18%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    height: 140px;
+    width: 140px;
+    background-color: #fff;
+    border-radius: 50%;
+}
+
+#index-two .offer-item .offer-thumb img {
+    vertical-align: bottom;
+    display: block;
+    padding-top: 16px;
+}
+
+#index-two .title:after {
+    content: url(../img/border-second.png);
+}
+
+#index-two .title-white:after {
+    content: url(../img/border-second-white.png);
+}
+
+
+/*----------------------------------------*/
+
+
+/*  5.Feature Area start
+/*----------------------------------------*/
+
+.creative-feature {
+    background: #013c88 url(../img/first/creative.jpg) no-repeat top left;
+    position: relative;
+}
+
+.creative-feature:after {
+    position: absolute;
+    content: "";
+    left: 0;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    background-color: rgba(12, 41, 93, 0.9);
+}
+
+.creative-change-color:after {
+    background-color: rgba(19, 12, 110, 0.8);
+}
+
+.feture-item {
+    margin-top: 70px;
+    position: relative;
+    z-index: 99;
+}
+
+.feture-item h4 {
+    color: #fff !important;
+    position: relative;
+    text-align: center;
+    padding: 25px 0px 20px 0px;
+    margin-bottom: 15px;
+    font-family: 'Roboto', sans-serif;
+    font-weight: 500;
+    font-size: 22px;
+}
+
+.feture-item h4:after {
+    position: absolute;
+    content: "";
+    height: 2px;
+    background-color: #fff;
+    width: 30px;
+    bottom: 0;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.feture-item p {
+    font-family: 'Poppins', sans-serif;
+    font-size: 15px;
+    font-weight: 400;
+    color: #ffffff;
+    text-align: center;
+    margin: 0px auto;
+}
+
+
+/*----------------------------------------*/
+
+
+/*  6. Download area start
+/*----------------------------------------*/
+
+.way-to-work {
+    position: relative;
+}
+
+.way-contents h3 {
+    font-family: 'Poppins', sans-serif;
+    color: #106be2;
+    font-weight: 500;
+    font-size: 18px;
+}
+
+.way-contents h4 {
+    font-family: 'Poppins', sans-serif;
+    color: #434343;
+    font-weight: 700;
+    font-size: 20px;
+    width: 59%;
+    padding: 29px 0px 39px 0px;
+    font-weight: 400;
+    line-height: 30px;
+}
+
+.way-contents p {
+    color: #6f6f6f;
+    font-size: 16px;
+    padding-bottom: 70px;
+    padding-right: 10px;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 400;
+    line-height: 26px;
+}
+
+.way-contents li h5 {
+    font-size: 16px;
+    color: #434343;
+    font-family: 'Roboto', sans-serif;
+    font-weight: 500;
+}
+
+.way-contents li h5 i {
+    color: #1e71e3;
+    padding-right: 12px;
+}
+
+.way-contents li p {
+    font-family: 'Poppins', sans-serif;
+    color: #6f6f6f;
+    width: 90%;
+    padding-top: 8px;
+    font-size: 16px;
+    line-height: 24px;
+}
+
+.way-to-work-banner {
+    position: absolute;
+    right: 0;
+    content: "";
+    top: 100px;
+}
+
+
+/*2nd page download area start*/
+
+#index-two .way-contents {
+    padding-right: 15%;
+}
+
+#index-two .way-contents ul li h5 img {
+    margin-top: -8px;
+    padding-right: 9px;
+}
+
+#index-two .way-contents ul li:last-child p {
+    padding-bottom: 0px;
+}
+
+
+/*----------------------------------------*/
+
+
+/*  7. Screenshots area start
+/*----------------------------------------*/
+
+.screenshot-slider {
+    position: relative;
+    max-height: 670px;
+    margin-top: 155px;
+    margin-bottom: 100px;
+}
+
+.screenshot-mobile {
+    position: absolute;
+    display: inherit;
+    top: 51.2%;
+    left: 50%;
+    transform: translate(-49.6%, -50%);
+}
+
+.screenshot-slider .owl-pagination {
+    position: absolute;
+    right: -90px;
+    top: 40%;
+}
+
+.screenshot-slider .owl-controls .owl-page {
+    display: block;
+    width: 70px !important;
+}
+
+.screenshot-slider .owl-controls .owl-page span {
+    color: #d5d5d5;
+    width: 10px;
+    height: 10px;
+    transition: all 0.5s;
+    text-align: center;
+    background-color: #d5d5d5;
+    padding: 3px !important;
+    clear: both;
+    display: block;
+    margin: 10px 0px;
+}
+
+.screenshot-slider .owl-controls .active span {
+    margin-left: -2px;
+    width: 15px;
+    height: 15px;
+    color: #1c5fb7;
+    transition: all 0.5s;
+    text-align: center;
+    background-color: #1c5fb7;
+}
+
+.screenshots-slider-carousel .carousel-common img {
+    padding-left: 35px;
+    padding-right: 30px;
+}
+
+
+/*2nd Page screenshot area start*/
+
+#apps-Slide {
+    margin-top: 60px;
+}
+
+#index-two .carousel-3d-controls .prev,
+#index-two .carousel-3d-controls .next {
+    display: none;
+}
+
+.screenshots-second {
+    background-color: #f9f9f9;
+}
+
+
+/*----------------------------------------*/
+
+
+/*  8. Pricing area start
+/*----------------------------------------*/
+
+.our-pricing {
+    position: relative;
+    background: #013c88 url(../img/first/pricing.jpg);
+}
+
+.pricing-item {
+    box-shadow: 0px 15px 22px -1px #022655;
+    padding: 55px 50px;
+    margin-top: 70px;
+    background: #013f90;
+    background: -moz-linear-gradient(top, #013f90 2%, #115bbd 100%);
+    background: -webkit-linear-gradient(top, #013f90 2%, #115bbd 100%);
+    background: linear-gradient(to bottom, #013f90 2%, #115bbd 100%);
+    filter: progid: DXImageTransform.Microsoft.gradient( startColorstr='#013f90', endColorstr='#115bbd', GradientType=0);
+}
+
+.pricing-item:hover {
+    box-shadow: 0px 0px 1px 1px #fff;
+}
+
+.pricing-item h2 {
+    font-weight: 700;
+    color: #fff;
+    font-size: 50px;
+    line-height: 55px;
+}
+
+.pricing-item h2 span {
+    font-weight: 500;
+    color: #fff;
+    font-size: 16px;
+    vertical-align: bottom;
+}
+
+.pricing-item h4 {
+    color: #fff;
+    font-size: 20px;
+    padding: 60px 0px 30px 0px;
+    position: relative;
+}
+
+.pricing-item h4:after {
+    position: absolute;
+    content: "";
+    height: 3px;
+    width: 30px;
+    background-color: #fff;
+    left: 0;
+    top: 37px;
+}
+
+.pricing-item ul li {
+    font-size: 16px;
+    color: #fff;
+    padding: 14px 0px;
+}
+
+.btn-price {
+    padding: 15px 20px;
+    border: 1px solid #fff;
+    color: #fff !important;
+    border-radius: 20pc;
+    font-size: 20px !important;
+    font-weight: 700 !important;
+    margin: 0px auto;
+    margin-top: 0px;
+    margin-top: 50px;
+    transition: all 0.5s;
+    width: inherit;
+    min-width: 200px;
+}
+
+.btn-price:hover {
+    transition: all 0.5s;
+    background-color: #013c87;
+    border: 1px solid #013c87;
+}
+
+
+/*----------------------------------------*/
+
+
+/*  9. Client review area start
+/*----------------------------------------*/
+
+.client-feedback {
+    width: 400px;
+    background-image: url(../img/bg/client-says.png);
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: contain;
+    height: 300px;
+    margin: 0px auto;
+    margin-top: 60px;
+}
+
+.feedbacks {
+    max-width: 70%;
+    text-align: center;
+    margin: 0px auto;
+    padding-top: 40px;
+    color: #fff;
+}
+
+.feedbacks h3 {
+    font-size: 18px;
+    padding-bottom: 15px;
+    font-weight: 400;
+}
+
+.feedbacks p {
+    font-size: 16px;
+    padding-bottom: 15px;
+    font-weight: 300;
+}
+
+.feedbacks-second {
+    padding-top: 60px;
+    max-width: 90%;
+}
+
+
+/* 2nd page client review area start*/
+
+.client-feedback-sceond {
+    width: 949px;
+    max-width: 100%;
+    background-image: url(../img/second-client-says.png);
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: contain;
+    height: 296px;
+    max-height: 100%;
+    margin: 0px auto;
+    margin-top: 60px;
+}
+
+.clicnt-photos {
+    display: block;
+    margin: 0px auto;
+    border: 10px solid #fff;
+    border-radius: 50%;
+    margin-top: 30px;
+}
+
+.awesome-apps-second {
+    padding: 30px 0px;
+}
+
+.awesome-apps-second h3 {
+    padding-top: 50px;
+}
+
+.awesome-apps-second .btn-banner,
+.awesome-apps-second .a-btn-text,
+.awesome-apps-second small {
+    background-color: #f5f5f5;
+    color: #1e2e7d;
+}
+
+.awesome-apps-second .btn-share-link-awesome a {
+    height: 78px;
+}
+
+.awesome-apps-second .btn-share-link-awesome .a-btn-text {
+    padding-top: 10px;
+}
+
+.awesome-apps-second .a-btn-text {
+    font-size: 20px;
+}
+
+.awesome-apps-second .btn-share-link-awesome .btn-banner img {
+    left: 26px;
+    top: 17px;
+}
+
+.awesome-apps-second .btn-banner .a-btn-slide-text {
+    color: #1e2e7d;
+    top: 18px;
+    font-size: 40px;
+}
+
+#index-two .awesome-apps-second img {
+    display: block;
+    float: right;
+    margin-right: 30px;
+}
+
+
+/*----------------------------------------*/
+
+
+/*  10.  Contact area start
+/*----------------------------------------*/
+
+.awesome-apps {
+    background: #013c88 url(../img/first/pricing.jpg);
+    position: relative;
+}
+
+.awesome-apps h3 {
+    color: #fff;
+    font-weight: 400;
+    padding-bottom: 40px;
+}
+
+.btn-share-link-awesome {
+    padding-top: 10px;
+}
+
+.btn-share-link-awesome .a-btn-text {
+    padding-top: 15px;
+}
+
+.btn-share-link-awesome .btn-banner img {
+    left: 26px;
+    top: 9px;
+}
+
+.btn-share-link-awesome .a-btn-slide-text {
+    top: 7px;
+    left: 28px;
+}
+
+.awesome-apps .awesome-banner {
+    position: absolute;
+    right: 200px;
+    bottom: 22px;
+}
+
+.apps-for-large {
+    position: absolute;
+    right: 0;
+    content: "";
+}
+
+
+/*----------------------------------------*/
+
+
+/*  11. footer area start
+/*----------------------------------------*/
+
+.footer-left p {
+    padding: 20px 0px;
+    width: 90%;
+}
+
+.social-link li {
+    float: left;
+    display: block;
+}
+
+.social-link li a {
+    display: block;
+    color: #7e7e7e;
+    padding: 15px 30px 15px 0px;
+    font-size: 17px;
+    margin-right: 5px;
+}
+
+.social-link li a:hover {
+    color: #003e8f;
+}
+
+.footer-menu h3 {
+    color: #434343;
+    font-family: 'Roboto', sans-serif;
+    font-weight: 700;
+    padding-bottom: 30px;
+}
+
+.footer-menu ul li a {
+    color: #6f6f6f;
+    font-size: 16px;
+    padding: 6px 0px;
+    display: block;
+    clear: both;
+    margin-bottom: 2px;
+}
+
+.footer-menu ul li a:hover {
+    color: #333;
+}
+
+
+/*----------------------------------------*/
+
+
+/*  12. Copyright area start
+/*----------------------------------------*/
+
+footer {
+    padding: 27px;
+    background-color: #3a3a3a;
+    color: #fff;
+    text-align: center;
+}
+
+.second-footer {
+    background-color: #0c3679;
+}
+
+
+/*----------------------------------------*/
+
+
+/*  13. Background Video
+/*----------------------------------------*/
+
+.apps-btn-transperent {
+    background-color: rgba(12, 41, 93, 0.7) !important;
+    border: 1px solid #0e3784 !important;
+}
+
+.ad-background-video {
+    background-color: rgba(12, 41, 93, 0.8) !important;
+    background-image: none !important;
+}
+
+.ad2-background-video {
+    background-color: rgba(19, 12, 110, 0.8) !important;
+    background-image: none !important;
+}
+
+.video-background {
+    background: #000 !important;
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: -99;
+}
+
+.video-foreground,
+.video-background iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+#vidtop-content {
+    top: 0;
+    color: #fff;
+}
+
+.vid-info {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 33%;
+    background: rgba(0, 0, 0, 0.3);
+    color: #fff;
+    padding: 1rem;
+    font-family: Avenir, Helvetica, sans-serif;
+}
+
+.vid-info h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-top: 0;
+    line-height: 1.2;
+}
+
+.vid-info a {
+    display: block;
+    color: #fff;
+    text-decoration: none;
+    background: rgba(0, 0, 0, 0.5);
+    transition: .6s background;
+    border-bottom: none;
+    margin: 1rem auto;
+    text-align: center;
+}
+
+@media (min-aspect-ratio: 16/9) {
+    .video-foreground {
+        height: 300%;
+        top: -100%;
+    }
+}
+
+@media (max-aspect-ratio: 16/9) {
+    .video-foreground {
+        width: 300%;
+        left: -100%;
+    }
+}
+
+@media all and (max-width: 600px) {
+    .vid-info {
+        width: 50%;
+        padding: .5rem;
+    }
+    .vid-info h1 {
+        margin-bottom: .2rem;
+    }
+}
+
+@media all and (max-width: 500px) {
+    .vid-info .acronym {
+        display: none;
+    }
+}
+
+
+/*----------------------------------------*/
+
+
+/*  14. 404 Page
+/*----------------------------------------*/
+
+.page-404 {
+    background-color: #003e8f;
+    height: 100vh;
+    width: 100%;
+    display: table;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.page-item-404 {
+    display: table-cell;
+    vertical-align: middle;
+}
+
+.page-item-404 p {
+    font-size: 35px;
+    color: #dcdcdc;
+    padding: 68px 0px 50px 0px;
+}
+
+.btn-404 {
+    padding: 20px 60px;
+    color: #f3f3f3;
+    border: 1px solid #dcdcdc;
+    font-size: 19px;
+    height: 60px;
+}
+
+.btn-404 .fa {
+    padding-right: 10px;
+}
+
+
+/*----------------------------------------*/
+
+
+/*  15. Coming Soon Page
+/*----------------------------------------*/
+
+.comming-soon {
+    background-color: rgba(19, 12, 110, 0.9) !important;
+    height: 100vh;
+    width: 100%;
+    padding: 52px 0px;
+    position: relative;
+}
+
+.comming-soon:after {
+    background-color: rgba(19, 12, 110, 0.9) !important;
+    height: 100vh;
+    width: 100%;
+}
+
+.coming-soon-message {
+    font-size: 30px;
+    color: #fff;
+    float: right;
+}
+
+.coming-soon-banner {
+    display: block;
+    margin: 0px auto;
+    text-align: center;
+    margin-top: 30px;
+    margin-bottom: 70px;
+}
+
+.coming-soon-title {
+    font-size: 40px;
+    color: #fff;
+    text-align: center;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 700;
+    text-transform: uppercase;
+    height: 50px;
+}
+
+#countdown {
+    width: 50%;
+    margin: 0px auto;
+    margin-top: 15vh;
+}
+
+#countdown .cd-box {
+    width: 22.3%;
+    float: left;
+    padding: 25px 0 0 0;
+    margin: 30px 15px 0 0;
+    position: relative;
+}
+
+#countdown .cd-box:after {
+    position: absolute;
+    content: ":";
+    right: -18px;
+    top: 23px;
+    font-size: 48px;
+    color: #fff;
+}
+
+#countdown .cd-box:last-child:after {
+    content: "";
+}
+
+#countdown .cd-box p.numbers {
+    text-align: center;
+    font-size: 48px;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 700;
+    color: #fff;
+}
+
+#countdown .cd-box p.strings {
+    text-align: center;
+    font-size: 20px;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 300;
+    color: #aeaeae;
+    padding-top: 10px;
+}
+
+
+/*----------------------------------------*/
+
+
+/*  16. Back to top area
+/*----------------------------------------*/
+
+#back-to-top {
+    position: fixed;
+    bottom: 40px;
+    right: 40px;
+    z-index: 9999;
+    width: 32px;
+    height: 32px;
+    text-align: center;
+    line-height: 30px;
+    background: #1b3764;
+    color: #fff;
+    cursor: pointer;
+    border: 0;
+    border-radius: 2px;
+    text-decoration: none;
+    transition: opacity 0.2s ease-out;
+    opacity: 0;
+    transition: all 0.4s;
+}
+
+#back-to-top:hover {
+    background: #106be1;
+    transition: all 0.4s;
+}
+
+#back-to-top.show {
+    opacity: 1;
+}

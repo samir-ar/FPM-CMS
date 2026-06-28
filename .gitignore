@@ -1,0 +1,57 @@
+/node_modules
+/public/storage
+/public/hot
+/storage/*.key
+/vendor
+/public/images
+public/news/videos/
+/public/media/*
+/public/thumbnail/*
+error.log
+access.log
+.env
+.env.*
+!.env.example
+.phpunit.result.cache
+Homestead.json
+Homestead.yaml
+npm-debug.log
+yarn-error.log
+/.idea/*
+public/news
+
+# Laravel runtime/cache (regenerated automatically, never edited by hand)
+/storage/logs/
+/storage/framework/cache/
+/storage/framework/sessions/
+/storage/framework/views/
+/storage/framework/testing/
+/storage/framework/laravel-excel/
+/storage/clockwork/
+
+# Certificates & keys
+*.pem
+*.key
+*.crt
+*.pfx
+*.p12
+
+# OS / archive junk
+.DS_Store
+Thumbs.db
+__MACOSX/
+
+# Claude Code local (machine-specific) settings
+.claude/settings.local.json
+
+# Editor swap files (may contain cached copies of edited secrets like .env)
+*.swp
+*.swo
+*~
+
+# Crash logs / local tool artifacts
+hs_err_pid*.log
+composer.phar
+
+# Local backup of prior git history (not part of this repo)
+.git-tedmob-history-backup/

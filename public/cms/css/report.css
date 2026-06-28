@@ -1,0 +1,123 @@
+@import url('https://fonts.googleapis.com/css2?family=Amiri&display=swap');
+
+*{
+    margin: 0;
+    padding: 0;
+    font-family: 'Amiri', serif;
+    box-sizing: border-box;
+}
+
+:root {
+    --black: #2b2b2b;
+    --orange: #f68f1f;
+    --light-gray: #c5c5c538;
+
+  }
+
+body{
+    padding:40px;
+}
+
+header{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+}
+header img{
+    width:130px;
+}
+
+header h1{
+    font-size:22px;
+    color: var(--black);
+    margin-top:20px;
+    padding: 20px;
+    background-color: #ffffff;
+    position: relative;
+}
+
+header h1::after{
+    content: "";
+    height:1px;
+    background-color:var(--orange);
+    position: absolute;
+    width: 100%;
+    left: 100%;
+    top: 50%;
+}
+header h1::before{
+    right: 100%;
+    content: "";
+    height:1px;
+    background-color:var(--orange);
+    position: absolute;
+    width: 100%;
+    top: 50%;
+}
+
+
+main h2{
+    margin: 0;
+    font-size:22px;
+    color: var(--black);
+    color: white;
+}
+
+.headline-container{
+    background-color: var(--orange);
+    width: 100%;
+    padding: 4px 19px;
+}
+
+
+.election-state-container{
+    width: 68%;
+    margin-right: 50%;
+    transform: translateX(50%);
+    margin-top:30px;
+    height : 300px;
+}
+
+body{
+    padding-bottom: 35px;
+}
+
+.stats-container{
+    background-color: var(--light-gray);
+
+    padding:20px;
+    margin-top:25px;
+    margin-bottom:25px;
+}
+
+
+.stats-label{
+    font-weight: 900;
+    margin-inline-end: 20px;
+}
+
+.stats-data{
+    font-weight: 100;
+}
+
+th,td{
+    text-align: center;
+}
+
+th{
+    white-space:nowrap;
+}
+
+.table{
+
+    margin-bottom:100px;
+}
+
+
+@media print {
+    body table{
+        transform:translateX(13%);
+        background-color: #f68f1f;
+    }
+}

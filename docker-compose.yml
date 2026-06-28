@@ -1,0 +1,47 @@
+services:
+  # PHP Service
+  app:
+    build:
+      context: .
+      dockerfile: DockerFile
+    image: fpm
+    container_name: fpm-app
+    restart: unless-stopped
+    tty: true
+    environment:
+      SERVICE_NAME: app
+      SERVICE_TAGS: dev
+    volumes:
+      - ./:/var/www
+      - /var/www/vendor
+    networks:
+      - fpm_app_network
+
+  # Nginx Service
+  fpm_app_nginx:
+    image: nginx:latest
+    container_name: fpm-nginx
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy"
+      - "traefik.http.routers.fpm_app_nginx.entrypoints=websecure"
+      - "traefik.http.routers.fpm_app_nginx.rule=Host(`uat001-fpmapp.tedmob.com`)"
+      - "traefik.http.routers.fpm_app_nginx.service=fpm_app_nginx"
+      - "traefik.http.services.fpm_app_nginx.loadbalancer.server.port=80"
+    volumes:
+      - ./:/var/www
+      - ./docker-compose/nginx/conf.d/:/etc/nginx/conf.d/
+    networks:
+      - fpm_app_network
+      - proxy
+    depends_on:
+      - app
+      
+# Docker Networks
+networks:
+  fpm_app_network:
+    driver: bridge
+  proxy:
+    external: true
+

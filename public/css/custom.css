@@ -1,0 +1,93 @@
+html{
+    font-size:13px;
+}
+.faq-title{
+    font-size: 1.5rem;
+    display: block;
+    min-height: 70px;
+    padding-left: 40px;
+    position: relative;
+}
+
+.faq-title:before{
+    content: '';
+    position: absolute;
+    left: 7px;
+    top: calc(50% - 12px);
+    -webkit-border-radius: 50%;
+    -moz-border-radius: 50%;
+    border-radius: 50%;
+    background-image: url('/images/ic_arrow_green_down.png');
+    background-size: 100%;
+    width: 24px;
+    height: 24px;
+    transition: .3s all ease-in-out;
+}
+
+.faqs-nav-tab-container ul{
+    overflow-y:hidden;
+}
+.faq-tab{
+    font-size:1.5rem;
+}
+
+.faq-container .faq-content{
+    transition: .3s all ease-in-out;
+    max-height: 0;
+    overflow: hidden;
+}
+
+.faq-container.active .faq-content{
+    max-height: fit-content;
+}
+
+
+.faq-content{
+    font-size:1.5rem;
+}
+.faq-content li{
+    margin-bottom: 1.2rem;
+}
+
+
+
+
+
+.faqs-nav-tab-container{
+    overflow-y: scroll;
+}
+
+.faqs-nav-tab-container ul{
+    width:100%;
+    overflow-y: hidden;
+}
+
+a.nav-link{
+    color: black;
+}
+
+.container{
+    overflow: hidden;
+    width: 100%;
+}
+
+ul.nav-tabs{
+    width:max-content;
+}
+
+.nav-container{
+    display: block;
+    width: 100%;
+    overflow-x:scroll;
+}
+
+.faq-container.active .faq-title:before{
+    transform: rotate(180deg);
+}
+
+.faq-container{
+    border: 1px solid lightgray;
+    padding: 10px;
+    margin-bottom: 20px;
+}
+

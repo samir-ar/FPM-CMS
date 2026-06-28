@@ -1,0 +1,108 @@
+{
+    "name": "laravel/laravel",
+    "type": "project",
+    "description": "The Laravel Framework.",
+    "keywords": [
+        "framework",
+        "laravel"
+    ],
+    "license": "MIT",
+    "require": {
+        "php": "^8.1",
+        "aws/aws-sdk-php-laravel": "^3.8",
+        "doctrine/dbal": "^3.6",
+        "guzzlehttp/guzzle": "^7.5",
+        "intervention/image": "^2.7",
+        "itsgoingd/clockwork": "^5.1",
+        "kukuxsu/netcommerce": "dev-master",
+        "laravel/framework": "^10.0",
+        "laravel/tinker": "^2.8",
+        "laravel/ui": "^4.6",
+        "league/flysystem-aws-s3-v3": "^3.0",
+        "maatwebsite/excel": "^3.1",
+        "sentry/sentry-laravel": "^3.8",
+        "simplesoftwareio/simple-qrcode": "4.2.0",
+        "spatie/laravel-translatable": "^6.5",
+        "yajra/laravel-datatables-oracle": "^10.11"
+    },
+    "require-dev": {
+        "fakerphp/faker": "^1.9",
+        "mockery/mockery": "^1.6",
+        "nunomaduro/collision": "^7.0",
+        "phpunit/phpunit": "^10.5"
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "preferred-install": "dist",
+        "sort-packages": true,
+        "platform": {
+            "php": "8.1.0"
+        },
+        "allow-plugins": {
+            "php-http/discovery": true
+        }
+    },
+    "extra": {
+        "laravel": {
+            "dont-discover": []
+        }
+    },
+    "autoload": {
+        "files": [
+            "app/helpers.php"
+        ],
+        "psr-4": {
+            "App\\": "app/"
+        },
+        "classmap": [
+            "database/seeds",
+            "database/factories"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "scripts": {
+        "post-autoload-dump": [
+            "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
+            "@php artisan package:discover --ansi"
+        ],
+        "post-root-package-install": [
+            "@php -r \"file_exists('.env') || copy('.env.example', '.env');\""
+        ],
+        "post-create-project-cmd": [
+            "@php artisan key:generate --ansi"
+        ]
+    },
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/Namirabboud/Kukuxsu-netcommerce.git"
+        },
+        {
+            "type": "package",
+            "package": {
+                "name": "simplesoftwareio/simple-qrcode",
+                "version": "4.2.0",
+                "require": {
+                    "bacon/bacon-qr-code": "~2.0",
+                    "illuminate/support": "^8.0|^9.0|^10.0"
+                },
+                "autoload": {
+                    "psr-4": {
+                        "SimpleSoftwareIO\\QrCode\\": "src/"
+                    }
+                },
+                "source": {
+                    "url": "https://github.com/SimpleSoftwareIO/simple-qrcode.git",
+                    "type": "git",
+                    "reference": "4.2.0"
+                }
+            }
+        }
+    ]
+}
