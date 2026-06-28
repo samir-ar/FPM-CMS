@@ -75,6 +75,8 @@ class NotificationController extends Controller
 
     public function create(Request $request){
 
+        $groups = Group::all()->pluck('name', 'group_id')->toArray();
+
         return view('components.form')->with([
             'layout'         => 'layouts.cms',
             'pageTitle'		=> 'Send Notification',
@@ -94,6 +96,8 @@ class NotificationController extends Controller
                         $this->drawHtml('image', 'Image', 'image', null, null, '', 'col-md-12'),
 
                         //$this->drawHtml('multiple-file-upload', 'UploadImage', 'image', null, ['add' => route('admin.notificationimage.upload'), 'delete' => route('admin.notificationimage.delete'), 'default' => null] , '', 'col-md-12'),
+
+                        $this->drawHtml('multiple-select-box', 'Groups (leave empty to send to all members)', 'groups[]', $request->old('groups'), $groups, '', 'col-md-12'),
                     ],
                 ]
 
@@ -144,9 +148,12 @@ class NotificationController extends Controller
         ]);
 
 
-        //Since it is bulk notification, we give it the id of all members
-        //$request->merge(['groups' => [Group::$ALL_MEMBERS_GROUP_ID,Group::$ALL_MEMBERS_GROUP_ID]]);
-        $groups = Group::all()->pluck('group_id')->toArray();
+        //If specific groups were selected, send only to them; otherwise default to all members
+        if (request('groups')) {
+            $groups = request('groups');
+        } else {
+            $groups = Group::all()->pluck('group_id')->toArray();
+        }
         $request->merge(['groups' => $groups]);
 
         //add the news to the request for the event
