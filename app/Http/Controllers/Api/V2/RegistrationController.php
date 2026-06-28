@@ -19,7 +19,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Repositories\UserRepository;
 use App\Http\Repositories\V2\RegistrationRepository;
 use App\V2\AppUser;
-use SimpleSoftwareIO\QrCode\Facades\QrCode;
+use App\Services\QrCodeGenerator;
 
 class RegistrationController extends Controller
 {
@@ -75,9 +75,9 @@ class RegistrationController extends Controller
             $data = $request->all();
 
             try {
-                $qr_code = base64_encode(QrCode::format('png')->size(300)->errorCorrection('H')->generate($data['member_id']));
+                $qr_code = QrCodeGenerator::generateBase64($data['member_id']);
             } catch (\Exception $e) {
-                $qr_code = $user->qr_code; // keep existing if imagick not available
+                $qr_code = $user->qr_code; // keep existing if generation fails
             }
             $user->member_id = $data['member_id'];
             $user->token = $data['token'];

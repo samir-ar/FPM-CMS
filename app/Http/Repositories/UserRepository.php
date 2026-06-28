@@ -8,6 +8,7 @@ use Hash;
 use App\AppUser;
 use App\Session;
 use App\Http\Traits\TokenTrait;
+use App\Services\QrCodeGenerator;
 
 
 class UserRepository
@@ -23,6 +24,12 @@ class UserRepository
         $user->token = $data['token'];
         $user->image = base64_encode($data['image']);
         $user->name = $data['name'];
+
+        try {
+            $user->qr_code = QrCodeGenerator::generateBase64($data['member_id']);
+        } catch (\Exception $e) {
+            $user->qr_code = null;
+        }
 
         if (isset($data['player_id'])) {
             $existing_users = AppUser::where('player_id', $data['player_id'])->get();
