@@ -2,6 +2,12 @@
 
 All notable changes to the FPM-CMS (Laravel backend) are documented in this file.
 
+## Unreleased
+
+### Added
+
+- Bulk push notifications can now target specific groups via a "Groups" multi-select on the Send Notification form (`NotificationController`); leaving it empty still sends to all groups, matching the previous behavior.
+
 ## v1.0.0
 
 First production release after completing the Critical UI redesign, accessibility improvements, backend QR fixes, and membership application flow.
