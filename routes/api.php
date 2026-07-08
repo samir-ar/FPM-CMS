@@ -148,6 +148,7 @@ Route::group(['namespace' => 'Api\V2', 'prefix' => 'v2/', 'middleware' => ['lang
     Route::post('about-us', 'ApiController@aboutUs');
     Route::post('faq-categories', 'ApiController@faqCategories');
     Route::post('faqs', 'ApiController@faqsByCategory');
+    Route::post('political-work', 'ApiController@getPoliticalWork');
 
 });
 
