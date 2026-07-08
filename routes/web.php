@@ -72,6 +72,12 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::resource('faqsCategories', 'FaqsCategoriesController');
     Route::resource('faqs', 'FaqsController');
 
+    //Political Work
+    Route::get('political-work', 'PoliticalWorkController@index')->name('political-work.index');
+    Route::get('political-work-create', 'PoliticalWorkController@create')->name('political-work.create');
+    Route::post('political-work-store', 'PoliticalWorkController@store')->name('political-work.store');
+    Route::delete('political-work-destroy/{id}', 'PoliticalWorkController@destroy')->name('political-work.destroy');
+
     //Memos
     Route::resource('memos', 'MemosController');
 
