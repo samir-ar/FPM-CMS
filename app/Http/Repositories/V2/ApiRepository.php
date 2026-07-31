@@ -592,7 +592,28 @@ class ApiRepository
 
 
     //Jihad Code start here
-    public function getGenericInstance($g, $type, $placeholder = null, $user = null)
+    // Batch-fetch like counts and "liked by me" ids for a set of news ids in
+    // two queries total, instead of two queries per news item.
+    public function getNewsLikesData($newsIds, $user = null)
+    {
+        if ($newsIds->isEmpty()) {
+            return [collect(), []];
+        }
+
+        $likesCounts = DB::table('users_news')
+            ->whereIn('news_id', $newsIds)
+            ->selectRaw('news_id, count(*) as cnt')
+            ->groupBy('news_id')
+            ->pluck('cnt', 'news_id');
+
+        $likedByMe = $user
+            ? DB::table('users_news')->where('user_id', $user->id)->whereIn('news_id', $newsIds)->pluck('news_id')->all()
+            : [];
+
+        return [$likesCounts, $likedByMe];
+    }
+
+    public function getGenericInstance($g, $type, $placeholder = null, $user = null, $likesCounts = null, $likedByMe = [])
     {
 
         //Thumbnail
@@ -626,8 +647,8 @@ class ApiRepository
             'type' => $g->type,
             "thumbnail" => ($thumbnail) ? ($type === "NEWS" ? Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'news/videos/thumbnails/' . $thumbnail) : ($type === "EVENTS" ? Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'images/events/' . $thumbnail) : null)) : null,
             "date" => ($g->date) ? strtotime($g->date) : null,
-            "likes_nb" => ($type === "NEWS") ? $g->users()->count() : null,
-            "like" => ($type === "NEWS") ? ($user ? (($g->users()->where('user_id', $user->id)->first()) ? true : false) : false) : null,
+            "likes_nb" => ($type === "NEWS") ? ($likesCounts[$g->id] ?? 0) : null,
+            "like" => ($type === "NEWS") ? in_array($g->id, $likedByMe) : null,
             "strict_lang" => ($g->strict_lang) ? $g->strict_lang : "ar",
             "link" => ($g->link) ? secure_url($g->link) : null,
             "shares" => $g->shares,
@@ -635,7 +656,7 @@ class ApiRepository
 
             'question' => $g->question,
             //'option' => ($g->options)?$g->options:[],
-            'options' => ($g->options) ? $g->options()->get()->map(function ($r) {
+            'options' => ($g->options) ? $g->options->map(function ($r) {
                 return [
                     'id' => $r->id,
                     'option' =>  $r->getTranslation('option', 'ar')

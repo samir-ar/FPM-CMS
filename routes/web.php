@@ -72,11 +72,63 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::resource('faqsCategories', 'FaqsCategoriesController');
     Route::resource('faqs', 'FaqsController');
 
+    //Legislative Docs (العمل التشريعي)
+    Route::get('legislative-docs', 'LegislativeDocsController@index')->name('legislative-docs.index');
+    Route::get('legislative-docs/create', 'LegislativeDocsController@create')->name('legislative-docs.create');
+    Route::post('legislative-docs', 'LegislativeDocsController@store')->name('legislative-docs.store');
+    Route::get('legislative-docs/{id}/edit', 'LegislativeDocsController@edit')->name('legislative-docs.edit');
+    Route::put('legislative-docs/{id}', 'LegislativeDocsController@update')->name('legislative-docs.update');
+    Route::delete('legislative-docs/{id}', 'LegislativeDocsController@destroy')->name('legislative-docs.destroy');
+
+    //National Plans (الخطط الوطنية المقدمة)
+    Route::get('national-plans', 'NationalPlansController@index')->name('national-plans.index');
+    Route::get('national-plans/create', 'NationalPlansController@create')->name('national-plans.create');
+    Route::post('national-plans', 'NationalPlansController@store')->name('national-plans.store');
+    Route::get('national-plans/{id}/edit', 'NationalPlansController@edit')->name('national-plans.edit');
+    Route::put('national-plans/{id}', 'NationalPlansController@update')->name('national-plans.update');
+    Route::delete('national-plans/{id}', 'NationalPlansController@destroy')->name('national-plans.destroy');
+
+    //Internal Organization (التنظيم الداخلي)
+    Route::get('internal-org', 'InternalOrgController@index')->name('internal-org.index');
+    Route::post('internal-org', 'InternalOrgController@update')->name('internal-org.update');
+
     //Political Work
     Route::get('political-work', 'PoliticalWorkController@index')->name('political-work.index');
     Route::get('political-work-create', 'PoliticalWorkController@create')->name('political-work.create');
     Route::post('political-work-store', 'PoliticalWorkController@store')->name('political-work.store');
     Route::delete('political-work-destroy/{id}', 'PoliticalWorkController@destroy')->name('political-work.destroy');
+
+    //Mukhtars (مخاتير)
+    Route::get('mukhtars', 'MukhtarsController@index')->name('mukhtars.index');
+    Route::get('mukhtars/create', 'MukhtarsController@create')->name('mukhtars.create');
+    Route::post('mukhtars', 'MukhtarsController@store')->name('mukhtars.store');
+    Route::get('mukhtars/{id}/edit', 'MukhtarsController@edit')->name('mukhtars.edit');
+    Route::put('mukhtars/{id}', 'MukhtarsController@update')->name('mukhtars.update');
+    Route::delete('mukhtars/{id}', 'MukhtarsController@destroy')->name('mukhtars.destroy');
+    Route::get('mukhtars-import', 'MukhtarsController@importForm')->name('mukhtars.import-form');
+    Route::post('mukhtars-import', 'MukhtarsController@importStore')->name('mukhtars.import-store');
+
+    //Municipality Members (بلديات / مخاتير)
+    Route::get('municipality-members', 'MunicipalityMembersController@index')->name('municipality-members.index');
+    Route::get('municipality-members/create', 'MunicipalityMembersController@create')->name('municipality-members.create');
+    Route::post('municipality-members', 'MunicipalityMembersController@store')->name('municipality-members.store');
+    Route::get('municipality-members/{id}/edit', 'MunicipalityMembersController@edit')->name('municipality-members.edit');
+    Route::put('municipality-members/{id}', 'MunicipalityMembersController@update')->name('municipality-members.update');
+    Route::delete('municipality-members/{id}', 'MunicipalityMembersController@destroy')->name('municipality-members.destroy');
+    Route::get('municipality-members-import', 'MunicipalityMembersController@importForm')->name('municipality-members.import-form');
+    Route::post('municipality-members-import', 'MunicipalityMembersController@importStore')->name('municipality-members.import-store');
+
+    //Competency Platform (منصة الكفاءات)
+    Route::get('competency-vacancies', 'CompetencyVacanciesController@index')->name('competency-vacancies.index');
+    Route::get('competency-vacancies/create', 'CompetencyVacanciesController@create')->name('competency-vacancies.create');
+    Route::post('competency-vacancies', 'CompetencyVacanciesController@store')->name('competency-vacancies.store');
+    Route::get('competency-vacancies/{id}/edit', 'CompetencyVacanciesController@edit')->name('competency-vacancies.edit');
+    Route::put('competency-vacancies/{id}', 'CompetencyVacanciesController@update')->name('competency-vacancies.update');
+    Route::delete('competency-vacancies/{id}', 'CompetencyVacanciesController@destroy')->name('competency-vacancies.destroy');
+    Route::get('competency-vacancies/{id}/nominations', 'CompetencyVacanciesController@nominations')->name('competency-vacancies.nominations');
+    Route::delete('competency-vacancies/{vacancyId}/nominations/{nominationId}', 'CompetencyVacanciesController@destroyNomination')->name('competency-vacancies.nominations.destroy');
+    Route::get('competency-static', 'CompetencyStaticController@index')->name('competency-static.index');
+    Route::post('competency-static', 'CompetencyStaticController@update')->name('competency-static.update');
 
     //Memos
     Route::resource('memos', 'MemosController');

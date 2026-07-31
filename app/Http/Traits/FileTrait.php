@@ -8,14 +8,19 @@ use Storage;
 trait FileTrait
 {
 	public function copyFile($input , $destination){
-		$fileName = time().$input->getClientOriginalName();
+		$fileName = time().$this->slugify($input->getClientOriginalName());
 		copy($input, "$destination/".$fileName);
 		return $fileName;
 	}
 
 
     public function slugify($word){
-       return preg_replace("/[^a-zA-Z0-9-.أ-ي]/", '-',$word);
+        // Arabic (or any non-ASCII) characters left in the on-disk filename break
+        // move_uploaded_file() on Windows/WAMP ("Failed to open stream" — PHP mis-encodes
+        // multi-byte UTF-8 paths via the ANSI codepage there). Strip to safe ASCII only;
+        // the user-facing name is stored separately (e.g. title fields), not this filename.
+        $slug = preg_replace('/[^a-zA-Z0-9.-]/', '-', $word);
+        return preg_replace('/-+/', '-', $slug);
     }
 
 	public function moveFile($input, $dir, $thumbFlag = null, $width = null, $height = null, $thumb_path = null)

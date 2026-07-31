@@ -41,6 +41,9 @@ use App\Http\Repositories\V2\LiveStreamsRepository;
 use App\Http\Traits\TokenTrait;
 use App\V2\FpmUser;
 use App\V2\FpmUsersAction;
+use App\V2\CompetencyVacancy;
+use App\V2\CompetencyProfile;
+use App\V2\CompetencyNomination;
 use App\V2\InternalElection;
 use App\V2\InternalElectionCandidate;
 
@@ -523,53 +526,28 @@ class ApiController extends Controller
             if ($resolved) $request->merge(['user' => $resolved]);
         }
 
-        $merged = null;
-
-        if (request('user')) {
-            $polls = $apiRepository->getPollsByGroupsRaw(request('user'), request('groups'))->sortByDesc('created_at');
-
-            if ($polls->count() > 0) {
-                $polls = $polls->map(function ($poll) use ($apiRepository) {
-                    return $apiRepository->getGenericInstance($poll, "POLLS");
-                });
-                $merged = $polls;
-            }
-        }
-
-
-
-        $events = $apiRepository->getEventsUpcomingByGroup(request('groups'))->get()->sortByDesc('created_at');
-
-        if ($events->count() > 0) {
-            $events = $events->map(function ($e) use ($apiRepository) {
-                return   $apiRepository->getGenericInstance($e, "EVENTS");
-            });
-
-            if ($merged) {
-                $merged = $merged->merge($events)->sortByDesc('created_at');
-            } else {
-                $merged = $events;
-            }
-        }
-
-        // $placeholder = Placeholder::where('type', 'news')->first()->image;
         $user = request('user');
-        $news = $apiRepository->getNewsByGroups(request('groups'))->get()->sortByDesc('created_at');
 
+        // Gather raw (un-hydrated) items first — hydration (S3 URLs, likes, etc.)
+        // is deferred until after sorting/pagination so it only runs on the
+        // handful of items actually returned by this page, not the whole feed.
+        $merged = collect();
 
-        if ($news->count() > 0) {
-            $news = $news->map(function ($n) use ($apiRepository, $user) {
-                return  $apiRepository->getGenericInstance($n, "NEWS", null, $user);
-            });
-
-            if ($merged) {
-                $merged = $merged->merge($news)->sortByDesc('created_at');
-            } else {
-                $merged = $news;
+        if ($user) {
+            foreach ($apiRepository->getPollsByGroupsRaw($user, request('groups')) as $poll) {
+                $merged->push(['type' => 'POLLS', 'created_at' => $poll->created_at, 'model' => $poll]);
             }
         }
 
-        if (!$merged) {
+        foreach ($apiRepository->getEventsUpcomingByGroup(request('groups'))->get() as $event) {
+            $merged->push(['type' => 'EVENTS', 'created_at' => $event->created_at, 'model' => $event]);
+        }
+
+        foreach ($apiRepository->getNewsByGroups(request('groups'))->get() as $n) {
+            $merged->push(['type' => 'NEWS', 'created_at' => $n->created_at, 'model' => $n]);
+        }
+
+        if ($merged->isEmpty()) {
             return response()->json(array(
                 "current_page" => 1,
                 "data" => [],
@@ -585,6 +563,9 @@ class ApiController extends Controller
                 "total" => 0
             ));
         }
+
+        $merged = $merged->sortByDesc('created_at')->values();
+
         //Define how many items we want to be visible in each page
         $perPage = 6;
 
@@ -592,12 +573,19 @@ class ApiController extends Controller
         $currentPage = LengthAwarePaginator::resolveCurrentPage();
 
         //Slice the collection to get the items to display in current page
-        $currentPageSearchResults = $merged->slice(($currentPage - 1) * $perPage, $perPage)->all();
+        $pageItems = $merged->slice(($currentPage - 1) * $perPage, $perPage)->values();
+
+        // Batch-load like counts / liked-by-me status for just this page's news items
+        $newsIdsOnPage = $pageItems->where('type', 'NEWS')->pluck('model.id');
+        [$likesCounts, $likedByMe] = $apiRepository->getNewsLikesData($newsIdsOnPage, $user);
+
+        $currentPageSearchResults = $pageItems->map(function ($item) use ($apiRepository, $user, $likesCounts, $likedByMe) {
+            return $apiRepository->getGenericInstance($item['model'], $item['type'], null, $user, $likesCounts, $likedByMe);
+        })->all();
 
         //Create our paginator and pass it to the view
-        $paginatedSearchResults = new LengthAwarePaginator(array_values($currentPageSearchResults), count($merged), $perPage, $currentPage,  ['path' => url('/api/v2/get-wall-feed')]);
+        $paginatedSearchResults = new LengthAwarePaginator(array_values($currentPageSearchResults), $merged->count(), $perPage, $currentPage,  ['path' => url('/api/v2/get-wall-feed')]);
 
-        //return response()->json($paginatedSearchResults);
         return response()->json($paginatedSearchResults);
     }
 
@@ -1143,7 +1131,8 @@ class ApiController extends Controller
             'youtube' => $mediaObj->youtube ?? null,
             'linkedIn' => $mediaObj->linkedIn ?? null,
             'twitter' => $mediaObj->twitter ?? null,
-            'phone_number' => '96103067387',
+            'phone_number' => $mediaObj->phone ?? '96103067387',
+            'mobile_number' => $mediaObj->mobile ?? null,
         ]);
     }
 
@@ -1217,13 +1206,355 @@ class ApiController extends Controller
                 return [
                     'id'       => $d->id,
                     'title'    => $d->title,
-                    'file_url' => Storage::disk('s3')->url(
-                        env('AWS_BUCKET_PROJECT_NAME') . '/storage/political_work/' . $d->file_name
-                    ),
+                    'file_url' => env('APP_ENV') != 'local'
+                        ? Storage::disk('s3')->url(
+                            env('AWS_BUCKET_PROJECT_NAME') . '/storage/political_work/' . $d->file_name
+                        )
+                        : url('political_work/' . $d->file_name),
                 ];
             });
 
         return response()->json($docs);
+    }
+
+    public function getLegislativeDocs(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'tab' => 'required|in:sawdir,iqtirahaat',
+        ]);
+        if ($validator->fails()) {
+            return $this->api_error_response('missing_parameters', 101, implode(', ', $validator->messages()->all()));
+        }
+        $docs = \App\V2\LegislativeDoc::where('tab', $request->tab)
+            ->orderBy('order')->get()
+            ->map(fn($d) => [
+                'id'       => $d->id,
+                'title'    => $d->title,
+                'file_url' => Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/storage/legislative_docs/' . $d->file_name),
+            ]);
+        return response()->json($docs);
+    }
+
+    public function getNationalPlans(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'tab' => 'required|in:iqtisad,kahraba,maa,muhajareen,lamarkaziya',
+        ]);
+        if ($validator->fails()) {
+            return $this->api_error_response('missing_parameters', 101, implode(', ', $validator->messages()->all()));
+        }
+        $docs = \App\V2\NationalPlan::where('tab', $request->tab)
+            ->orderBy('order')->get()
+            ->map(fn($d) => [
+                'id'       => $d->id,
+                'title'    => $d->title,
+                'file_url' => Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/storage/national_plans/' . $d->file_name),
+            ]);
+        return response()->json($docs);
+    }
+
+    public function getInternalOrg(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'tab' => 'required|in:nizham_dakhili,tawjihat_tatbiqiya',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->api_error_response('missing_parameters', 101, implode(', ', $validator->messages()->all()));
+        }
+
+        $doc = \App\V2\InternalOrgDocument::where('tab', $request->tab)->first();
+
+        return response()->json([
+            'tab'     => $request->tab,
+            'content' => optional($doc)->content,
+        ]);
+    }
+
+    public function getCompetencyStaticPage(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'type' => 'required|in:terms,faq',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->api_error_response('missing_parameters', 101, implode(', ', $validator->messages()->all()));
+        }
+
+        $category = $request->type === 'terms' ? 'competency-terms' : 'competency-faq';
+        $content = Content::where('category', $category)->first();
+
+        return response()->json([
+            'type'    => $request->type,
+            'content' => optional($content)->text,
+        ]);
+    }
+
+    // Returns mukhtars for a given قضاء + village
+    public function getMukhtars(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'qada'    => 'required|string',
+            'village' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->api_error_response('missing_parameters', 101, implode(', ', $validator->messages()->all()));
+        }
+
+        $members = \App\V2\Mukhtar::where('qada', $request->qada)
+            ->where('village_name', $request->village)
+            ->orderByRaw("CASE position WHEN 'مختار' THEN 1 WHEN 'عضو اختياري' THEN 2 ELSE 3 END")
+            ->orderBy('votes', 'desc')
+            ->get()
+            ->map(fn($m) => [
+                'id'           => $m->id,
+                'full_name'    => $m->full_name,
+                'neighborhood' => $m->neighborhood,
+                'position'     => $m->position,
+                'phone'        => $m->phone,
+                'is_mountasib' => (bool) $m->is_mountasib,
+            ]);
+
+        return response()->json($members);
+    }
+
+    // Returns distinct villages for قضاء (mukhtars)
+    public function getMukhtarVillages(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'qada' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->api_error_response('missing_parameters', 101, implode(', ', $validator->messages()->all()));
+        }
+
+        $list = \App\V2\Mukhtar::where('qada', $request->qada)
+            ->selectRaw('village_name, MIN(sort_order) as first_order')
+            ->groupBy('village_name')
+            ->orderBy('first_order')
+            ->pluck('village_name');
+
+        return response()->json($list);
+    }
+
+    // Returns distinct municipality names for a given قضاء
+    public function getMunicipalities(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'qada' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->api_error_response('missing_parameters', 101, implode(', ', $validator->messages()->all()));
+        }
+
+        $list = \App\V2\MunicipalityMember::where('qada', $request->qada)
+            ->selectRaw('municipality_name, MIN(sort_order) as first_order')
+            ->groupBy('municipality_name')
+            ->orderBy('first_order')
+            ->pluck('municipality_name');
+
+        return response()->json($list);
+    }
+
+    // Returns all members for a given قضاء + municipality
+    public function getMunicipalityMembers(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'qada'     => 'required|string',
+            'municipality' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->api_error_response('missing_parameters', 101, implode(', ', $validator->messages()->all()));
+        }
+
+        $members = \App\V2\MunicipalityMember::where('qada', $request->qada)
+            ->where('municipality_name', $request->municipality)
+            ->orderByRaw("CASE position WHEN 'رئيس' THEN 1 WHEN 'نائب رئيس' THEN 2 WHEN 'عضو' THEN 3 ELSE 4 END")
+            ->orderBy('votes', 'desc')
+            ->get()
+            ->map(fn($m) => [
+                'id'           => $m->id,
+                'full_name'    => $m->full_name,
+                'village_name' => $m->village_name,
+                'position'     => $m->position,
+                'phone'        => $m->phone,
+                'is_mountasib' => (bool) $m->is_mountasib,
+            ]);
+
+        return response()->json($members);
+    }
+
+    private const COMPETENCY_MAX_NOMINATIONS_PER_VACANCY = 5;
+
+    // Returns vacancies currently open for nomination
+    public function getCompetencyVacancies(Request $request)
+    {
+        $resolvedUser = $request->header('token')
+            ? \App\V2\AppUser::where('token', $request->header('token'))->first()
+            : null;
+
+        $now = now();
+
+        $vacancies = CompetencyVacancy::where('start_date', '<=', $now)
+            ->where('end_date', '>=', $now)
+            ->orderByDesc('start_date')
+            ->get()
+            ->map(function ($v) use ($resolvedUser) {
+                $myNominationsCount = $resolvedUser
+                    ? $v->nominations()->where('submitted_by_user_id', $resolvedUser->id)->count()
+                    : 0;
+
+                return [
+                    'id'                 => $v->id,
+                    'title'              => $v->title,
+                    'description'        => $v->description,
+                    'start_date'         => $v->start_date->timestamp,
+                    'end_date'           => $v->end_date->timestamp,
+                    'my_nominations_count' => $myNominationsCount,
+                    'max_nominations'    => self::COMPETENCY_MAX_NOMINATIONS_PER_VACANCY,
+                ];
+            });
+
+        return response()->json($vacancies);
+    }
+
+    // Returns the requesting user's known profile fields, for pre-filling a self-nomination form
+    public function getCompetencyProfile(Request $request)
+    {
+        $user = $request->header('token')
+            ? \App\V2\AppUser::where('token', $request->header('token'))->first()
+            : null;
+
+        if (!$user) {
+            return $this->api_error_response('invalid_token', 401, 'Invalid or missing token');
+        }
+
+        $profile = \App\V2\CompetencyProfile::where('user_id', $user->id)->first();
+
+        return response()->json([
+            'full_name'         => $user->name,
+            'phone'             => $user->phone_number,
+            'district'          => optional($profile)->district,
+            'town'              => optional($profile)->town,
+            'civil_record'      => optional($profile)->civil_record,
+            'profession'        => optional($profile)->profession,
+            'party_role'        => optional($profile)->party_role,
+            'education_level'   => optional($profile)->education_level,
+            'specialization'    => optional($profile)->specialization,
+        ]);
+    }
+
+    // Returns all electoral districts, for the القضاء dropdown
+    public function getElectoralDistricts(Request $request)
+    {
+        $districts = \App\V2\ElectoralDistrict::orderBy('name')->get(['id', 'name']);
+
+        return response()->json($districts);
+    }
+
+    // Returns towns belonging to the given electoral district, for the البلدة dropdown
+    public function getTowns(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'electoral_district_id' => 'required|integer|exists:electoral_districts,id',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->api_error_response('missing_parameters', 101, implode(', ', $validator->messages()->all()));
+        }
+
+        $towns = \App\V2\Town::where('electoral_district_id', $request->electoral_district_id)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        return response()->json($towns);
+    }
+
+    // Submits a self- or other-nomination for an open vacancy
+    public function submitCompetencyNomination(Request $request)
+    {
+        $user = $request->header('token')
+            ? \App\V2\AppUser::where('token', $request->header('token'))->first()
+            : null;
+
+        if (!$user) {
+            return $this->api_error_response('invalid_token', 401, 'Invalid or missing token');
+        }
+
+        $validator = Validator::make($request->all(), [
+            'vacancy_id'                => 'required|integer|exists:competency_vacancies,id',
+            'nomination_type'           => 'required|in:self,other',
+            'full_name'                 => 'required|string|max:191',
+            'district'                  => 'required|string|max:191',
+            'town'                      => 'required|string|max:191',
+            'civil_record'              => 'nullable|string|max:191',
+            'phone'                     => 'required|string|max:191',
+            'profession'                => 'required|string|max:191',
+            'party_role'                => 'nullable|string|max:191',
+            'education_level'           => 'required|string|max:191',
+            'specialization'            => 'required|string|max:191',
+            'nominee_relation'          => 'required_if:nomination_type,other|nullable|string|max:191',
+            'nomination_reason'         => 'required|string|max:2000',
+            'nominee_aware'             => 'required_if:nomination_type,other|nullable|boolean',
+            'responsibility_confirmed'  => 'required|accepted',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->api_error_response('missing_parameters', 101, implode(', ', $validator->messages()->all()));
+        }
+
+        $vacancy = CompetencyVacancy::findOrFail($request->vacancy_id);
+        $now = now();
+
+        if ($now->lt($vacancy->start_date) || $now->gt($vacancy->end_date)) {
+            return $this->api_error_response('vacancy_closed', 102, 'الترشيح لهذا المنصب مقفل حالياً');
+        }
+
+        $existingCount = $vacancy->nominations()->where('submitted_by_user_id', $user->id)->count();
+
+        if ($existingCount >= self::COMPETENCY_MAX_NOMINATIONS_PER_VACANCY) {
+            return $this->api_error_response('max_nominations_reached', 103, 'لقد وصلت الى الحد الأقصى من الترشيحات لهذا المنصب');
+        }
+
+        if ($request->nomination_type === 'self') {
+            \App\V2\CompetencyProfile::updateOrCreate(
+                ['user_id' => $user->id],
+                [
+                    'district'          => $request->district,
+                    'town'              => $request->town,
+                    'civil_record'      => $request->civil_record,
+                    'profession'        => $request->profession,
+                    'party_role'        => $request->party_role,
+                    'education_level'   => $request->education_level,
+                    'specialization'    => $request->specialization,
+                ]
+            );
+        }
+
+        $nomination = CompetencyNomination::create([
+            'vacancy_id'                => $vacancy->id,
+            'submitted_by_user_id'      => $user->id,
+            'nomination_type'           => $request->nomination_type,
+            'full_name'                 => $request->full_name,
+            'district'                  => $request->district,
+            'town'                      => $request->town,
+            'civil_record'              => $request->civil_record,
+            'phone'                     => $request->phone,
+            'profession'                => $request->profession,
+            'party_role'                => $request->party_role,
+            'education_level'           => $request->education_level,
+            'specialization'            => $request->specialization,
+            'nominee_relation'          => $request->nominee_relation,
+            'nomination_reason'         => $request->nomination_reason,
+            'nominee_aware'             => $request->nomination_type === 'other' ? $request->boolean('nominee_aware') : null,
+            'responsibility_confirmed'  => true,
+        ]);
+
+        return response()->json(['success' => true, 'id' => $nomination->id]);
     }
 
     public function getCountryCodes(Request $request)

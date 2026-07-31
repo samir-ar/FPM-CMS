@@ -102,6 +102,8 @@ class ContentController extends Controller
                     'class' => 'box-default',
                     'box-header' => 'Links',
                     'form_fields' => [
+                        $this->drawHtml('small_text', 'Phone (Land Line)', 'phone', $media ? (isset($media->phone) ? $media->phone : null) : $request->old('phone'), null, '', 'col-md-12'),
+                        $this->drawHtml('small_text', 'Mobile', 'mobile', $media ? (isset($media->mobile) ? $media->mobile : null) : $request->old('mobile'), null, '', 'col-md-12'),
                         $this->drawHtml('small_text', 'Email', 'email', $media ? $media->email : $request->old('email'), null, '', 'col-md-12'),
                         $this->drawHtml('small_text', 'Facebook', 'facebook', $media ? $media->facebook : $request->old('facebook'), null, '', 'col-md-12'),
                         $this->drawHtml('small_text', 'Instagram', 'instagram', $media ? $media->instagram : $request->old('instagram'), null, '', 'col-md-12'),
@@ -139,6 +141,8 @@ class ContentController extends Controller
         }
 
         $links = [
+            'phone' => request('phone'),
+            'mobile' => request('mobile'),
             'email' => request('email'),
             'facebook' => request('facebook'),
             'instagram' => request('instagram'),

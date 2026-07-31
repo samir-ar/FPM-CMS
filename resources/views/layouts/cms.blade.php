@@ -507,7 +507,7 @@
         if($('.editor').length){
             $('.editor').not(function(){return $(this).parents('.no-ck').length}).each(function(){
                 CKEDITOR.replace($(this).attr('id'), {
-                    extraPlugins : 'bidi'
+                    extraPlugins : 'bidi,justify'
 
                 });
             });

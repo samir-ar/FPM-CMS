@@ -149,6 +149,20 @@ Route::group(['namespace' => 'Api\V2', 'prefix' => 'v2/', 'middleware' => ['lang
     Route::post('faq-categories', 'ApiController@faqCategories');
     Route::post('faqs', 'ApiController@faqsByCategory');
     Route::post('political-work', 'ApiController@getPoliticalWork');
+    Route::post('internal-org', 'ApiController@getInternalOrg');
+    Route::post('legislative-docs', 'ApiController@getLegislativeDocs');
+    Route::post('national-plans', 'ApiController@getNationalPlans');
+    Route::post('municipalities', 'ApiController@getMunicipalities');
+    Route::post('municipality-members', 'ApiController@getMunicipalityMembers');
+    Route::post('mukhtar-villages', 'ApiController@getMukhtarVillages');
+    Route::post('mukhtars', 'ApiController@getMukhtars');
+
+    Route::post('competency-vacancies', 'ApiController@getCompetencyVacancies');
+    Route::post('competency-profile', 'ApiController@getCompetencyProfile');
+    Route::post('competency-nominations', 'ApiController@submitCompetencyNomination');
+    Route::post('electoral-districts', 'ApiController@getElectoralDistricts');
+    Route::post('towns', 'ApiController@getTowns');
+    Route::post('competency-static-page', 'ApiController@getCompetencyStaticPage');
 
 });
 
