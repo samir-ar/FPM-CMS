@@ -9,6 +9,12 @@
             <div class="alert alert-success">{{ session('message') }}</div>
         @endif
 
+        <p>
+            <a href="{{ route('admin.municipality-members.template') }}" class="btn btn-default">
+                <i class="fa fa-download"></i> تحميل نموذج Excel
+            </a>
+        </p>
+
         <form method="POST" action="{{ route('admin.municipality-members.import-store') }}" enctype="multipart/form-data">
             @csrf
             <div class="form-group">
@@ -22,7 +28,7 @@
                     <strong>Col 8</strong> رقم الهاتف,
                     <strong>Col 10</strong> منتسب
                 </p>
-                <p class="text-danger"><strong>تنبيه:</strong> سيتم حذف جميع السجلات الحالية واستبدالها بالملف الجديد.</p>
+                <p class="text-info"><strong>ملاحظة:</strong> عند الاستيراد، يتم تلقائياً حذف السجلات القديمة الخاصة <u>بنفس القضاء</u> الموجود في الملف واستبدالها بالسجلات الجديدة — أقضية أخرى غير موجودة في الملف لا تتأثر إطلاقاً. لتحديث قضاء (مثل تحديث بيانات المتن)، يكفي رفع الملف المحدّث لنفس القضاء وسيتم استبدال بياناته القديمة تلقائياً.</p>
             </div>
             <button type="submit" class="btn btn-success">استيراد</button>
             <a href="{{ route('admin.municipality-members.index') }}" class="btn btn-default">إلغاء</a>

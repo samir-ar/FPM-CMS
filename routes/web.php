@@ -107,6 +107,7 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::delete('mukhtars/{id}', 'MukhtarsController@destroy')->name('mukhtars.destroy');
     Route::get('mukhtars-import', 'MukhtarsController@importForm')->name('mukhtars.import-form');
     Route::post('mukhtars-import', 'MukhtarsController@importStore')->name('mukhtars.import-store');
+    Route::get('mukhtars-template', 'MukhtarsController@downloadTemplate')->name('mukhtars.template');
 
     //Municipality Members (بلديات / مخاتير)
     Route::get('municipality-members', 'MunicipalityMembersController@index')->name('municipality-members.index');
@@ -117,6 +118,7 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::delete('municipality-members/{id}', 'MunicipalityMembersController@destroy')->name('municipality-members.destroy');
     Route::get('municipality-members-import', 'MunicipalityMembersController@importForm')->name('municipality-members.import-form');
     Route::post('municipality-members-import', 'MunicipalityMembersController@importStore')->name('municipality-members.import-store');
+    Route::get('municipality-members-template', 'MunicipalityMembersController@downloadTemplate')->name('municipality-members.template');
 
     //Competency Platform (منصة الكفاءات)
     Route::get('competency-vacancies', 'CompetencyVacanciesController@index')->name('competency-vacancies.index');

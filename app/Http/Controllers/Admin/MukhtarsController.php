@@ -6,6 +6,8 @@ use Illuminate\Http\Request;
 use App\V2\Mukhtar;
 use App\Http\Traits\FormTrait;
 use App\Http\Controllers\Controller;
+use App\Exports\MukhtarsTemplateExport;
+use Maatwebsite\Excel\Facades\Excel;
 use DataTables;
 
 class MukhtarsController extends Controller
@@ -69,7 +71,7 @@ class MukhtarsController extends Controller
                     $this->drawHtml('small_text', 'اسم الحي', 'neighborhood', null, null, '', 'col-md-6'),
                     $this->drawHtml('small_text', 'الاسم الكامل', 'full_name', null, null, '', 'col-md-6 required'),
                     $this->drawHtml('select-box', 'المنصب', 'position', null,
-                        ['مختار' => 'مختار', 'عضو اختياري' => 'عضو اختياري'], '', 'col-md-6 required'),
+                        ['مختار' => 'مختار', 'عضو اختياري' => 'عضو اختياري', 'متوفي' => 'متوفي'], '', 'col-md-6 required'),
                     $this->drawHtml('small_text', 'رقم الهاتف', 'phone', null, null, '', 'col-md-6'),
                     $this->drawHtml('select-box', 'منتسب', 'is_mountasib', null,
                         ['0' => 'لا', '1' => 'نعم (أورانج)'], '', 'col-md-6'),
@@ -85,7 +87,7 @@ class MukhtarsController extends Controller
             'qada'         => 'required|string|max:191',
             'village_name' => 'required|string|max:191',
             'full_name'    => 'required|string|max:191',
-            'position'     => 'required|in:مختار,عضو اختياري',
+            'position'     => 'required|in:مختار,عضو اختياري,متوفي',
         ]);
 
         Mukhtar::create([
@@ -122,7 +124,7 @@ class MukhtarsController extends Controller
                     $this->drawHtml('small_text', 'اسم الحي', 'neighborhood', $m->neighborhood, null, '', 'col-md-6'),
                     $this->drawHtml('small_text', 'الاسم الكامل', 'full_name', $m->full_name, null, '', 'col-md-6 required'),
                     $this->drawHtml('select-box', 'المنصب', 'position', $m->position,
-                        ['مختار' => 'مختار', 'عضو اختياري' => 'عضو اختياري'], '', 'col-md-6 required'),
+                        ['مختار' => 'مختار', 'عضو اختياري' => 'عضو اختياري', 'متوفي' => 'متوفي'], '', 'col-md-6 required'),
                     $this->drawHtml('small_text', 'رقم الهاتف', 'phone', $m->phone, null, '', 'col-md-6'),
                     $this->drawHtml('select-box', 'منتسب', 'is_mountasib', $m->is_mountasib ? '1' : '0',
                         ['0' => 'لا', '1' => 'نعم (أورانج)'], '', 'col-md-6'),
@@ -140,7 +142,7 @@ class MukhtarsController extends Controller
             'qada'         => 'required|string|max:191',
             'village_name' => 'required|string|max:191',
             'full_name'    => 'required|string|max:191',
-            'position'     => 'required|in:مختار,عضو اختياري',
+            'position'     => 'required|in:مختار,عضو اختياري,متوفي',
         ]);
 
         $m->update([
@@ -164,6 +166,11 @@ class MukhtarsController extends Controller
         return back()->with('message', 'تم الحذف بنجاح');
     }
 
+    public function downloadTemplate()
+    {
+        return Excel::download(new MukhtarsTemplateExport(), 'mukhtars_template.xlsx');
+    }
+
     public function importForm()
     {
         return view('cms.mukhtars.import')->with([
@@ -176,7 +183,6 @@ class MukhtarsController extends Controller
     {
         $request->validate(['file' => 'required|mimes:xlsx,xls|max:20480']);
         $path = $request->file('file')->getPathname();
-        Mukhtar::query()->delete();
         \Maatwebsite\Excel\Facades\Excel::import(new \App\Imports\MukhtarsImport(), $path);
         $count = Mukhtar::count();
         return redirect()->route('admin.mukhtars.index')

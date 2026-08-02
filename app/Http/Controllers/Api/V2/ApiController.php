@@ -1331,9 +1331,9 @@ class ApiController extends Controller
         }
 
         $list = \App\V2\Mukhtar::where('qada', $request->qada)
-            ->selectRaw('village_name, MIN(sort_order) as first_order')
+            ->select('village_name')
             ->groupBy('village_name')
-            ->orderBy('first_order')
+            ->orderBy('village_name')
             ->pluck('village_name');
 
         return response()->json($list);
@@ -1351,9 +1351,9 @@ class ApiController extends Controller
         }
 
         $list = \App\V2\MunicipalityMember::where('qada', $request->qada)
-            ->selectRaw('municipality_name, MIN(sort_order) as first_order')
+            ->select('municipality_name')
             ->groupBy('municipality_name')
-            ->orderBy('first_order')
+            ->orderBy('municipality_name')
             ->pluck('municipality_name');
 
         return response()->json($list);

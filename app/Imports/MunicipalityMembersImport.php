@@ -13,7 +13,7 @@ class MunicipalityMembersImport implements ToCollection
     private string $currentVillage = '';
     private int $sortOrder = 0;
 
-    private static array $validPositions = ['رئيس', 'نائب رئيس', 'عضو'];
+    private static array $validPositions = ['رئيس', 'نائب رئيس', 'عضو', 'متوفي'];
 
     // Maps Excel qada names → Flutter district names
     private static array $qadaMap = [
@@ -46,6 +46,8 @@ class MunicipalityMembersImport implements ToCollection
 
     public function collection(Collection $rows)
     {
+        $this->deleteExistingQadas($rows);
+
         foreach ($rows as $index => $row) {
             $col1  = trim($row[0] ?? '');
             $col3  = trim($row[2] ?? '');
@@ -116,6 +118,41 @@ class MunicipalityMembersImport implements ToCollection
                 'is_mountasib'      => $isMountasib,
                 'sort_order'        => ++$this->sortOrder,
             ]);
+        }
+    }
+
+    // Scans the file for every قضاء it references (row 2 + any mid-file
+    // section headers) and deletes that قضاء's existing rows before the
+    // real import pass inserts the new ones — so re-uploading an updated
+    // file for a قضاء that's already in the DB replaces it cleanly instead
+    // of duplicating it, while قضاء's not present in this file are
+    // untouched.
+    private function deleteExistingQadas(Collection $rows): void
+    {
+        $qadas = [];
+        $current = '';
+
+        foreach ($rows as $index => $row) {
+            $col1 = trim($row[0] ?? '');
+            $col5 = trim($row[4] ?? '');
+
+            if ($index === 1) {
+                if ($col1 !== '') {
+                    $current = self::$qadaMap[$col1] ?? $col1;
+                }
+            } elseif ($index > 1 && $col1 !== '' && $col5 === '') {
+                $current = $col1;
+            } else {
+                continue;
+            }
+
+            if ($current !== '') {
+                $qadas[$current] = true;
+            }
+        }
+
+        if (!empty($qadas)) {
+            MunicipalityMember::whereIn('qada', array_keys($qadas))->delete();
         }
     }
 }

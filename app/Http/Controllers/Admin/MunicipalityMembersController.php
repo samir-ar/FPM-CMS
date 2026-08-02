@@ -6,6 +6,8 @@ use Illuminate\Http\Request;
 use App\V2\MunicipalityMember;
 use App\Http\Traits\FormTrait;
 use App\Http\Controllers\Controller;
+use App\Exports\MunicipalityMembersTemplateExport;
+use Maatwebsite\Excel\Facades\Excel;
 use DataTables;
 
 class MunicipalityMembersController extends Controller
@@ -69,7 +71,7 @@ class MunicipalityMembersController extends Controller
                     $this->drawHtml('small_text', 'اسم القرية', 'village_name', null, null, '', 'col-md-6'),
                     $this->drawHtml('small_text', 'الاسم الكامل', 'full_name', null, null, '', 'col-md-6 required'),
                     $this->drawHtml('select-box', 'المنصب', 'position', null,
-                        ['رئيس' => 'رئيس', 'نائب رئيس' => 'نائب رئيس', 'عضو' => 'عضو'], '', 'col-md-6 required'),
+                        ['رئيس' => 'رئيس', 'نائب رئيس' => 'نائب رئيس', 'عضو' => 'عضو', 'متوفي' => 'متوفي'], '', 'col-md-6 required'),
                     $this->drawHtml('small_text', 'رقم الهاتف', 'phone', null, null, '', 'col-md-6'),
                     $this->drawHtml('select-box', 'منتسب', 'is_mountasib', null,
                         ['0' => 'لا', '1' => 'نعم (أورانج)'], '', 'col-md-6'),
@@ -85,7 +87,7 @@ class MunicipalityMembersController extends Controller
             'qada'              => 'required|string|max:191',
             'municipality_name' => 'required|string|max:191',
             'full_name'         => 'required|string|max:191',
-            'position'          => 'required|in:رئيس,نائب رئيس,عضو',
+            'position'          => 'required|in:رئيس,نائب رئيس,عضو,متوفي',
         ]);
 
         MunicipalityMember::create([
@@ -122,7 +124,7 @@ class MunicipalityMembersController extends Controller
                     $this->drawHtml('small_text', 'اسم القرية', 'village_name', $member->village_name, null, '', 'col-md-6'),
                     $this->drawHtml('small_text', 'الاسم الكامل', 'full_name', $member->full_name, null, '', 'col-md-6 required'),
                     $this->drawHtml('select-box', 'المنصب', 'position', $member->position,
-                        ['رئيس' => 'رئيس', 'نائب رئيس' => 'نائب رئيس', 'عضو' => 'عضو'], '', 'col-md-6 required'),
+                        ['رئيس' => 'رئيس', 'نائب رئيس' => 'نائب رئيس', 'عضو' => 'عضو', 'متوفي' => 'متوفي'], '', 'col-md-6 required'),
                     $this->drawHtml('small_text', 'رقم الهاتف', 'phone', $member->phone, null, '', 'col-md-6'),
                     $this->drawHtml('select-box', 'منتسب', 'is_mountasib', $member->is_mountasib ? '1' : '0',
                         ['0' => 'لا', '1' => 'نعم (أورانج)'], '', 'col-md-6'),
@@ -140,7 +142,7 @@ class MunicipalityMembersController extends Controller
             'qada'              => 'required|string|max:191',
             'municipality_name' => 'required|string|max:191',
             'full_name'         => 'required|string|max:191',
-            'position'          => 'required|in:رئيس,نائب رئيس,عضو',
+            'position'          => 'required|in:رئيس,نائب رئيس,عضو,متوفي',
         ]);
 
         $member->update([
@@ -162,6 +164,11 @@ class MunicipalityMembersController extends Controller
     {
         MunicipalityMember::findOrFail($id)->delete();
         return back()->with('message', 'تم حذف العضو بنجاح');
+    }
+
+    public function downloadTemplate()
+    {
+        return Excel::download(new MunicipalityMembersTemplateExport(), 'municipality_members_template.xlsx');
     }
 
     public function importForm()
