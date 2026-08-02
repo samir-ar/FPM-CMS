@@ -133,9 +133,7 @@ class ApiController extends Controller
             if ($resolved) $request->merge(['user' => $resolved, 'groups' => $resolved->groups->pluck('GroupId')->toArray()]);
         }
         $groups = request('groups');
-        $memos = ($groups && is_array($groups) && count($groups) > 0)
-            ? $apiRepo->getMemosByGroups($groups)
-            : \App\V2\Memo::orderBy('date', 'desc')->get();
+        $memos = $apiRepo->getMemosByGroups(is_array($groups) ? $groups : []);
         return response()->json($memos->map(function ($g) {
             return [
                 'id'   => $g->id,

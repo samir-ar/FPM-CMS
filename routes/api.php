@@ -33,13 +33,8 @@ Route::group(['namespace' => 'Api\V2', 'prefix' => 'v2/', 'middleware' => ['lang
     Route::post('get-wall-feed','ApiController@getWallFeed');
     Route::post('news-like','ApiController@likeNews');
     Route::post('news-share','ApiController@shareNews');
-    Route::post('memos','ApiController@getMemos');
-    Route::post('current-polls','ApiController@getPolls');
-    Route::post('previous-polls','ApiController@getPreviousPolls');
-    Route::post('answer-poll','ApiController@answerPoll');
     Route::post('upcoming-events-paginated','ApiController@getUpcomingEventsWithPagination');
     Route::post('previous-events-paginated','ApiController@getPreviousEventsWithPagination');
-    Route::post('get-my-candidates-status','ApiController@getCandidates');
     Route::post('google-forms','ApiController@getInternalProcess');
     Route::post('important-links','ApiController@getLinks');
     Route::post('dev-sync-token', function(\Illuminate\Http\Request $request) {
