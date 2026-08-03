@@ -1204,7 +1204,7 @@ class ApiController extends Controller
                 return [
                     'id'       => $d->id,
                     'title'    => $d->title,
-                    'file_url' => env('APP_ENV') != 'local'
+                    'file_url' => env('FORCE_S3_STORAGE', env('APP_ENV') != 'local')
                         ? Storage::disk('s3')->url(
                             env('AWS_BUCKET_PROJECT_NAME') . '/storage/political_work/' . $d->file_name
                         )

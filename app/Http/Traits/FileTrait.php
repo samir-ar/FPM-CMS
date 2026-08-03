@@ -26,7 +26,7 @@ trait FileTrait
 	public function moveFile($input, $dir, $thumbFlag = null, $width = null, $height = null, $thumb_path = null)
 	{
 		$fileName = time().$this->slugify($input->getClientOriginalName());
-        if(env('APP_ENV') != 'local'){
+        if(env('FORCE_S3_STORAGE', env('APP_ENV') != 'local')){
             $filePath = Storage::disk('s3')->put(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . $dir . '/' . $fileName, file_get_contents($input));
         }else{
             $filePath = public_path( $dir . '/');

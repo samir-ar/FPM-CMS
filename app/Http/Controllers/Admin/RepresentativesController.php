@@ -135,7 +135,9 @@ class RepresentativesController extends Controller
         $person->image = $this->moveFile(request('image'), 'images/representatives');
 
 
-        $person->order = request('order');
+        $person->order = request('order') !== null && request('order') !== ''
+            ? request('order')
+            : (Person::max('order') ?? 0) + 1;
         $person->type = request('type');
 
         if(request('type') == 'President'){
@@ -177,7 +179,7 @@ class RepresentativesController extends Controller
                         $this->drawHtml('select-box', 'Category', 'category', $person->dynamic_representative_id, DynamicRepresentative::all()->pluck('title','id'), '', 'col-md-12 right-to-left required'),
                         $this->drawHtml('select-box', 'Position', 'position_id', $person->representative_position_id, RepresentativePosition::all()->pluck('name','id'), '', 'col-md-12 right-to-left required'),
 
-                        $this->drawHtml('image', 'Image', 'image', $person->image, null, '', 'col-md-12 '),
+                        $this->drawHtml('image', 'Image', 'image', $person->image ? 'images/representatives/' . $person->image : null, null, '', 'col-md-12 '),
 
                         $this->drawHtml('number', 'Order', 'order', $person->order , null, '', 'col-md-12'),
                         $this->drawHtml('select-box', 'Type', 'type', $person->type, [NULL => 'Select Status','Founder' => 'Founder','President' => 'President'], '', 'col-md-12'),
@@ -214,7 +216,9 @@ class RepresentativesController extends Controller
         if(request('position_id')){
             $person->representative_position_id = request('position_id');
         }
-        $person->order = request('order');
+        if(request('order') !== null && request('order') !== ''){
+            $person->order = request('order');
+        }
 
         $person->save();
 

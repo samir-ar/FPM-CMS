@@ -9,12 +9,14 @@ trait FormTrait
 {
     public function drawImage($image, $width=null, $class=null)
     {
-        if($image)
+        if($image) {
+            $url = $this->storageUrl($image);
 
             return "
             <div class='$class'>
-                    <a target='_blank' href='" . asset($image) . "'><img width=" . ($width ? :'320') . " src='" .asset($image)."'></a>
+                    <a target='_blank' href='" . $url . "'><img width=" . ($width ? :'320') . " src='" .$url."'></a>
             </div>";
+        }
 
         return null;
     }
@@ -23,9 +25,20 @@ trait FormTrait
     {
         if($video)
             return ' <video width="320" height="240" controls>
-                <source src="' . asset($video) . '" type="video/mp4">
+                <source src="' . $this->storageUrl($video) . '" type="video/mp4">
             </video> ';
         return null;
+    }
+
+    // Resolves an admin-preview URL for a category-prefixed relative path (e.g.
+    // 'images/representatives/foo.jpg') the same way FileTrait::moveFile() decides
+    // where the underlying file actually lives — S3 when FORCE_S3_STORAGE/prod,
+    // local public/ otherwise. Keeps admin previews in sync with upload location.
+    private function storageUrl($path)
+    {
+        return env('FORCE_S3_STORAGE', env('APP_ENV') != 'local')
+            ? \Illuminate\Support\Facades\Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/storage/' . $path)
+            : asset($path);
     }
 
     public function drawReadOnlyImage($label, $image, $class=null, $width=null)
@@ -429,7 +442,7 @@ trait FormTrait
                 "<input type='file' accept='image/*' name='" . $name . "' class='form-control-file  form-control upload-img-input-file' value='' />".
                 "</div>".
                 "<div class='upload-img float-right'>".
-                "<img  class='uploaded-img' src='" . ($default ? URL::to($default) : '') . "' />".
+                "<img  class='uploaded-img' src='" . ($default ? $this->storageUrl($default) : '') . "' />".
                 "</div>";
 
             $text .= "</div>";
