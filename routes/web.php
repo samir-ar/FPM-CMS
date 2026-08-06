@@ -96,6 +96,8 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::get('political-work', 'PoliticalWorkController@index')->name('political-work.index');
     Route::get('political-work-create', 'PoliticalWorkController@create')->name('political-work.create');
     Route::post('political-work-store', 'PoliticalWorkController@store')->name('political-work.store');
+    Route::get('political-work-edit/{id}', 'PoliticalWorkController@edit')->name('political-work.edit');
+    Route::put('political-work-update/{id}', 'PoliticalWorkController@update')->name('political-work.update');
     Route::delete('political-work-destroy/{id}', 'PoliticalWorkController@destroy')->name('political-work.destroy');
 
     //Mukhtars (مخاتير)
@@ -132,6 +134,31 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::get('competency-static', 'CompetencyStaticController@index')->name('competency-static.index');
     Route::post('competency-static', 'CompetencyStaticController@update')->name('competency-static.update');
 
+    //Community
+    Route::get('business-types', 'BusinessTypesController@index')->name('business-types.index');
+    Route::get('business-types/create', 'BusinessTypesController@create')->name('business-types.create');
+    Route::post('business-types', 'BusinessTypesController@store')->name('business-types.store');
+    Route::get('business-types/{id}/edit', 'BusinessTypesController@edit')->name('business-types.edit');
+    Route::put('business-types/{id}', 'BusinessTypesController@update')->name('business-types.update');
+    Route::delete('business-types/{id}', 'BusinessTypesController@destroy')->name('business-types.destroy');
+
+    Route::get('directory-members', 'DirectoryMembersController@index')->name('directory-members.index');
+    Route::get('directory-members/create', 'DirectoryMembersController@create')->name('directory-members.create');
+    Route::post('directory-members', 'DirectoryMembersController@store')->name('directory-members.store');
+    Route::get('directory-members/{id}/edit', 'DirectoryMembersController@edit')->name('directory-members.edit');
+    Route::put('directory-members/{id}', 'DirectoryMembersController@update')->name('directory-members.update');
+    Route::delete('directory-members/{id}', 'DirectoryMembersController@destroy')->name('directory-members.destroy');
+    Route::get('directory-members-import', 'DirectoryMembersController@importForm')->name('directory-members.import-form');
+    Route::post('directory-members-import', 'DirectoryMembersController@importStore')->name('directory-members.import-store');
+    Route::get('directory-members-template', 'DirectoryMembersController@downloadTemplate')->name('directory-members.template');
+
+    Route::get('community-posts', 'CommunityPostsController@index')->name('community-posts.index');
+    Route::get('community-posts/{id}/edit', 'CommunityPostsController@edit')->name('community-posts.edit');
+    Route::put('community-posts/{id}', 'CommunityPostsController@update')->name('community-posts.update');
+    Route::get('community-posts/{id}/approve', 'CommunityPostsController@approve')->name('community-posts.approve');
+    Route::get('community-posts/{id}/reject', 'CommunityPostsController@reject')->name('community-posts.reject');
+    Route::delete('community-posts/{id}', 'CommunityPostsController@destroy')->name('community-posts.destroy');
+
     //Memos
     Route::resource('memos', 'MemosController');
 
@@ -167,6 +194,7 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::post('eventRemoveFile', 'EventImagesController@remove_File')->name('event.remove_file');
 
     //Representatives
+    Route::get('representatives-normalize-order', 'RepresentativesController@normalizeOrder')->name('representatives.normalize-order');
     Route::resource('representatives', 'RepresentativesController');
     Route::get('representatives-category', 'RepresentativeCategoryController@index')->name('representatives.category.index');
     Route::get('representatives-category-create', 'RepresentativeCategoryController@create')->name('representatives.category.create');

@@ -186,7 +186,7 @@
                         </div>
                     @endif
                     @if(isset($custom_btn1))
-                        <div class="custom-btns">
+                        <div style="float:left;">
                             {!! $custom_btn1 !!}
                         </div>
                     @endif

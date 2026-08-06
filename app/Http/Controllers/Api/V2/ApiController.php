@@ -1024,7 +1024,7 @@ class ApiController extends Controller
                 'id' => $r->id,
                 'title' => $r->title,
                 'text' => $r->text,
-                'persons' => $r->persons()->orderBy('rep_order', 'asc')->get()->map(function ($p) {
+                'persons' => $r->persons()->orderBy('order', 'asc')->get()->map(function ($p) {
                     return [
                         "id" => $p->id,
                         "type" => $p->type,
@@ -1198,17 +1198,13 @@ class ApiController extends Controller
         }
 
         $docs = \App\V2\PoliticalWorkDocument::where('category', request('category'))
-            ->orderBy('order')
+            ->orderBy('document_date', 'desc')
             ->get()
             ->map(function ($d) {
                 return [
                     'id'       => $d->id,
                     'title'    => $d->title,
-                    'file_url' => env('FORCE_S3_STORAGE', env('APP_ENV') != 'local')
-                        ? Storage::disk('s3')->url(
-                            env('AWS_BUCKET_PROJECT_NAME') . '/storage/political_work/' . $d->file_name
-                        )
-                        : url('political_work/' . $d->file_name),
+                    'file_url' => $d->fileUrl(),
                 ];
             });
 

@@ -28,6 +28,14 @@ return [
 
     'env' => env('APP_ENV', 'production'),
 
+    // Cached here (not read via raw env() in application code) because
+    // this WAMP/mod_fcgid setup has been observed to intermittently return
+    // null from env() for some request-serving worker processes, even
+    // though the config repository — populated once at bootstrap — is
+    // always reliable.
+    'aws_bucket_project_name' => env('AWS_BUCKET_PROJECT_NAME'),
+    'force_s3_storage' => env('FORCE_S3_STORAGE'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Debug Mode

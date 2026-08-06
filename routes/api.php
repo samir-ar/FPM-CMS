@@ -37,6 +37,11 @@ Route::group(['namespace' => 'Api\V2', 'prefix' => 'v2/', 'middleware' => ['lang
     Route::post('previous-events-paginated','ApiController@getPreviousEventsWithPagination');
     Route::post('google-forms','ApiController@getInternalProcess');
     Route::post('important-links','ApiController@getLinks');
+    Route::post('business-type', 'CommunityController@getBusinessTypes');
+    Route::post('get-community', 'CommunityController@getCommunityPosts');
+    Route::post('directory-members', 'CommunityController@getDirectoryMembers');
+    Route::post('community-districts', 'CommunityController@getDistricts');
+    Route::get('image-proxy', 'CommunityController@imageProxy');
     Route::post('dev-sync-token', function(\Illuminate\Http\Request $request) {
         $token    = $request->input('token');
         $memberId = $request->input('member_id');
@@ -109,6 +114,10 @@ Route::group(['namespace' => 'Api\V2', 'prefix' => 'v2/', 'middleware' => ['lang
         Route::post('single-event', 'ApiController@getEventById');
         Route::post('single-news', 'ApiController@getNewsById');
         Route::post('live-stream', 'ApiController@getLiveStream');
+
+        Route::post('get-my-community', 'CommunityController@getMyCommunityPosts');
+        Route::post('create-community', 'CommunityController@createCommunityPost');
+        Route::post('update-community/{id}', 'CommunityController@updateCommunityPost');
 
 
         /////// Delete Account /////////////////////

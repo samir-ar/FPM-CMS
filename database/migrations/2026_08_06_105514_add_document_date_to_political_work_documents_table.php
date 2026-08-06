@@ -1,0 +1,30 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::table('political_work_documents', function (Blueprint $table) {
+            $table->date('document_date')->nullable()->after('title');
+            $table->dropColumn('order');
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::table('political_work_documents', function (Blueprint $table) {
+            $table->unsignedInteger('order')->default(0)->after('title');
+            $table->dropColumn('document_date');
+        });
+    }
+};

@@ -423,6 +423,18 @@ trait FormTrait
             $text .= "</div>";
         }
 
+        else if($type == 'link'){
+            $text = "<div class='form-group ". ($class?:'') . "'>".
+                "<label>" . $label . "</label><br>";
+            if ($default) {
+                $text .= "<a href='" . $default . "' target='_blank' rel='noopener'>" .
+                    "<i class='fa fa-file-pdf-o'></i> " . ($options ?: $default) . "</a>";
+            } else {
+                $text .= "<span class='text-muted'>—</span>";
+            }
+            $text .= "</div>";
+        }
+
         else if($type == 'text'){
 
             $text = "<div class='form-group ". ($class?:'') . "'>".
