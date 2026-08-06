@@ -23,7 +23,7 @@ class PoliticalWorkDocument extends Model
             return null;
         }
 
-        $forceS3 = config('app.force_s3_storage', config('app.env') != 'local');
+        $forceS3 = config('app.force_s3_storage') ?? (config('app.env') != 'local');
 
         return $forceS3
             ? Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/storage/political_work/' . $this->file_name)
