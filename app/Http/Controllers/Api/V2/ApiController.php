@@ -1030,7 +1030,7 @@ class ApiController extends Controller
                         "type" => $p->type,
                         "name" => $p->name,
                         "category" => $p->category,
-                        "image" => isset($p->image) ? Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'images/representatives/' . $p->image) : null,
+                        "image" => !empty($p->image) ? Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'images/representatives/' . $p->image) : null,
                         "position" => ($p->position) ? $p->position->name : null
                     ];
                 }),
