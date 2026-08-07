@@ -17,12 +17,17 @@ class CompetencyVacanciesController extends Controller
         if ($request->ajax()) {
             $data = CompetencyVacancy::query()->orderByDesc('created_at');
             return DataTables::of($data)
+                ->addColumn('status_badge', fn($row) => $row->is_active
+                    ? "<span class='label label-success'>نشط</span>"
+                    : "<span class='label label-default'>غير نشط</span>")
                 ->addColumn('action', fn($row) =>
                     "<a href='" . route('admin.competency-vacancies.nominations', $row->id) . "' class='btn btn-xs btn-default' style='margin-right:4px'><i class='fa fa-users'></i> الترشيحات</a>" .
+                    "<a href='" . route('admin.competency-vacancies.toggle-active', $row->id) . "' class='btn btn-xs " . ($row->is_active ? 'btn-warning' : 'btn-success') . "' style='margin-right:4px'>" .
+                    ($row->is_active ? 'إيقاف' : 'تفعيل') . "</a>" .
                     "<a href='" . route('admin.competency-vacancies.edit', $row->id) . "' class='btn btn-xs btn-info' style='margin-right:4px'><i class='fa fa-edit'></i></a>" .
                     "<a data-toggle='modal' class='delete-link btn btn-xs btn-danger' href='#deleteModal' id='" .
                     route('admin.competency-vacancies.destroy', $row->id) . "'><i class='fa fa-trash'></i></a>")
-                ->rawColumns(['action'])
+                ->rawColumns(['status_badge', 'action'])
                 ->make(true);
         }
 
@@ -33,16 +38,27 @@ class CompetencyVacanciesController extends Controller
             'slug'        => 'competency-vacancies',
             'custom_btn'  =>
                 "<a href='" . route('admin.competency-vacancies.create') . "' class='btn btn-primary'>إضافة منصب</a>",
-            'headers'     => ['#', 'المسمى', 'تاريخ البدء', 'تاريخ الانتهاء', 'Action'],
+            'headers'     => ['#', 'المسمى', 'تاريخ البدء', 'تاريخ الانتهاء', 'الحالة', 'Action'],
             'action'      => route('admin.competency-vacancies.index'),
             'columns'     => json_encode([
-                ['data' => 'id',         'name' => 'id'],
-                ['data' => 'title',      'name' => 'title'],
-                ['data' => 'start_date', 'name' => 'start_date'],
-                ['data' => 'end_date',   'name' => 'end_date'],
-                ['data' => 'action',     'name' => 'action', 'searchable' => false, 'sortable' => false],
+                ['data' => 'id',           'name' => 'id'],
+                ['data' => 'title',        'name' => 'title'],
+                ['data' => 'start_date',   'name' => 'start_date'],
+                ['data' => 'end_date',     'name' => 'end_date'],
+                ['data' => 'status_badge', 'name' => 'status_badge', 'searchable' => false, 'sortable' => false],
+                ['data' => 'action',       'name' => 'action', 'searchable' => false, 'sortable' => false],
             ]),
         ]);
+    }
+
+    public function toggleActive($id)
+    {
+        $vacancy = CompetencyVacancy::findOrFail($id);
+        $vacancy->update(['is_active' => !$vacancy->is_active]);
+
+        return back()->with('message', $vacancy->is_active
+            ? 'تم تفعيل المنصب بنجاح'
+            : 'تم إيقاف عرض المنصب بنجاح');
     }
 
     public function create()

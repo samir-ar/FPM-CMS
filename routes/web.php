@@ -129,6 +129,7 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::get('competency-vacancies/{id}/edit', 'CompetencyVacanciesController@edit')->name('competency-vacancies.edit');
     Route::put('competency-vacancies/{id}', 'CompetencyVacanciesController@update')->name('competency-vacancies.update');
     Route::delete('competency-vacancies/{id}', 'CompetencyVacanciesController@destroy')->name('competency-vacancies.destroy');
+    Route::get('competency-vacancies/{id}/toggle-active', 'CompetencyVacanciesController@toggleActive')->name('competency-vacancies.toggle-active');
     Route::get('competency-vacancies/{id}/nominations', 'CompetencyVacanciesController@nominations')->name('competency-vacancies.nominations');
     Route::delete('competency-vacancies/{vacancyId}/nominations/{nominationId}', 'CompetencyVacanciesController@destroyNomination')->name('competency-vacancies.nominations.destroy');
     Route::get('competency-static', 'CompetencyStaticController@index')->name('competency-static.index');
