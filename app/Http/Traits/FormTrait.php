@@ -37,7 +37,7 @@ trait FormTrait
     private function storageUrl($path)
     {
         return env('FORCE_S3_STORAGE', env('APP_ENV') != 'local')
-            ? \Illuminate\Support\Facades\Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/storage/' . $path)
+            ? \Illuminate\Support\Facades\Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/storage/' . $path)
             : asset($path);
     }
 

@@ -140,7 +140,7 @@ class ApiRepository
                 'id' => null,
                 'title' => (string)$item->title,
                 'source' => null,
-                'source_image' => Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'images/placeholders/' . $placeholder),
+                'source_image' => Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/placeholders/' . $placeholder),
                 'details' => $details,
                 'link' => (string)$item->link,
                 'file' => $file,
@@ -230,13 +230,13 @@ class ApiRepository
             'id' => $n->id,
             'title' => $n->title,
             'source' => $n->source,
-            'source_image' => Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'images/news/' . $n->source_image), //$this->getNewsImage($n, $placeholder) ,
+            'source_image' => Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/news/' . $n->source_image), //$this->getNewsImage($n, $placeholder) ,
             'attachments' => $n->attachments->map(function ($e) {
-                return ["file" => Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'news/attachments/' . $e->name)];
+                return ["file" => Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'news/attachments/' . $e->name)];
             }),
             'details' => $n->details,
             'type' => $n->type,
-            'file' => Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'news/attachments/' . $n->file),
+            'file' => Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'news/attachments/' . $n->file),
             'date' => strtotime($n->date),
             'link' => null,
             'likes_nb' => $n->users()->count(),
@@ -279,9 +279,9 @@ class ApiRepository
             'source_image' => $this->getNewsImage($n, $placeholder),
             'details' => $n->details,
             'type' => $n->type,
-            'file' => Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'news/attachments/' . $n->file),
+            'file' => Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'news/attachments/' . $n->file),
             'date' => strtotime($n->date),
-            'link' => Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'news/attachments/' . $n->file),
+            'link' => Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'news/attachments/' . $n->file),
             'likes_nb' => $n->users()->count(),
             'like' => $n->users()->where('user_id', $user->id)->first() ? true : false,
             'shares' => $n->shares,
@@ -371,7 +371,7 @@ class ApiRepository
     public function getEventsPreviousByGroup($groups_ids)
     {
         $groups_ids = $groups_ids ?? [];
-        return Event::whereHas('groups', function ($q) use ($groups_ids) {
+        return Event::with('images')->whereHas('groups', function ($q) use ($groups_ids) {
             return $q->whereIn('group_id', $groups_ids)->orWhere('group_id', 81)->orWhere('group_id', 82);
         })->where('to_date', '<', Carbon::today());
     }
@@ -379,7 +379,7 @@ class ApiRepository
     public function getEventsUpcomingByGroup($groups_ids)
     {
         $groups_ids = $groups_ids ?? [];
-        return Event::whereHas('groups', function ($q) use ($groups_ids) {
+        return Event::with('images')->whereHas('groups', function ($q) use ($groups_ids) {
             return $q->whereIn('group_id', $groups_ids)->orWhere('group_id', 81)->orWhere('group_id', 82);
         })->where('to_date', '>', Carbon::today())->limit(20);
     }
@@ -426,11 +426,11 @@ class ApiRepository
         $images = $n->images->map(function ($i) {
             return [
                 "type" => "image",
-                "thumbnail" => Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'images/news/' . $i->name),
-                "link" => Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'images/news/' . $i->name)
+                "thumbnail" => Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/news/' . $i->name),
+                "link" => Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/news/' . $i->name)
             ];
         })->toArray();
-        return (count($images) > 0) ? $images : [array("img" => Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'images/placeholders/' . $placeholder))];
+        return (count($images) > 0) ? $images : [array("img" => Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/placeholders/' . $placeholder))];
     }
 
     public function getMedia($type, $element, $placeholder)
@@ -450,8 +450,8 @@ class ApiRepository
         return $element->images->map(function ($i) {
             return [
                 "type" => 'image',
-                "thumbnail" => ($i->src) ? Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'images/events/' . $i->src) : null,
-                "link" => ($i->src) ? Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'images/events/' . $i->src) : null
+                "thumbnail" => ($i->src) ? Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/events/' . $i->src) : null,
+                "link" => ($i->src) ? Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/events/' . $i->src) : null
             ];
         });
     }
@@ -464,8 +464,8 @@ class ApiRepository
 
             return array([
                 "type" => $n->type,
-                "thumbnail" => ($n->thumbnail) ? Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'news/vedio/thumbnails/' . $n->thumbnail) : Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'images/news/' . $n->file),
-                "link" => ($n->file) ? Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'news/attachments/' . $n->file) : Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'images/placeholders/' . $placeholder)
+                "thumbnail" => ($n->thumbnail) ? Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'news/vedio/thumbnails/' . $n->thumbnail) : Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/news/' . $n->file),
+                "link" => ($n->file) ? Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'news/attachments/' . $n->file) : Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/placeholders/' . $placeholder)
             ]);
         }
 
@@ -485,8 +485,8 @@ class ApiRepository
             return [
                 //The thumbnail of an image will be the the same image file
                 "type" => "image",
-                "thumbnail" => Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'images/news/' . $i->name),
-                "link" => Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'images/news/' . $i->name)
+                "thumbnail" => Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/news/' . $i->name),
+                "link" => Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/news/' . $i->name)
             ];
         })->toArray();
 
@@ -494,8 +494,8 @@ class ApiRepository
         //Add Video
         $video = ($n->file) ? array([
             "type" => "video",
-            "thumbnail" => Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'news/videos/thumbnails/' . $n->thumbnail),
-            "link" => Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'news/videos/' . $n->file)
+            "thumbnail" => Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'news/videos/thumbnails/' . $n->thumbnail),
+            "link" => Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'news/videos/' . $n->file)
         ]) : [];
 
 
@@ -503,7 +503,7 @@ class ApiRepository
         $pdfPlaceholder = Placeholder::where('type', 'pdf_news')->first();
 
         if ($pdfPlaceholder) {
-            $pdfPlaceholder = Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'images/placeholders/' . Placeholder::where('type', 'pdf_news')->first()->image);
+            $pdfPlaceholder = Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/placeholders/' . Placeholder::where('type', 'pdf_news')->first()->image);
         }
 
         //Add pdf
@@ -511,7 +511,7 @@ class ApiRepository
             return [
                 "type" => "pdf",
                 "thumbnail" => $pdfPlaceholder,
-                "link" => Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'news/attachments/' . $e->name)
+                "link" => Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'news/attachments/' . $e->name)
             ];
         })->toArray();
 
@@ -520,8 +520,8 @@ class ApiRepository
 
         return (count($media) > 0) ? array_values($media) : array([
             "type" => "image",
-            "thumbnail" => Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'images/placeholders/' . $placeholder),
-            "link" => Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'images/placeholders/' . $placeholder)
+            "thumbnail" => Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/placeholders/' . $placeholder),
+            "link" => Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/placeholders/' . $placeholder)
         ]);
     }
 
@@ -551,15 +551,15 @@ class ApiRepository
             'title' => $n->title,
             'details' => $n->details,
             'source' => $n->source,
-            'post_image' => ($n->source_image) ? Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'images/news/' . $n->source_image) : null,
+            'post_image' => ($n->source_image) ? Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/news/' . $n->source_image) : null,
             'media' => $this->getNewsMedia($n, $placeholder),
             'type' => $n->type,
-            'thumbnail' => $n->thumbnail ? Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'news/videos/thumbnails/' . $n->thumbnail) : Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'images/placeholders/' . $placeholder),
+            'thumbnail' => $n->thumbnail ? Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'news/videos/thumbnails/' . $n->thumbnail) : Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/placeholders/' . $placeholder),
             'date' => strtotime($n->date),
             'likes_nb' => $n->users()->count(),
             'like' => $n->users()->where('user_id', $user->id)->first() ? true : false,
             'strict_lang' => $n->strict_lang,
-            'link' => Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'news/attachments/' . $n->file),
+            'link' => Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'news/attachments/' . $n->file),
             'shares' => $n->shares,
             "created_at" => (int) strtotime($n->created_at),
             //'file' => secure_url($n->file),
@@ -580,10 +580,10 @@ class ApiRepository
             'lat' => floatval($e->lat),
             'from_date' => strtotime($e->from_date),
             'to_date' => strtotime($e->to_date),
-            'thumbnail' => Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'images/events/' . $e->image),
+            'thumbnail' => Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/events/' . $e->image),
             'images' => $e->images->map(function ($i) {
                 return [
-                    'img' => Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'images/events/' . $i->src),
+                    'img' => Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/events/' . $i->src),
                 ];
             })->pluck('img')->toArray(),
             'force_lang' => $e->strict_lang
@@ -642,10 +642,10 @@ class ApiRepository
             'title' => ($g->title) ? $g->title : $name,
             'details' => $details,
             'source' => $g->source,
-            "post_image" => ($g->source_image) ? ($type === "NEWS" ? Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'images/news/' . $g->source_image) : ($type === "EVENTS" ? Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'images/events/' . $g->source_image) : null)) : null,
+            "post_image" => ($g->source_image) ? ($type === "NEWS" ? Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/news/' . $g->source_image) : ($type === "EVENTS" ? Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/events/' . $g->source_image) : null)) : null,
             'media' => $this->getMedia($type, $g, $placeholder),
             'type' => $g->type,
-            "thumbnail" => ($thumbnail) ? ($type === "NEWS" ? Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'news/videos/thumbnails/' . $thumbnail) : ($type === "EVENTS" ? Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'images/events/' . $thumbnail) : null)) : null,
+            "thumbnail" => ($thumbnail) ? ($type === "NEWS" ? Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'news/videos/thumbnails/' . $thumbnail) : ($type === "EVENTS" ? Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/events/' . $thumbnail) : null)) : null,
             "date" => ($g->date) ? strtotime($g->date) : null,
             "likes_nb" => ($type === "NEWS") ? ($likesCounts[$g->id] ?? 0) : null,
             "like" => ($type === "NEWS") ? in_array($g->id, $likedByMe) : null,

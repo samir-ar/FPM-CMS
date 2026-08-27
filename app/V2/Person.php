@@ -12,7 +12,7 @@ class Person extends Model
 
     protected $table = 'persons';
     public $translatable = ['name', 'category'];
-    protected $fillable = ['name','image','dynamic_representative_id','order','type','rep_order'];
+    protected $fillable = ['name','image','member_id','dynamic_representative_id','order','type','rep_order'];
 
     public function dynamicRepresentative(){
         return  $this->belongsTo(DynamicRepresentative::class);

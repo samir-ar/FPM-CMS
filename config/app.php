@@ -35,6 +35,9 @@ return [
     // always reliable.
     'aws_bucket_project_name' => env('AWS_BUCKET_PROJECT_NAME'),
     'force_s3_storage' => env('FORCE_S3_STORAGE'),
+    'one_signal_app_id' => env('ONE_SIGNAL_APP_ID'),
+    'one_signal_url' => env('ONE_SIGNAL_URL'),
+    'one_signal_rest_api_key' => env('ONE_SIGNAL_REST_API_KEY'),
 
     /*
     |--------------------------------------------------------------------------

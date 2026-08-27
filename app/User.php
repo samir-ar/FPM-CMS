@@ -44,7 +44,7 @@ class User extends Authenticatable
     {
         if($val)
             // return '/images/avatars/'.$val;
-            return Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'images/avatars/' . $val);
+            return Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/avatars/' . $val);
 
     }
 

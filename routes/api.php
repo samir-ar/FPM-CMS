@@ -29,31 +29,17 @@ Route::group(['namespace' => 'Api\V2', 'prefix' => 'v2/', 'middleware' => ['lang
     Route::post('verify-pin', 'RegistrationController@verify_pin');
     Route::post('country-codes', 'ApiController@getCountryCodes');
     Route::post('app-versions', 'ApiController@appVersions');
-    // Dev: routes without auth — user looked up by token header in controller
-    Route::post('get-wall-feed','ApiController@getWallFeed');
-    Route::post('news-like','ApiController@likeNews');
-    Route::post('news-share','ApiController@shareNews');
-    Route::post('upcoming-events-paginated','ApiController@getUpcomingEventsWithPagination');
-    Route::post('previous-events-paginated','ApiController@getPreviousEventsWithPagination');
-    Route::post('google-forms','ApiController@getInternalProcess');
-    Route::post('important-links','ApiController@getLinks');
     Route::post('business-type', 'CommunityController@getBusinessTypes');
     Route::post('get-community', 'CommunityController@getCommunityPosts');
     Route::post('directory-members', 'CommunityController@getDirectoryMembers');
     Route::post('community-districts', 'CommunityController@getDistricts');
     Route::get('image-proxy', 'CommunityController@imageProxy');
-    Route::post('dev-sync-token', function(\Illuminate\Http\Request $request) {
-        $token    = $request->input('token');
-        $memberId = $request->input('member_id');
-        if ($token && $memberId) {
-            \App\V2\AppUser::where('member_id', $memberId)
-                ->update(['token' => $token, 'verified' => 1]);
-        }
-        return response()->json(['synced' => true]);
-    });
+    Route::get('member-photo/{memberId}', 'ApiController@getMemberPhoto');
 
     Route::group(['middleware' => ['my-auth-v2', 'fpm-auth']], function () {
         Route::post('my-profile', 'ApiController@myProfile');
+        Route::post('refresh-permissions', 'ApiController@refreshPermissions');
+        Route::post('update-profile-info', 'ApiController@updateProfileInfo');
         // Route::post('get-qr-code', 'ApiController@getQRCode');
         Route::post('google-forms', 'ApiController@getInternalProcess');
         Route::post('single-google-form', 'ApiController@getSingleInternalProcess');
@@ -115,6 +101,9 @@ Route::group(['namespace' => 'Api\V2', 'prefix' => 'v2/', 'middleware' => ['lang
         Route::post('single-news', 'ApiController@getNewsById');
         Route::post('live-stream', 'ApiController@getLiveStream');
 
+        Route::post('event-checkin', 'ApiController@checkInMember');
+        Route::post('checkin-events', 'ApiController@getCheckinEvents');
+
         Route::post('get-my-community', 'CommunityController@getMyCommunityPosts');
         Route::post('create-community', 'CommunityController@createCommunityPost');
         Route::post('update-community/{id}', 'CommunityController@updateCommunityPost');
@@ -124,6 +113,10 @@ Route::group(['namespace' => 'Api\V2', 'prefix' => 'v2/', 'middleware' => ['lang
         Route::post('delete-account-verification', 'ApiController@deleteAccountVerification');
         Route::post('delete-account', 'ApiController@deleteAccount');
         ////////////////////////////////////////////
+
+        Route::post('competency-vacancies', 'ApiController@getCompetencyVacancies');
+        Route::post('competency-profile', 'ApiController@getCompetencyProfile');
+        Route::post('competency-nominations', 'ApiController@submitCompetencyNomination');
     });
 
 
@@ -134,6 +127,7 @@ Route::group(['namespace' => 'Api\V2', 'prefix' => 'v2/', 'middleware' => ['lang
         Route::post('webviews', 'ApiController@getWebviews');
         Route::post('i-pay', 'ApiController@pay');
         Route::post('e-bill', 'ApiController@bill');
+        Route::post('get-wall-feed', 'ApiController@getWallFeed');
     });
 
 
@@ -161,9 +155,6 @@ Route::group(['namespace' => 'Api\V2', 'prefix' => 'v2/', 'middleware' => ['lang
     Route::post('mukhtar-villages', 'ApiController@getMukhtarVillages');
     Route::post('mukhtars', 'ApiController@getMukhtars');
 
-    Route::post('competency-vacancies', 'ApiController@getCompetencyVacancies');
-    Route::post('competency-profile', 'ApiController@getCompetencyProfile');
-    Route::post('competency-nominations', 'ApiController@submitCompetencyNomination');
     Route::post('electoral-districts', 'ApiController@getElectoralDistricts');
     Route::post('towns', 'ApiController@getTowns');
     Route::post('competency-static-page', 'ApiController@getCompetencyStaticPage');

@@ -3,6 +3,7 @@
 namespace App\Console;
 
 use App\Console\Commands\GetGroups;
+use App\Console\Commands\SendBirthdayWishes;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 
@@ -15,6 +16,7 @@ class Kernel extends ConsoleKernel
      */
     protected $commands = [
         GetGroups::class,
+        SendBirthdayWishes::class,
     ];
 
     /**
@@ -27,6 +29,19 @@ class Kernel extends ConsoleKernel
     {
         // $schedule->command('inspire')
         //          ->hourly();
+
+        $schedule->command('birthdays:send-wishes')->dailyAt('09:00');
+    }
+
+    /**
+     * Timezone the scheduler uses to evaluate dailyAt()/etc. Laravel defaults
+     * to UTC otherwise, which would mean 09:00 UTC instead of 09:00 Beirut.
+     *
+     * @return string
+     */
+    protected function scheduleTimezone()
+    {
+        return config('app.timezone');
     }
 
     /**

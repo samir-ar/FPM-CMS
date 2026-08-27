@@ -31,6 +31,9 @@ use Illuminate\Http\Request;
 use App\V2\CouncilNationalPoll;
 use App\V2\CouncilNationalPollVote;
 use App\V2\DynamicRepresentative;
+use App\V2\EventAttendance;
+use App\V2\CheckinEvent;
+use Illuminate\Database\QueryException;
 use App\Http\Traits\ResponseTrait;
 use Illuminate\Support\Collection;
 use App\Http\Controllers\Controller;
@@ -87,6 +90,57 @@ class ApiController extends Controller
         return redirect('https://mobapp.twh-lb.org:444/datacenter/MobilePersonProfile.aspx?tokenid=' . $token);
     }
 
+    public function refreshPermissions(Request $request)
+    {
+        $user = $request->user;
+
+        // fpm_users (synced nightly from TWH) is the source of truth for
+        // these fields — app_users' own columns are only a fallback for
+        // orphaned accounts whose member_id has no matching roster row.
+        $fpmUser = FpmUser::where('MemberId', $user->member_id)->first();
+
+        return response()->json([
+            'can_scan_checkin' => (bool) $user->can_scan_checkin,
+            'district' => $fpmUser?->district ?? $user->district,
+            'town' => $fpmUser?->town ?? $user->town,
+            'sect' => $fpmUser?->sect ?? $user->sect,
+            'sect_number' => $fpmUser?->sect_number ?? $user->sect_number,
+            'date_of_birth' => $fpmUser?->date_of_birth ?? $user->date_of_birth,
+            'gender' => $fpmUser?->gender ?? $user->gender,
+            'last_unit_position' => $fpmUser?->LastUnitPosition,
+            'nashat_unit' => $fpmUser?->NashatUnit,
+            'noufous_unit' => $fpmUser?->NoufousUnit,
+        ]);
+    }
+
+    public function updateProfileInfo(Request $request)
+    {
+        $user = $request->user;
+
+        $validator = Validator::make($request->all(), [
+            'district' => 'nullable|string|max:191',
+            'town' => 'nullable|string|max:191',
+            'sect' => 'nullable|string|max:191',
+            'sect_number' => 'nullable|string|max:191',
+            'date_of_birth' => 'nullable|date',
+            'gender' => 'nullable|string|in:ذكر,انثى',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->api_error_response('missing_parameters', 101, implode(', ', $validator->messages()->all()));
+        }
+
+        $appUser = AppUser::find($user->id);
+        foreach (['district', 'town', 'sect', 'sect_number', 'date_of_birth', 'gender'] as $field) {
+            if ($request->has($field)) {
+                $appUser->$field = $request->get($field);
+            }
+        }
+        $appUser->save();
+
+        return response()->json($appUser->getUser());
+    }
+
     public function getQRCode(Request $request){
         $validator = Validator::make($request->all(), [
             'id' => 'required|exists:app_users,id',
@@ -139,7 +193,7 @@ class ApiController extends Controller
                 'id'   => $g->id,
                 'name' => $g->name,
                 'date' => ($date = $g->date) ? Carbon::parse($date)->timestamp : null,
-                'file' => $g->file ? Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/storage/images/memos/' . $g->file) : null,
+                'file' => $g->file ? Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/storage/images/memos/' . $g->file) : null,
             ];
         })->values());
     }
@@ -163,14 +217,7 @@ class ApiController extends Controller
 
     public function likeNews(Request $request, ApiRepository $repo)
     {
-        // Resolve user from token header when middleware hasn't set it
-        $user = request('user');
-        if (!$user && $request->header('token')) {
-            $user = \App\V2\AppUser::where('token', $request->header('token'))->first();
-        }
-        if (!$user) {
-            return $this->api_error_response('invalid_token', 101, 'User not authenticated');
-        }
+        $user = $request->user;
 
         $validator = Validator::make($request->all(), [
             'news_id' => 'required|exists:news,id',
@@ -187,10 +234,7 @@ class ApiController extends Controller
 
     public function shareNews(Request $request, ApiRepository $repo)
     {
-        $user = request('user');
-        if (!$user && $request->header('token')) {
-            $user = \App\V2\AppUser::where('token', $request->header('token'))->first();
-        }
+        $user = $request->user;
 
         $validator = Validator::make($request->all(), [
             'news_id' => 'required|exists:news,id',
@@ -314,7 +358,7 @@ class ApiController extends Controller
                 'id' => $row->id,
                 'title' => $row->title,
                 'text' => $row->text,
-                'image' => $row->image ? Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'images/notification_images/' . $row->image) : Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'images/placeholders/' . $placeholder),
+                'image' => $row->image ? Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/notification_images/' . $row->image) : Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/placeholders/' . $placeholder),
             ];
         }));
     }
@@ -364,7 +408,7 @@ class ApiController extends Controller
             return [
                 "id" => $q->id,
                 "name" => $q->getTranslation('name', 'ar'),
-                "thumbnail" => Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'media/thumbnail/' . $q->thumbnail),
+                "thumbnail" => Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'media/thumbnail/' . $q->thumbnail),
                 "description" => $q->getTranslation('description', 'ar'),
                 "medias" => $q->medias->map(function ($m) {
 
@@ -372,8 +416,8 @@ class ApiController extends Controller
                         "name" => $m->getTranslation('name', 'ar'),
                         "type" => $m->type,
                         "is_youtube" => ($m->youtube) ? true : false,
-                        "file" => Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'media/' . $m->file_name),
-                        "thumbnail" => Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'media/thumbnail/' . $m->thumbnail),
+                        "file" => Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'media/' . $m->file_name),
+                        "thumbnail" => Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'media/thumbnail/' . $m->thumbnail),
                         "youtube" => $m->youtube
                     );
                 }),
@@ -415,8 +459,8 @@ class ApiController extends Controller
                         "id" => $q->id,
                         "name" => $q->name,
                         "description" => $q->description,
-                        "thumbnail" => Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'media/' . $q->thumbnail),
-                        "file" => Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'media/' . $q->file_name),
+                        "thumbnail" => Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'media/' . $q->thumbnail),
+                        "file" => Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'media/' . $q->file_name),
                         "images" => [
                             "http://fpm.tedmob.com/images/events/1569255843Crowd.jpeg",
                             "http://fpm.tedmob.com/images/events/1569255843Crowd.jpeg",
@@ -518,13 +562,7 @@ class ApiController extends Controller
 
     public function getWallFeed(Request $request, ApiRepository $apiRepository)
     {
-        // Resolve user from token header when middleware hasn't set it
-        if (!request('user') && $request->header('token')) {
-            $resolved = \App\V2\AppUser::where('token', $request->header('token'))->first();
-            if ($resolved) $request->merge(['user' => $resolved]);
-        }
-
-        $user = request('user');
+        $user = $request->user;
 
         // Gather raw (un-hydrated) items first — hydration (S3 URLs, likes, etc.)
         // is deferred until after sorting/pagination so it only runs on the
@@ -898,14 +936,14 @@ class ApiController extends Controller
                 'id' => $v->id,
                 'title' => $v->title,
                 'text' => $v->text,
-                'image' => $v->image ? Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'images/volunteers/' . $v->image) : null,
+                'image' => $v->image ? Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/volunteers/' . $v->image) : null,
             ];
         }));
     }
 
     public function getPreviousEvents(Request $request, ApiRepository $repo)
     {
-        $events = $repo->getEventsPreviousByGroup(request('groups'))->orderByDesc('created_at')->get();
+        $events = $repo->getEventsPreviousByGroup(request('groups'))->orderByDesc('created_at')->limit(100)->get();
 
         return response()->json($events->map(function ($e) use ($repo) {
 
@@ -977,6 +1015,65 @@ class ApiController extends Controller
         return response()->json($repo->getEventInstance($event));
     }
 
+    public function getCheckinEvents(Request $request)
+    {
+        $user = $request->user;
+
+        if (!$user || !$user->can_scan_checkin) {
+            return $this->api_error_response('not_authorized', 103, 'You are not authorized to scan check-ins.');
+        }
+
+        $events = CheckinEvent::where('is_active', true)
+            ->orderByDesc('event_date')
+            ->get(['id', 'name', 'location', 'event_date']);
+
+        return response()->json(['data' => $events]);
+    }
+
+    public function checkInMember(Request $request)
+    {
+        $user = $request->user;
+
+        if (!$user || !$user->can_scan_checkin) {
+            return $this->api_error_response('not_authorized', 103, 'You are not authorized to scan check-ins.');
+        }
+
+        $validator = Validator::make($request->all(), [
+            'event_id' => 'required|exists:checkin_events,id,is_active,1',
+            'member_id' => 'required|integer|exists:fpm_users,MemberId',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->api_error_response('missing_parameters', 101, implode(', ', $validator->messages()->all()));
+        }
+
+        $memberName = \DB::table('fpm_users')->where('MemberId', request('member_id'))->value('UserFullName');
+
+        try {
+            EventAttendance::create([
+                'event_id' => request('event_id'),
+                'member_id' => request('member_id'),
+                'checked_in_by_app_user_id' => $user->id,
+                'checked_in_at' => now(),
+            ]);
+        } catch (QueryException $e) {
+            if ($e->getCode() === '23000') {
+                return response()->json([
+                    'already_checked_in' => true,
+                    'member_name' => $memberName,
+                    'message' => $memberName . ' is already checked in to this event.',
+                ]);
+            }
+            throw $e;
+        }
+
+        return response()->json([
+            'already_checked_in' => false,
+            'member_name' => $memberName,
+            'message' => $memberName . ' checked in successfully.',
+        ]);
+    }
+
     public function getNewsById(Request $request, ApiRepository $repo)
     {
         $validator = Validator::make($request->all(), [
@@ -1012,25 +1109,65 @@ class ApiController extends Controller
     }
 
 
+    // Serves a real party member's photo (stored as raw bytes in fpm_users.PersonImage)
+    // as a normal image response, so it can be used as an ordinary image URL.
+    public function getMemberPhoto($memberId)
+    {
+        $bytes = \DB::table('fpm_users')->where('MemberId', $memberId)->value('PersonImage');
+
+        if (empty($bytes)) {
+            abort(404);
+        }
+
+        return response($bytes, 200)
+            ->header('Content-Type', 'image/jpeg')
+            ->header('Content-Length', (string) strlen($bytes))
+            ->header('Cache-Control', 'public, max-age=86400');
+    }
+
+    private function representativePersonImageUrl($p, $membersWithPhotos)
+    {
+        if (!empty($p->member_id) && in_array($p->member_id, $membersWithPhotos)) {
+            return url('/api/v2/member-photo/' . $p->member_id);
+        }
+
+        return !empty($p->image)
+            ? Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/representatives/' . $p->image)
+            : null;
+    }
+
     public function getRepresentatives(Request $request, ApiRepository $repo)
     {
         // $validator = Validator::make($request->all(), [
         //     'type' => 'required',
         // ]);
 
-        $sections =  DynamicRepresentative::orderBy('order', 'asc')->get()->map(function ($r) {
+        $categories = DynamicRepresentative::with(['persons' => function ($q) {
+            $q->orderBy('order', 'asc');
+        }])->orderBy('order', 'asc')->get();
+
+        $memberIds = $categories->flatMap(fn($r) => $r->persons)
+            ->pluck('member_id')->filter()->unique()->values();
+
+        $membersWithPhotos = $memberIds->isEmpty() ? [] : \DB::table('fpm_users')
+            ->whereIn('MemberId', $memberIds)
+            ->whereNotNull('PersonImage')
+            ->where('PersonImage', '!=', '')
+            ->pluck('MemberId')->all();
+
+        $sections = $categories->map(function ($r) use ($membersWithPhotos) {
 
             return [
                 'id' => $r->id,
                 'title' => $r->title,
                 'text' => $r->text,
-                'persons' => $r->persons()->orderBy('order', 'asc')->get()->map(function ($p) {
+                'persons' => $r->persons->map(function ($p) use ($membersWithPhotos) {
                     return [
                         "id" => $p->id,
                         "type" => $p->type,
                         "name" => $p->name,
                         "category" => $p->category,
-                        "image" => !empty($p->image) ? Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'images/representatives/' . $p->image) : null,
+                        "image" => $this->representativePersonImageUrl($p, $membersWithPhotos),
                         "position" => ($p->position) ? $p->position->name : null
                     ];
                 }),
@@ -1070,7 +1207,7 @@ class ApiController extends Controller
                 'name' => $g->name,
                 'date' => ($date = $g->date) ? Carbon::parse($date)->timestamp : null,
                 'details' => $g->details,
-                'file' => ($g->file) ? Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'images/laws/' . $g->file) : null,
+                'file' => ($g->file) ? Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/laws/' . $g->file) : null,
             ];
         }));
     }
@@ -1120,7 +1257,7 @@ class ApiController extends Controller
 
         return response()->json([
             'images' => ($content && $content->image)
-                ? [Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'images/content/' . $content->image)]
+                ? [Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/content/' . $content->image)]
                 : [],
             'text' => $content ? (App::getLocale() == 'en' ? $content->text : $content->text_ar) : '',
             'email' => $mediaObj->email ?? null,
@@ -1224,7 +1361,7 @@ class ApiController extends Controller
             ->map(fn($d) => [
                 'id'       => $d->id,
                 'title'    => $d->title,
-                'file_url' => Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/storage/legislative_docs/' . $d->file_name),
+                'file_url' => Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/storage/legislative_docs/' . $d->file_name),
             ]);
         return response()->json($docs);
     }
@@ -1242,7 +1379,7 @@ class ApiController extends Controller
             ->map(fn($d) => [
                 'id'       => $d->id,
                 'title'    => $d->title,
-                'file_url' => Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/storage/national_plans/' . $d->file_name),
+                'file_url' => Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/storage/national_plans/' . $d->file_name),
             ]);
         return response()->json($docs);
     }
@@ -1387,15 +1524,15 @@ class ApiController extends Controller
     // Returns vacancies currently open for nomination
     public function getCompetencyVacancies(Request $request)
     {
-        $resolvedUser = $request->header('token')
-            ? \App\V2\AppUser::where('token', $request->header('token'))->first()
-            : null;
+        $resolvedUser = $request->user;
 
         $now = now();
+        $type = in_array($request->get('type'), ['specific', 'general']) ? $request->get('type') : 'specific';
 
         $vacancies = CompetencyVacancy::where('start_date', '<=', $now)
             ->where('end_date', '>=', $now)
             ->where('is_active', true)
+            ->where('type', $type)
             ->orderByDesc('start_date')
             ->get()
             ->map(function ($v) use ($resolvedUser) {
@@ -1420,13 +1557,7 @@ class ApiController extends Controller
     // Returns the requesting user's known profile fields, for pre-filling a self-nomination form
     public function getCompetencyProfile(Request $request)
     {
-        $user = $request->header('token')
-            ? \App\V2\AppUser::where('token', $request->header('token'))->first()
-            : null;
-
-        if (!$user) {
-            return $this->api_error_response('invalid_token', 401, 'Invalid or missing token');
-        }
+        $user = $request->user;
 
         $profile = \App\V2\CompetencyProfile::where('user_id', $user->id)->first();
 
@@ -1472,22 +1603,16 @@ class ApiController extends Controller
     // Submits a self- or other-nomination for an open vacancy
     public function submitCompetencyNomination(Request $request)
     {
-        $user = $request->header('token')
-            ? \App\V2\AppUser::where('token', $request->header('token'))->first()
-            : null;
-
-        if (!$user) {
-            return $this->api_error_response('invalid_token', 401, 'Invalid or missing token');
-        }
+        $user = $request->user;
 
         $validator = Validator::make($request->all(), [
             'vacancy_id'                => 'required|integer|exists:competency_vacancies,id',
             'nomination_type'           => 'required|in:self,other',
-            'full_name'                 => 'required|string|max:191',
-            'district'                  => 'required|string|max:191',
-            'town'                      => 'required|string|max:191',
+            'full_name'                 => 'required_if:nomination_type,other|nullable|string|max:191',
+            'district'                  => 'required_if:nomination_type,other|nullable|string|max:191',
+            'town'                      => 'required_if:nomination_type,other|nullable|string|max:191',
             'civil_record'              => 'nullable|string|max:191',
-            'phone'                     => 'required|string|max:191',
+            'phone'                     => 'required_if:nomination_type,other|nullable|string|max:191',
             'profession'                => 'required|string|max:191',
             'party_role'                => 'nullable|string|max:191',
             'education_level'           => 'required|string|max:191',
@@ -1534,11 +1659,11 @@ class ApiController extends Controller
             'vacancy_id'                => $vacancy->id,
             'submitted_by_user_id'      => $user->id,
             'nomination_type'           => $request->nomination_type,
-            'full_name'                 => $request->full_name,
+            'full_name'                 => $request->full_name ?: $user->name,
             'district'                  => $request->district,
             'town'                      => $request->town,
             'civil_record'              => $request->civil_record,
-            'phone'                     => $request->phone,
+            'phone'                     => $request->phone ?: $user->phone_number,
             'profession'                => $request->profession,
             'party_role'                => $request->party_role,
             'education_level'           => $request->education_level,

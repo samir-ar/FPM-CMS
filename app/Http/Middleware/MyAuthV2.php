@@ -42,7 +42,7 @@ class MyAuthV2
 
         } catch (Exception $e) {
 
-            return $this->api_error_response('invalid_token', $error_code, $e->getMessage());
+            return $this->api_error_response('invalid_token', $error_code, $e->getMessage(), 401);
         }
 
         $request->merge(['user' => $user]);

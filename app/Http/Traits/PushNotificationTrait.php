@@ -26,11 +26,12 @@ trait PushNotificationTrait
                 //$data = [];
 
                 $fields = array(
-                    'app_id' => env('ONE_SIGNAL_APP_ID'),
+                    'app_id' => config('app.one_signal_app_id'),
                     //'included_segments' => $included_segments,
                     //'excluded_segments' => $excluded_segments,
                     'contents' => $contents,
                     'headings' => $headings,
+                    'large_icon' => 'ic_notification_large',
                 );
 
                 //add data and text to the data
@@ -83,9 +84,9 @@ trait PushNotificationTrait
 
                 try{
                     $ch = curl_init();
-                    curl_setopt($ch, CURLOPT_URL, env('ONE_SIGNAL_URL'));
+                    curl_setopt($ch, CURLOPT_URL, config('app.one_signal_url'));
                     curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json; charset=utf-8',
-                        'Authorization: Basic '.env('ONE_SIGNAL_REST_API_KEY')));
+                        'Authorization: Basic '.config('app.one_signal_rest_api_key')));
 
                     curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
                     curl_setopt($ch, CURLOPT_HEADER, FALSE);
@@ -119,11 +120,12 @@ trait PushNotificationTrait
             //$data = [];
 
             $fields = array(
-                'app_id' => env('ONE_SIGNAL_APP_ID'),
+                'app_id' => config('app.one_signal_app_id'),
                 //'included_segments' => $included_segments,
                 //'excluded_segments' => $excluded_segments,
                 'contents' => $contents,
                 'headings' => $headings,
+                'large_icon' => 'ic_notification_large',
             );
 
             //add data and text to the data
@@ -175,9 +177,9 @@ trait PushNotificationTrait
 
             try{
                 $ch = curl_init();
-                curl_setopt($ch, CURLOPT_URL, env('ONE_SIGNAL_URL'));
+                curl_setopt($ch, CURLOPT_URL, config('app.one_signal_url'));
                 curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json; charset=utf-8',
-                    'Authorization: Basic '.env('ONE_SIGNAL_REST_API_KEY')));
+                    'Authorization: Basic '.config('app.one_signal_rest_api_key')));
 
                 curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
                 curl_setopt($ch, CURLOPT_HEADER, FALSE);

@@ -5,6 +5,7 @@ namespace App\Listeners;
 use DB;
 use Log;
 use Exception;
+use Illuminate\Support\Str;
 use App\AppUser;
 use App\Notification;
 use App\Events\NewItem;
@@ -49,16 +50,21 @@ class SendPushNotification
 
             $add_data = [];
 
-            $groups_data = [
-                'group_ids' => implode(',', $data['groups']),
-            ];
+            if (!empty($data['member_ids'])) {
+                //Explicit member IDs bypass the external groups-members API entirely.
+                $member_ids = $data['member_ids'];
+            } else {
+                $groups_data = [
+                    'group_ids' => implode(',', $data['groups']),
+                ];
 
-            $groupMembers = $fpmRepo->getCMSGroupsMembers($groups_data);
+                $groupMembers = $fpmRepo->getCMSGroupsMembers($groups_data);
 
-            $member_ids = [];
+                $member_ids = [];
 
-            foreach ($groupMembers as $member) {
-                $member_ids[] = $member->MemberId;
+                foreach ($groupMembers as $member) {
+                    $member_ids[] = $member->MemberId;
+                }
             }
 
             $users = AppUser::whereIn('member_id', $member_ids)->get();
@@ -71,8 +77,8 @@ class SendPushNotification
                 return;
 
 
-            $content_en = str_limit(strip_tags($data['text']), 240);
-            $content_ar = isset($data['text_ar']) ? str_limit(strip_tags($data['text_ar']), 240) : '';
+            $content_en = Str::limit(strip_tags($data['text']), 240);
+            $content_ar = isset($data['text_ar']) ? Str::limit(strip_tags($data['text_ar']), 240) : '';
 
             //WORK AROUND replace the &quot; (double quote) and &#39; (single quote) with '
             $content_en = str_replace("&quot;", "'", $content_en);
@@ -99,7 +105,7 @@ class SendPushNotification
             $info = [
                 'headings' => [
                     'en' => $data['title'],
-                    'ar' => isset($data['title_ar']) ? str_limit($data['title_ar'], 65) : '',
+                    'ar' => isset($data['title_ar']) ? Str::limit($data['title_ar'], 65) : '',
                 ],
                 'contents' => [
                     'en' => remove_special_characters($content_en),

@@ -53,6 +53,8 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::post('users/qr-code/store', 'UsersController@qr_code_store')->name('users.qr-code.store');
     Route::post('users/import/store', 'UsersController@importStore')->name('users.import.store');
     Route::get('users/export', 'UsersController@export')->name('users.export');
+    Route::get('users/installation-report', 'UsersController@installationReport')->name('users.installation-report');
+    Route::get('users/{id}/toggle-scan-checkin', 'UsersController@toggleScanCheckin')->name('users.toggle-scan-checkin');
 
     Route::resource('users', 'UsersController');
     //Administrators
@@ -132,6 +134,17 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::get('competency-vacancies/{id}/toggle-active', 'CompetencyVacanciesController@toggleActive')->name('competency-vacancies.toggle-active');
     Route::get('competency-vacancies/{id}/nominations', 'CompetencyVacanciesController@nominations')->name('competency-vacancies.nominations');
     Route::delete('competency-vacancies/{vacancyId}/nominations/{nominationId}', 'CompetencyVacanciesController@destroyNomination')->name('competency-vacancies.nominations.destroy');
+
+    Route::get('checkin-events', 'CheckinEventsController@index')->name('checkin-events.index');
+    Route::get('checkin-events/create', 'CheckinEventsController@create')->name('checkin-events.create');
+    Route::post('checkin-events', 'CheckinEventsController@store')->name('checkin-events.store');
+    Route::get('checkin-events/{id}/edit', 'CheckinEventsController@edit')->name('checkin-events.edit');
+    Route::put('checkin-events/{id}', 'CheckinEventsController@update')->name('checkin-events.update');
+    Route::delete('checkin-events/{id}', 'CheckinEventsController@destroy')->name('checkin-events.destroy');
+    Route::get('checkin-events/{id}/toggle-active', 'CheckinEventsController@toggleActive')->name('checkin-events.toggle-active');
+    Route::get('checkin-events/{id}/attendance', 'CheckinEventsController@attendance')->name('checkin-events.attendance');
+    Route::get('checkin-events/{id}/attendance/search', 'CheckinEventsController@searchMembers')->name('checkin-events.attendance.search');
+    Route::post('checkin-events/{id}/attendance', 'CheckinEventsController@storeAttendance')->name('checkin-events.attendance.store');
     Route::get('competency-static', 'CompetencyStaticController@index')->name('competency-static.index');
     Route::post('competency-static', 'CompetencyStaticController@update')->name('competency-static.update');
 
@@ -251,6 +264,7 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::post("get-push-notification-page-publish", "NotificationController@store")->name('bulkpushnotification.store');
     Route::post("upload-notification-image", "NotificationController@upload")->name('admin.notificationimage.upload');
     Route::post("delete-notification-image", "NotificationController@deleteImage")->name('admin.notificationimage.delete');
+    Route::get("send-birthday-wishes", "NotificationController@sendBirthdayWishes")->name('birthdaywishes.send');
 
 
     #Upload image

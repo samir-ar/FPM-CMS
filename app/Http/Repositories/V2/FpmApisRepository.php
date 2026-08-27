@@ -80,14 +80,19 @@ class FpmApisRepository
 
         $client = new Client();
 
-        $response = $client->request('GET', $endpoint, ['query' =>[
-            'username' => 'I T',
-            'password' => 'Fpm@Mob',
-            'action' => 'sendsms',
-            'from' => 'FPM-IT.Mob',
-            'to' => $data['phone_number'],
-            'text' => $data['message'],
-        ],'verify' => false]);
+        $response = $client->request('GET', $endpoint, [
+            'query' => [
+                'username' => 'I T',
+                'password' => 'Fpm@Mob',
+                'action' => 'sendsms',
+                'from' => 'FPM-IT.Mob',
+                'to' => $data['phone_number'],
+                'text' => $data['message'],
+            ],
+            'verify' => false,
+            'connect_timeout' => 3,
+            'timeout' => 5,
+        ]);
 
         $statusCode = $response->getStatusCode();
         $content = $response->getBody()->getContents();

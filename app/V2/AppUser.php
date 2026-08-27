@@ -76,6 +76,12 @@ class AppUser extends Authenticatable
             'email' => $this->email,
             'date_of_birth' => $this->date_of_birth,
             'qr_code_image' => $this->qr_code,
+            'can_scan_checkin' => (bool) $this->can_scan_checkin,
+            'district' => $this->district,
+            'town' => $this->town,
+            'sect' => $this->sect,
+            'sect_number' => $this->sect_number,
+            'gender' => $this->gender,
         ]);
     }
     public static $IMAGE_PATH="images/qrcode";

@@ -100,6 +100,8 @@
                     ajax: "{{ $action.'?district='.Request::get('district')}}",
                 @elseif(Request::get('type'))
                     ajax: "{{ $action.'?type='.Request::get('type')}}",
+                @elseif(Request::get('scan_access'))
+                    ajax: "{{ $action.'?scan_access='.Request::get('scan_access')}}",
                 @endif
 
                 columns: JSON.parse(columns),

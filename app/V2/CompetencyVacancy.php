@@ -14,6 +14,11 @@ class CompetencyVacancy extends Model
         'is_active' => 'boolean',
     ];
 
+    public static $types = [
+        'specific' => 'منصب محدد',
+        'general'  => 'منصب عام',
+    ];
+
     public function nominations()
     {
         return $this->hasMany(CompetencyNomination::class, 'vacancy_id');

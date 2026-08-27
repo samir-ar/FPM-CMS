@@ -56,3 +56,6 @@ composer.phar
 
 # Local backup of prior git history (not part of this repo)
 .git-tedmob-history-backup/
+
+# Raw DB dumps/backups produced during dev/deploy work — never committed
+/db_backups/

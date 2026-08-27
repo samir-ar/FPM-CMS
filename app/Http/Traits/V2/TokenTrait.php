@@ -51,7 +51,7 @@ trait TokenTrait
     public function toUser($token)
     {
         // $user = AppUser::where('token', $token)->first();
-        $user = AppUser::select('id', 'member_id', 'rate', 'token', 'verification_nb', 'verified', 'player_id')->where('token', $token)->first();
+        $user = AppUser::select('id', 'member_id', 'rate', 'token', 'verification_nb', 'verified', 'player_id', 'name', 'phone_number', 'can_scan_checkin', 'district', 'town', 'sect', 'sect_number', 'date_of_birth', 'gender')->where('token', $token)->first();
 
         return $user;
     }

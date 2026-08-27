@@ -29,7 +29,7 @@ trait FileTrait
         $normalized = $this->normalizeJpegEncoding($input);
 
         if(env('FORCE_S3_STORAGE', config('app.env') != 'local')){
-            $filePath = Storage::disk('s3')->put(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . $dir . '/' . $fileName, $normalized ?? file_get_contents($input));
+            $filePath = Storage::disk('s3')->put(config('app.aws_bucket_project_name') . '/' . 'storage/' . $dir . '/' . $fileName, $normalized ?? file_get_contents($input));
         }else{
             $filePath = public_path( $dir . '/');
 

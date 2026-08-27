@@ -101,7 +101,8 @@ class RepresentativesController extends Controller
                         $this->drawHtml('select-box', 'Category', 'category', '', DynamicRepresentative::all()->pluck('title','id'), '', 'col-md-12 right-to-left required'),
                         $this->drawHtml('select-box', 'Position', 'position_id', '', RepresentativePosition::all()->pluck('name','id'), '', 'col-md-12 right-to-left required'),
 
-                        $this->drawHtml('image', 'Image', 'image', null, null, '', 'col-md-12 required'),
+                        $this->drawHtml('number', 'Member ID', 'member_id', $request->old('member_id'), null, 'اختياري — إذا أدخلته سيتم استخدام صورة العضو الحقيقية تلقائياً بدل الصورة المرفوعة يدوياً', 'col-md-12'),
+                        $this->drawHtml('image', 'Image', 'image', null, null, 'اتركه فارغاً إذا أدخلت Member ID أعلاه', 'col-md-12'),
 
                         $this->drawHtml('number', 'Order', 'order', $request->old('order') , null, 'اتركه فارغاً للإضافة في نهاية القائمة، أو أدخل رقم الموقع الذي تريده — سيتم تلقائياً إزاحة البقية', 'col-md-12'),
                         // $this->drawHtml('small_text', 'Type', 'type', $request->old('type') , null, 'keep it empty', 'col-md-12'),
@@ -166,7 +167,8 @@ class RepresentativesController extends Controller
             'name' => 'required',
             'name_ar' => 'required',
             'category' => 'required',
-            'image' => 'required|max:700',
+            'member_id' => 'nullable|integer',
+            'image' => 'required_without:member_id|max:700',
             // 'type' => 'unique:persons',
         ]);
 
@@ -180,7 +182,11 @@ class RepresentativesController extends Controller
         $categoryId = request('category');
         $person->dynamic_representative_id = $categoryId;
 
-        $person->image = $this->moveFile(request('image'), 'images/representatives');
+        $person->member_id = request('member_id') ?: null;
+
+        if ($request->hasFile('image')) {
+            $person->image = $this->moveFile(request('image'), 'images/representatives');
+        }
 
         $maxOrder = Person::where('dynamic_representative_id', $categoryId)->max('order') ?? 0;
 
@@ -232,7 +238,8 @@ class RepresentativesController extends Controller
                         $this->drawHtml('select-box', 'Category', 'category', $person->dynamic_representative_id, DynamicRepresentative::all()->pluck('title','id'), '', 'col-md-12 right-to-left required'),
                         $this->drawHtml('select-box', 'Position', 'position_id', $person->representative_position_id, RepresentativePosition::all()->pluck('name','id'), '', 'col-md-12 right-to-left required'),
 
-                        $this->drawHtml('image', 'Image', 'image', $person->image ? 'images/representatives/' . $person->image : null, null, '', 'col-md-12 '),
+                        $this->drawHtml('number', 'Member ID', 'member_id', $person->member_id, null, 'اختياري — إذا أدخلته سيتم استخدام صورة العضو الحقيقية تلقائياً بدل الصورة المرفوعة يدوياً', 'col-md-12'),
+                        $this->drawHtml('image', 'Image', 'image', $person->image ? 'images/representatives/' . $person->image : null, null, 'اتركه فارغاً إذا أدخلت Member ID أعلاه', 'col-md-12 '),
 
                         $this->drawHtml('number', 'Order', 'order', $person->order , null, 'غيّر هذا الرقم لنقل الشخص إلى موقع آخر — سيتم تلقائياً إزاحة البقية للحفاظ على ترتيب متسلسل', 'col-md-12'),
                         $this->drawHtml('select-box', 'Type', 'type', $person->type, [NULL => 'Select Status','Founder' => 'Founder','President' => 'President'], '', 'col-md-12'),
@@ -250,6 +257,7 @@ class RepresentativesController extends Controller
                 'name' => 'required',
                 'name_ar' => 'required',
                 'category' => 'required',
+                'member_id' => 'nullable|integer',
                 'image' => 'nullable|mimes:jpg,png,gif,jepg|max:700',
         ]);
 
@@ -265,6 +273,8 @@ class RepresentativesController extends Controller
 
         $newCategoryId = request('category');
         $person->dynamic_representative_id = $newCategoryId;
+
+        $person->member_id = request('member_id') ?: null;
 
         if(request('image')){
             $this->removeFile($person->image);

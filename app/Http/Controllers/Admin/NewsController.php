@@ -255,12 +255,12 @@ class NewsController extends Controller
                 if (request("use_news_image")) {
                     $news_image = $news->images->first();
                     if ($news_image) {
-                        $image = Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'images/news/' . $news_image->name) ;
+                        $image = Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/news/' . $news_image->name) ;
                     }
                 } else {
                     if (request('image_notification')) {
                         $image = "images/notification_images/" . $this->moveFile(request('image_notification'), 'images/notification_images');
-                        $image = Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . $image);
+                        $image = Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . $image);
                     }
                 }
 
@@ -276,8 +276,8 @@ class NewsController extends Controller
                     'title_ar' => request('title_ar'),
                     'text' => request('details'),
                     'text_ar' => request('details_ar'),
-                    'image' => ($image = $news->images->first()) ? Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . $image->name) : null,
-                    'image_path' => ($image = $news->images->first()) ? Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . $image->name) : null
+                    'image' => ($image = $news->images->first()) ? Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . $image->name) : null,
+                    'image_path' => ($image = $news->images->first()) ? Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . $image->name) : null
                 ]);
             }
 

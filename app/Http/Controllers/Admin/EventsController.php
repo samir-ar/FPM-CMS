@@ -201,13 +201,13 @@ class EventsController extends Controller
             if(request('name_notification')){
                 if(!request('use_events_image')){
                     $image = $this->moveFile(request('image_notification'), 'images/notification_images');
-                    $image = Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . $image);
+                    $image = Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . $image);
                 }
                 $request->request->add([
                     'title' => request('name_notification'),
                     'text' => request('details_notification'),
-                    'image' => request('use_events_image') ? Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'images/events/' . $event->image) : $image,
-                    'image_path' => request('use_events_image') ? Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'images/events/' . $event->image) : $image,
+                    'image' => request('use_events_image') ? Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/events/' . $event->image) : $image,
+                    'image_path' => request('use_events_image') ? Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/events/' . $event->image) : $image,
                 ]);
             }else{
                 $request->request->add([
@@ -215,8 +215,8 @@ class EventsController extends Controller
                     'title_ar' => request('name_ar'),
                     'text' => request('details_ar') ? request('details_ar') : request('details'),
                     'text_ar' => request('details_ar'),
-                    'image' => Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'images/events/' . $event->image),
-                    'image_path' => Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'images/events/' . $event->image),
+                    'image' => Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/events/' . $event->image),
+                    'image_path' => Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/events/' . $event->image),
                 ]);
             }
 

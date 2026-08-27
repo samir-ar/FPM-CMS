@@ -49,7 +49,7 @@ class ApiController extends Controller
                 'id' => $g->id,
                 'name' => $g->name,
                 //'details' => $g->details,
-                'file' => Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'images/memos/' . $g->file),
+                'file' => Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/memos/' . $g->file),
             ];
         }));
     }
@@ -215,7 +215,7 @@ class ApiController extends Controller
                 'id' => $row->id,
                 'title' => $row->title,
                 'text' => $row->text,
-                'image' => $row->image ? Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'images/placeholders/' . $row->image) : Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'images/placeholders/' . $placeholder),
+                'image' => $row->image ? Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/placeholders/' . $row->image) : Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/placeholders/' . $placeholder),
             ];
         }));
     }
@@ -344,7 +344,7 @@ class ApiController extends Controller
                 'id' => $v->id,
                 'title' => $v->title,
                 'text' => $v->text,
-                'image' => $v->image ?  Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'images/volunteers/' . $v->image) : null,
+                'image' => $v->image ?  Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/volunteers/' . $v->image) : null,
             ];
         }));
     }
@@ -492,7 +492,7 @@ class ApiController extends Controller
 			'id' => $r->id,
 			'name' => $r->name,
 			'category' => $r->category,
-			'image' => $r->image ? Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'images/representatives/' . $r->image) : null,
+			'image' => $r->image ? Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/representatives/' . $r->image) : null,
 		];
 	});
 
@@ -532,7 +532,7 @@ class ApiController extends Controller
         $media = json_decode($media->text);
 
         return response()->json([
-            'images' => [Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/' . 'storage/' . 'images/content/' . $content->image)],
+            'images' => [Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/content/' . $content->image)],
             'text' => App::getLocale() == 'en' ? $content->text : $content->text_ar,
             'email' => $media->email,
             'facebook' => $media->facebook,

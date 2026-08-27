@@ -63,7 +63,7 @@ class RegistrationController extends Controller
 
 
         //add user
-        if(!$user = $userRepo->getUserByPhoneNumber(request('phone_number'))){
+        if(!$user = $userRepo->getUserByPhoneNumber(request('phone_number'), request('member_id'))){
 
             $user = $userRepo->addUser($request->all());
         }

@@ -16,7 +16,11 @@ class CompetencyVacanciesController extends Controller
     {
         if ($request->ajax()) {
             $data = CompetencyVacancy::query()->orderByDesc('created_at');
+            if ($request->filled('type') && array_key_exists($request->get('type'), CompetencyVacancy::$types)) {
+                $data->where('type', $request->get('type'));
+            }
             return DataTables::of($data)
+                ->addColumn('type_label', fn($row) => CompetencyVacancy::$types[$row->type] ?? $row->type)
                 ->addColumn('status_badge', fn($row) => $row->is_active
                     ? "<span class='label label-success'>نشط</span>"
                     : "<span class='label label-default'>غير نشط</span>")
@@ -31,6 +35,16 @@ class CompetencyVacanciesController extends Controller
                 ->make(true);
         }
 
+        $activeType = $request->get('type');
+        $filterButtons = '<div style="display:inline-block;">' .
+            '<a href="' . route('admin.competency-vacancies.index') . '" class="btn btn-sm ' .
+            (!$activeType ? 'btn-primary' : 'btn-default') . '" style="margin-right:6px">الكل</a>';
+        foreach (CompetencyVacancy::$types as $key => $label) {
+            $filterButtons .= '<a href="' . route('admin.competency-vacancies.index', ['type' => $key]) . '" class="btn btn-sm ' .
+                ($activeType === $key ? 'btn-primary' : 'btn-default') . '" style="margin-right:6px">' . $label . '</a>';
+        }
+        $filterButtons .= '</div>';
+
         return view('components.table_ajax')->with([
             'layout'      => 'layouts.cms',
             'pageTitle'   => 'منصة الكفاءات — المناصب الشاغرة',
@@ -38,11 +52,13 @@ class CompetencyVacanciesController extends Controller
             'slug'        => 'competency-vacancies',
             'custom_btn'  =>
                 "<a href='" . route('admin.competency-vacancies.create') . "' class='btn btn-primary'>إضافة منصب</a>",
-            'headers'     => ['#', 'المسمى', 'تاريخ البدء', 'تاريخ الانتهاء', 'الحالة', 'Action'],
+            'custom_btn1' => $filterButtons,
+            'headers'     => ['#', 'المسمى', 'النوع', 'تاريخ البدء', 'تاريخ الانتهاء', 'الحالة', 'Action'],
             'action'      => route('admin.competency-vacancies.index'),
             'columns'     => json_encode([
                 ['data' => 'id',           'name' => 'id'],
                 ['data' => 'title',        'name' => 'title'],
+                ['data' => 'type_label',   'name' => 'type_label', 'searchable' => false, 'sortable' => false],
                 ['data' => 'start_date',   'name' => 'start_date'],
                 ['data' => 'end_date',     'name' => 'end_date'],
                 ['data' => 'status_badge', 'name' => 'status_badge', 'searchable' => false, 'sortable' => false],
@@ -74,6 +90,8 @@ class CompetencyVacanciesController extends Controller
                 'box-header'    => 'معلومات المنصب',
                 'form_fields'   => [
                     $this->drawHtml('small_text', 'المسمى', 'title', null, null, '', 'col-md-12 required'),
+                    $this->drawHtml('select-box', 'النوع', 'type', 'specific',
+                        CompetencyVacancy::$types, '', 'col-md-12 required'),
                     $this->drawHtml('text', 'الوصف', 'description', null, null, '', 'col-md-12'),
                     $this->drawHtml('date-time-picker', 'تاريخ بدء الترشيح', 'start_date', null, null, '', 'col-md-6 required'),
                     $this->drawHtml('date-time-picker', 'تاريخ انتهاء الترشيح', 'end_date', null, null, '', 'col-md-6 required'),
@@ -86,12 +104,14 @@ class CompetencyVacanciesController extends Controller
     {
         $request->validate([
             'title'      => 'required|string|max:191',
+            'type'       => 'required|in:specific,general',
             'start_date' => 'required|date',
             'end_date'   => 'required|date|after_or_equal:start_date',
         ]);
 
         CompetencyVacancy::create([
             'title'       => $request->title,
+            'type'        => $request->type,
             'description' => $request->description ?: null,
             'start_date'  => $request->start_date,
             'end_date'    => $request->end_date,
@@ -116,6 +136,8 @@ class CompetencyVacanciesController extends Controller
                 'box-header'    => 'معلومات المنصب',
                 'form_fields'   => [
                     $this->drawHtml('small_text', 'المسمى', 'title', $vacancy->title, null, '', 'col-md-12 required'),
+                    $this->drawHtml('select-box', 'النوع', 'type', $vacancy->type,
+                        CompetencyVacancy::$types, '', 'col-md-12 required'),
                     $this->drawHtml('text', 'الوصف', 'description', $vacancy->description, null, '', 'col-md-12'),
                     $this->drawHtml('date-time-picker', 'تاريخ بدء الترشيح', 'start_date', $vacancy->start_date->format('Y-m-d H:i'), null, '', 'col-md-6 required'),
                     $this->drawHtml('date-time-picker', 'تاريخ انتهاء الترشيح', 'end_date', $vacancy->end_date->format('Y-m-d H:i'), null, '', 'col-md-6 required'),
@@ -130,12 +152,14 @@ class CompetencyVacanciesController extends Controller
 
         $request->validate([
             'title'      => 'required|string|max:191',
+            'type'       => 'required|in:specific,general',
             'start_date' => 'required|date',
             'end_date'   => 'required|date|after_or_equal:start_date',
         ]);
 
         $vacancy->update([
             'title'       => $request->title,
+            'type'        => $request->type,
             'description' => $request->description ?: null,
             'start_date'  => $request->start_date,
             'end_date'    => $request->end_date,
@@ -160,10 +184,14 @@ class CompetencyVacanciesController extends Controller
             return DataTables::of($data)
                 ->addColumn('nomination_type_ar', fn($row) => $row->nomination_type === 'self' ? 'ترشيح ذاتي' : 'ترشيح آخرين')
                 ->addColumn('submitted_by_name', fn($row) => optional($row->submittedBy)->name)
+                ->addColumn('nomination_reason_short', fn($row) =>
+                    "<span title='" . e($row->nomination_reason) . "'>" .
+                    e(mb_strlen($row->nomination_reason ?? '') > 60 ? mb_substr($row->nomination_reason, 0, 60) . '...' : $row->nomination_reason) .
+                    '</span>')
                 ->addColumn('action', fn($row) =>
                     "<a data-toggle='modal' class='delete-link btn btn-xs btn-danger' href='#deleteModal' id='" .
                     route('admin.competency-vacancies.nominations.destroy', [$vacancy->id, $row->id]) . "'><i class='fa fa-trash'></i></a>")
-                ->rawColumns(['action'])
+                ->rawColumns(['nomination_reason_short', 'action'])
                 ->make(true);
         }
 
@@ -173,17 +201,21 @@ class CompetencyVacanciesController extends Controller
             'table_title' => '',
             'slug'        => 'competency-vacancies-nominations-' . $vacancy->id,
             'custom_btn'  => "<a href='" . route('admin.competency-vacancies.index') . "' class='btn btn-default'>عودة الى المناصب</a>",
-            'headers'     => ['#', 'النوع', 'الاسم الكامل', 'القضاء', 'البلدة', 'رقم الهاتف', 'مقدم الطلب', 'Action'],
+            'headers'     => ['#', 'النوع', 'الاسم الكامل', 'القضاء', 'البلدة', 'رقم الهاتف', 'المهنة', 'المستوى التعليمي', 'الاختصاص', 'سبب الترشيح', 'مقدم الطلب', 'Action'],
             'action'      => route('admin.competency-vacancies.nominations', $vacancy->id),
             'columns'     => json_encode([
-                ['data' => 'id',                 'name' => 'id'],
-                ['data' => 'nomination_type_ar',  'name' => 'nomination_type', 'searchable' => false],
-                ['data' => 'full_name',           'name' => 'full_name'],
-                ['data' => 'district',            'name' => 'district'],
-                ['data' => 'town',                'name' => 'town'],
-                ['data' => 'phone',               'name' => 'phone'],
-                ['data' => 'submitted_by_name',   'name' => 'submitted_by_name', 'searchable' => false, 'sortable' => false],
-                ['data' => 'action',              'name' => 'action', 'searchable' => false, 'sortable' => false],
+                ['data' => 'id',                       'name' => 'id'],
+                ['data' => 'nomination_type_ar',        'name' => 'nomination_type', 'searchable' => false],
+                ['data' => 'full_name',                 'name' => 'full_name'],
+                ['data' => 'district',                  'name' => 'district'],
+                ['data' => 'town',                      'name' => 'town'],
+                ['data' => 'phone',                     'name' => 'phone'],
+                ['data' => 'profession',                'name' => 'profession'],
+                ['data' => 'education_level',           'name' => 'education_level'],
+                ['data' => 'specialization',            'name' => 'specialization'],
+                ['data' => 'nomination_reason_short',   'name' => 'nomination_reason_short', 'searchable' => false, 'sortable' => false],
+                ['data' => 'submitted_by_name',         'name' => 'submitted_by_name', 'searchable' => false, 'sortable' => false],
+                ['data' => 'action',                    'name' => 'action', 'searchable' => false, 'sortable' => false],
             ]),
         ]);
     }

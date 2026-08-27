@@ -8,7 +8,6 @@ use App\Session;
 use App\AppUser;
 use Carbon\Carbon;
 use App\PinVerification;
-use App\Notifications\OTP;
 use App\Http\Traits\TokenTrait;
 use App\Http\Repositories\V2\FpmApisRepository;
 
@@ -37,24 +36,12 @@ class RegistrationRepository
 
         $data['message'] = 'Cde '.$user->verification_nb;
 
-        //TODO:send sms to user mobile_number
-
         try {
             $fpmRepo = new FpmApisRepository();
             $fpmRepo->sendSMS($data);
         } catch (\Exception $e) {
             \Log::info('sms failed to send',[$e->getMessage()]);
         }
-
-        //Send Pin in Email to user
-        if($user->email){
-            try {
-                $user->notify(new OTP($user->verification_nb));
-            } catch (\Exception $e) {
-                \Log::info('email failed to send',[$e->getMessage()]);
-            }
-        }
-
 
         return $user->verification_nb;
     }

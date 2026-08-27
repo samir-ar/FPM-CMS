@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 
 use App\Http\Traits\FormTrait;
 use App\Http\Traits\FileTrait;
+use App\Http\Traits\BirthdayWishesTrait;
 
 use Carbon\Carbon;
 use App\V2\NewsImage;
@@ -23,6 +24,7 @@ class NotificationController extends Controller
 {
     use FormTrait;
     use FileTrait;
+    use BirthdayWishesTrait;
 
 
         public function index(Request $request)
@@ -60,7 +62,8 @@ class NotificationController extends Controller
                 'pageTitle'	=> 'Push Notification',
                 'table_title' => '',
                 'slug'		=> 'push-notification',
-                'custom_btn' => "<a href='" . route('admin.bulkpushnotification.create') ."' class='btn btn-primary'>Send Notification</a>",
+                'custom_btn' => "<a href='" . route('admin.bulkpushnotification.create') ."' class='btn btn-primary'>Send Notification</a> " .
+                    "<a href='" . route('admin.birthdaywishes.send') . "' class='btn btn-default' onclick=\"return confirm('Send birthday wishes to every member whose birthday is today?')\">Send Today's Birthday Wishes</a>",
                 'headers'	=> ['id', 'Title', "Text", 'Images'],
                 'action' => route('admin.bulkpushnotification.index'),
                 'columns' => json_encode([
@@ -98,11 +101,19 @@ class NotificationController extends Controller
                         //$this->drawHtml('multiple-file-upload', 'UploadImage', 'image', null, ['add' => route('admin.notificationimage.upload'), 'delete' => route('admin.notificationimage.delete'), 'default' => null] , '', 'col-md-12'),
 
                         $this->drawHtml('multiple-select-box', 'Groups (leave empty to send to all members)', 'groups[]', $request->old('groups'), $groups, '', 'col-md-12'),
+                        $this->drawHtml('small_text', 'Member IDs (optional, comma-separated — if filled, sends only to these members and skips Groups entirely)', 'member_ids', $request->old('member_ids'), null, '', 'col-md-12'),
                     ],
                 ]
 
             ]
         ]);
+    }
+
+
+    public function sendBirthdayWishes(Request $request){
+        $count = $this->sendTodaysBirthdayWishes();
+
+        return back()->with('message', "Sent birthday wishes to {$count} member(s).");
     }
 
 
@@ -143,18 +154,26 @@ class NotificationController extends Controller
             'title_ar' => request('title'),
             'text' => request('text'),
             'text_ar' => request('text'),
-            'image' => ($image)? Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/storage/' . $image) : null,
-            'image_path' => ($image)? Storage::disk('s3')->url(env('AWS_BUCKET_PROJECT_NAME') . '/storage/' . $image) : null
+            'image' => ($image)? Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/storage/' . $image) : null,
+            'image_path' => ($image)? Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/storage/' . $image) : null
         ]);
 
 
-        //If specific groups were selected, send only to them; otherwise default to all members
-        if (request('groups')) {
-            $groups = request('groups');
+        //If specific member IDs were entered, they take priority and skip the
+        //Groups path entirely (the external TWH groups-members API has been
+        //observed to intermittently return empty for large group counts).
+        if (request('member_ids')) {
+            $memberIds = array_values(array_filter(array_map('trim', explode(',', request('member_ids')))));
+            $request->merge(['member_ids' => $memberIds, 'groups' => []]);
         } else {
-            $groups = Group::all()->pluck('group_id')->toArray();
+            //If specific groups were selected, send only to them; otherwise default to all members
+            if (request('groups')) {
+                $groups = request('groups');
+            } else {
+                $groups = Group::all()->pluck('group_id')->toArray();
+            }
+            $request->merge(['groups' => $groups, 'member_ids' => []]);
         }
-        $request->merge(['groups' => $groups]);
 
         //add the news to the request for the event
         //$request->request->add(['news' => $news->id]);
