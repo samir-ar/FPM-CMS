@@ -123,6 +123,7 @@ class EventsController extends Controller
                         //$this->drawHtml('checkbox', 'All Groups', 'all_groups', $request->old('all_groups') , null, '', 'col-md-12 '),
 
                         $this->drawHtml('checkbox', 'Send Push Notification', 'push_notification', $request->old('push_notification') , null, '', 'col-md-12 '),
+                        $this->drawHtml('checkbox', 'Show For Guest', 'show_for_guest', $request->old('show_for_guest') , null, '', 'col-md-12 '),
                     ]
                     ],[
                     'wrapper-class' => 'col-md-6',
@@ -187,6 +188,7 @@ class EventsController extends Controller
 
         $event->lat = request('lat');
         $event->lng = request('lng');
+        $event->show_for_guest = request('show_for_guest') ? true : false;
 
 
         $event->save();
@@ -280,6 +282,7 @@ class EventsController extends Controller
                     'form_fields' => [
                         $this->drawHtml('multiple-select-box', 'Groups', 'groups[]', $default_groups , $groups, '', 'col-md-12 '),
                         //$this->drawHtml('checkbox', 'All Groups', 'all_groups', null , null, '', 'col-md-12 '),
+                        $this->drawHtml('checkbox', 'Show For Guest', 'show_for_guest', $event->show_for_guest, null, '', 'col-md-12 '),
 
                     ]
                 ]
@@ -318,6 +321,7 @@ class EventsController extends Controller
 
         $event->lat = request('lat');
         $event->lng = request('lng');
+        $event->show_for_guest = request('show_for_guest') ? true : false;
 
         if(request('image'))
             $event->image = $this->moveFile(request('image'), 'images/events');

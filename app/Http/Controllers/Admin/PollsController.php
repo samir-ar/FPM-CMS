@@ -108,6 +108,7 @@ class PollsController extends Controller
 
 
                         $this->drawHtml('checkbox', 'Show', 'show', true, null, '', 'col-md-12'),
+                        $this->drawHtml('checkbox', 'Show For Guest', 'show_for_guest', $request->old('show_for_guest'), null, '', 'col-md-12'),
                     ],
                 ],
 
@@ -181,6 +182,7 @@ class PollsController extends Controller
             $poll->strict_lang = request('strict_lang');
 
             $poll->show = request('show') ? true : false;
+            $poll->show_for_guest = request('show_for_guest') ? true : false;
             $poll->expiry_date = Carbon::parse(request('expiry_date'))->toDateTimeString();
 
             $poll->save();
@@ -275,6 +277,7 @@ class PollsController extends Controller
                         */
                         $this->drawHtml('date-time-picker', 'Expiry Date', 'expiry_date', $poll->expiry_date, null, '', 'col-md-12 required'),
                         $this->drawHtml('checkbox', 'Show', 'show', $poll->show, null, '', 'col-md-12'),
+                        $this->drawHtml('checkbox', 'Show For Guest', 'show_for_guest', $poll->show_for_guest, null, '', 'col-md-12'),
                     ],
                 ],
 
@@ -326,6 +329,7 @@ class PollsController extends Controller
             */
 
             $poll->show = request('show') ? true : false;
+            $poll->show_for_guest = request('show_for_guest') ? true : false;
             $poll->expiry_date = Carbon::parse(request('expiry_date'))->toDateTimeString();
             $poll->strict_lang = request('strict_lang');
 

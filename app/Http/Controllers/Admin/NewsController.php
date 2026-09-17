@@ -129,6 +129,7 @@ class NewsController extends Controller
                         $this->drawHtml('multiple-select-box', 'Groups', 'groups[]', $request->old('groups'), $groups, '', 'col-md-12 '),
                         //$this->drawHtml('checkbox', 'All Groups', 'all_groups', $request->old('all_groups') , null, '', 'col-md-12 '),
                         $this->drawHtml('checkbox', 'Send Push Notification', 'push_notification', $request->old('push_notification'), null, '', 'col-md-12 '),
+                        $this->drawHtml('checkbox', 'Show For Guest', 'show_for_guest', $request->old('show_for_guest'), null, '', 'col-md-12 '),
                     ]
                 ], [
                     'wrapper-class' => 'col-md-6',
@@ -216,6 +217,7 @@ class NewsController extends Controller
         $news->date = Carbon::parse(request('date'))->toDateTimeString();
 
         $news->strict_lang = request('strict_lang');
+        $news->show_for_guest = request('show_for_guest') ? true : false;
 
         if (request('video')) {
             $news->file = $this->moveFile(request('video'), 'news/videos');
@@ -426,6 +428,7 @@ class NewsController extends Controller
                     'box-header' => 'Permissions',
                     'form_fields' => [
                         $this->drawHtml('multiple-select-box', 'Groups', 'groups[]', $default_groups, $groups, '', 'col-md-12 '),
+                        $this->drawHtml('checkbox', 'Show For Guest', 'show_for_guest', $news->show_for_guest, null, '', 'col-md-12 '),
                     ]
                 ],
 
@@ -466,6 +469,7 @@ class NewsController extends Controller
         $news->date = Carbon::parse(request('date'))->toDateTimeString();
 
         $news->strict_lang = request('strict_lang');
+        $news->show_for_guest = request('show_for_guest') ? true : false;
 
         if (request('video')) {
             $this->removeFile($news->file);
