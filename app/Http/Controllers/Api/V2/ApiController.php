@@ -373,6 +373,9 @@ class ApiController extends Controller
         $events = $repo->getEventsPreviousByGroup(request('groups'));
 
         $user = request('user');
+        if (!$user) {
+            $events->where('show_for_guest', true);
+        }
 
         #see if the news has been ->get() before pagination see news
         $events = $events->orderByDesc("created_at")->paginate(10);
@@ -573,13 +576,25 @@ class ApiController extends Controller
             foreach ($apiRepository->getPollsByGroupsRaw($user, request('groups')) as $poll) {
                 $merged->push(['type' => 'POLLS', 'created_at' => $poll->created_at, 'model' => $poll]);
             }
+        } else {
+            foreach ($apiRepository->getGuestPolls(request('groups')) as $poll) {
+                $merged->push(['type' => 'POLLS', 'created_at' => $poll->created_at, 'model' => $poll]);
+            }
         }
 
-        foreach ($apiRepository->getEventsUpcomingByGroup(request('groups'))->get() as $event) {
+        $eventsQuery = $apiRepository->getEventsUpcomingByGroup(request('groups'));
+        if (!$user) {
+            $eventsQuery->where('show_for_guest', true);
+        }
+        foreach ($eventsQuery->get() as $event) {
             $merged->push(['type' => 'EVENTS', 'created_at' => $event->created_at, 'model' => $event]);
         }
 
-        foreach ($apiRepository->getNewsByGroups(request('groups'))->get() as $n) {
+        $newsQuery = $apiRepository->getNewsByGroups(request('groups'));
+        if (!$user) {
+            $newsQuery->where('show_for_guest', true);
+        }
+        foreach ($newsQuery->get() as $n) {
             $merged->push(['type' => 'NEWS', 'created_at' => $n->created_at, 'model' => $n]);
         }
 
@@ -635,6 +650,9 @@ class ApiController extends Controller
         $events = $repo->getEventsUpcomingByGroup(request('groups'));
 
         $user = request('user');
+        if (!$user) {
+            $events->where('show_for_guest', true);
+        }
 
         #see if the news has been ->get() before pagination see news
         $events = $events->orderByDesc("created_at")->paginate(10);
@@ -856,11 +874,25 @@ class ApiController extends Controller
 
     public function getPollById(Request $request, ApiRepository $repo)
     {
+        if (!request('user') && $request->header('token')) {
+            $resolved = \App\V2\AppUser::where('token', $request->header('token'))->first();
+            if ($resolved) $request->merge(['user' => $resolved, 'groups' => $resolved->groups->pluck('GroupId')->toArray()]);
+        }
+
         $validator = Validator::make($request->all(), [
             'id' => 'required|exists:polls,id',
         ]);
         if ($validator->fails()) {
             return $this->api_error_response('missing_parameters', 101, implode(', ', $validator->messages()->all()));
+        }
+
+        if (!request('user')) {
+            $validator = Validator::make($request->all(), [
+                'id' => 'exists:polls,id,show_for_guest,1',
+            ]);
+            if ($validator->fails()) {
+                return $this->api_error_response('not_authorized', 103, 'This poll is not available.');
+            }
         }
 
         $poll = $repo->getPollById(request('user'), request('groups'), request('id'));
@@ -896,6 +928,20 @@ class ApiController extends Controller
             $resolved = \App\V2\AppUser::where('token', $request->header('token'))->first();
             if ($resolved) $request->merge(['user' => $resolved, 'groups' => $resolved->groups->pluck('GroupId')->toArray()]);
         }
+
+        if (!request('user')) {
+            $polls = $repo->getGuestPolls(request('groups'))->map(function ($r) use ($repo) {
+                return [
+                    'expiry_date' => $r->expiry_date,
+                    'question' => $r->question,
+                    'details' => $r->details,
+                    'strict_lang' => $r->strict_lang,
+                    'options' => ($r->options) ? $repo->getMappedOption($r) : [],
+                ];
+            });
+            return response()->json($polls);
+        }
+
         $polls = $repo->getPollsByGroups(request('user'), request('groups'));
         return response()->json($polls);
     }
@@ -916,6 +962,40 @@ class ApiController extends Controller
             $resolved = \App\V2\AppUser::where('token', $request->header('token'))->first();
             if ($resolved) $request->merge(['user' => $resolved]);
         }
+
+        if (!request('user')) {
+            $validator = Validator::make($request->all(), [
+                'option_id' => 'required|exists:polls_options,id',
+                'device_id' => 'required|string',
+            ]);
+
+            if ($validator->fails()) {
+                return $this->api_error_response('missing_parameters', 101, implode(', ', $validator->messages()->all()));
+            }
+
+            $option = \App\V2\PollOption::find(request('option_id'));
+            $poll = $option->poll;
+
+            if (!$poll || !$poll->show_for_guest) {
+                return $this->api_error_response('not_authorized', 103, 'This poll is not available.');
+            }
+
+            try {
+                \App\V2\PollGuestVote::create([
+                    'poll_id' => $poll->id,
+                    'option_id' => $option->id,
+                    'device_id' => request('device_id'),
+                ]);
+            } catch (QueryException $e) {
+                if ($e->getCode() === '23000') {
+                    return $this->api_error_response('already_voted', 104, 'You already participated in this poll.');
+                }
+                throw $e;
+            }
+
+            return response()->json(['message' => 'Thank you for participating.']);
+        }
+
         $validator = Validator::make($request->all(), [
             'option_id' => 'required|exists:polls_options,id',
         ]);
@@ -943,7 +1023,11 @@ class ApiController extends Controller
 
     public function getPreviousEvents(Request $request, ApiRepository $repo)
     {
-        $events = $repo->getEventsPreviousByGroup(request('groups'))->orderByDesc('created_at')->limit(100)->get();
+        $events = $repo->getEventsPreviousByGroup(request('groups'));
+        if (!request('user')) {
+            $events->where('show_for_guest', true);
+        }
+        $events = $events->orderByDesc('created_at')->limit(100)->get();
 
         return response()->json($events->map(function ($e) use ($repo) {
 
@@ -972,7 +1056,11 @@ class ApiController extends Controller
 
     public function getUpcomingEvents(Request $request, ApiRepository $repo)
     {
-        $events = $repo->getEventsUpcomingByGroup(request('groups'))->orderByDesc('created_at')->get();
+        $events = $repo->getEventsUpcomingByGroup(request('groups'));
+        if (!request('user')) {
+            $events->where('show_for_guest', true);
+        }
+        $events = $events->orderByDesc('created_at')->get();
 
         return response()->json($events->map(function ($e) use ($repo) {
 

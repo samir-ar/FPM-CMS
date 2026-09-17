@@ -46,12 +46,7 @@ Route::group(['namespace' => 'Api\V2', 'prefix' => 'v2/', 'middleware' => ['lang
         Route::post('memos', 'ApiController@getMemos');
         Route::post('members', 'ApiController@getMembers');
         Route::post('favorite-members', 'ApiController@getFavorites');
-        Route::post('get-poll','ApiController@getPollById');
-        Route::post('current-polls', 'ApiController@getPolls');
         Route::post('previous-polls', 'ApiController@getPreviousPolls');
-        Route::post('answer-poll', 'ApiController@answerPoll');
-        Route::post('previous-events', 'ApiController@getPreviousEvents');
-        Route::post('upcoming-events', 'ApiController@getUpcomingEvents');
 
         Route::post('national-council-poll-can-i-vote', 'ApiController@canIVoteToNationalCouncilPollMessage');
         Route::post('national-council-poll-get', 'ApiController@getLatestNationalCouncilPoll');
@@ -67,18 +62,11 @@ Route::group(['namespace' => 'Api\V2', 'prefix' => 'v2/', 'middleware' => ['lang
 
         //New Endpoints
 
-        #Events
-        Route::post('upcoming-events-paginated', 'ApiController@getUpcomingEventsWithPagination');
-        Route::post('previous-events-paginated', 'ApiController@getPreviousEventsWithPagination');
-
         #tracker
         Route::post('get-my-candidates-status','ApiController@getCandidates');
         Route::post('get-my-candidacy-status','ApiController@getCandidacy');
 
         //Albums
-        #Get All the albums
-        Route::post('get-all-albums','ApiController@getAllAlbums');
-        Route::post('get-album','ApiController@getAlbum');
         //Route::post('delete-album','ApiController@deleteAlbum');
         //Route::post('delete-media','ApiController@deleteMedia');
         //Route::post('create-album','ApiController@createAlbum');
@@ -128,6 +116,18 @@ Route::group(['namespace' => 'Api\V2', 'prefix' => 'v2/', 'middleware' => ['lang
         Route::post('i-pay', 'ApiController@pay');
         Route::post('e-bill', 'ApiController@bill');
         Route::post('get-wall-feed', 'ApiController@getWallFeed');
+
+        // Guest-accessible per the "Show For Guest" tick on News/Events/Polls,
+        // and Archive, which is fully open to guests with no gating at all.
+        Route::post('get-poll', 'ApiController@getPollById');
+        Route::post('current-polls', 'ApiController@getPolls');
+        Route::post('answer-poll', 'ApiController@answerPoll');
+        Route::post('previous-events', 'ApiController@getPreviousEvents');
+        Route::post('upcoming-events', 'ApiController@getUpcomingEvents');
+        Route::post('upcoming-events-paginated', 'ApiController@getUpcomingEventsWithPagination');
+        Route::post('previous-events-paginated', 'ApiController@getPreviousEventsWithPagination');
+        Route::post('get-all-albums', 'ApiController@getAllAlbums');
+        Route::post('get-album', 'ApiController@getAlbum');
     });
 
 

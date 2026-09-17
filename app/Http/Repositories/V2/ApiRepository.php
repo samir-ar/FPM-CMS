@@ -208,6 +208,23 @@ class ApiRepository
             ->get();
     }
 
+    // Guest-visible polls — no member to check "already answered" against;
+    // repeat voting from the same device is blocked at vote time instead
+    // (see PollGuestVote / answerPoll).
+    public function getGuestPolls($groups_ids)
+    {
+        $groups_ids = $groups_ids ?? [];
+        return Poll::with('options')
+            ->where('expiry_date', '>', Carbon::today())
+            ->whereHas('groups', function ($q) use ($groups_ids) {
+                return $q->whereIn('group_id', $groups_ids)->orWhere('group_id', 81)->orWhere('group_id', 82);
+            })
+            ->where('show', true)
+            ->where('show_for_guest', true)
+            ->limit(20)
+            ->get();
+    }
+
     public function getMessages($user)
     {
         return $user->notifications()->orderBy('created_at', 'desc')->get();
@@ -291,10 +308,15 @@ class ApiRepository
 
     public function getPollById($user, $groups_ids, $poll_id)
     {
+        $groups_ids = $groups_ids ?? [];
         $poll =  Poll::whereHas('groups', function ($q) use ($groups_ids) {
             $q->whereIn('group_id', $groups_ids)->orWhere('group_id', 81)->orWhere('group_id', 82);
         })
             ->where('id', $poll_id)->first();
+
+        if (!$poll) {
+            return null;
+        }
 
         return array(
             "id" => $poll->id,
