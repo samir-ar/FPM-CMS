@@ -147,17 +147,26 @@ class ProfilesController extends Controller
 
         // Show a page's extra-action checkboxes only while its level is
         // set to View — hide them for None/Full, where they don't apply.
+        // Bound directly to each select (not document-level delegation) and
+        // listening for Select2's own select2:* events too, not just the
+        // plain "change" event — Select2 doesn\'t reliably bubble a native
+        // change event the way delegation on document expects.
         $pageFields[] = '<script>
             $(function () {
-                function syncExtraActions() {
-                    $(".extra-actions").each(function () {
-                        var pageId = $(this).data("for-page");
-                        var level = $(\'select[name="permissions[\' + pageId + \']"]\').val();
-                        $(this).toggle(level === "view");
-                    });
+                function syncOne($box) {
+                    var pageId = $box.data("for-page");
+                    var level = $("select[name=\"permissions[" + pageId + "]\"]").val();
+                    $box.toggle(level === "view");
                 }
-                syncExtraActions();
-                $(document).on("change", "select[name^=\'permissions[\']", syncExtraActions);
+                $(".extra-actions").each(function () {
+                    var $box = $(this);
+                    syncOne($box);
+                    var pageId = $box.data("for-page");
+                    $("select[name=\"permissions[" + pageId + "]\"]")
+                        .on("change select2:select select2:unselect select2:clear", function () {
+                            syncOne($box);
+                        });
+                });
             });
         </script>';
 
