@@ -187,9 +187,32 @@ class CheckinEventsController extends Controller
         return back()->with('message', 'تم حذف المناسبة بنجاح');
     }
 
+    // منشط (active) events can be entered / added to; غير منشط (inactive)
+    // ones can't — regardless of the admin's page permission level. Returns
+    // a response to short-circuit with if the event is inactive, or null to
+    // continue normally.
+    private function blockIfInactive(CheckinEvent $event, Request $request)
+    {
+        if ($event->is_active) {
+            return null;
+        }
+
+        $message = 'لا يمكن الدخول الى هذه المناسبة لأنها غير نشطة.';
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['message' => $message], 403);
+        }
+
+        return redirect()->route('admin.checkin-events.index')->with('message', $message);
+    }
+
     public function attendance(Request $request, $id)
     {
         $event = CheckinEvent::findOrFail($id);
+
+        if ($blocked = $this->blockIfInactive($event, $request)) {
+            return $blocked;
+        }
 
         if ($request->ajax()) {
             $data = $event->attendance()->with(['scannedBy', 'addedByAdmin'])->orderByDesc('checked_in_at');
@@ -224,15 +247,25 @@ class CheckinEventsController extends Controller
         ]);
     }
 
-    public function exportAttendance($id)
+    public function exportAttendance(Request $request, $id)
     {
-        CheckinEvent::findOrFail($id);
+        $event = CheckinEvent::findOrFail($id);
+
+        if ($blocked = $this->blockIfInactive($event, $request)) {
+            return $blocked;
+        }
 
         return Excel::download(new CheckinAttendanceExport((int) $id), "attendance-event-{$id}.xlsx");
     }
 
     public function searchMembers(Request $request, $id)
     {
+        $event = CheckinEvent::findOrFail($id);
+
+        if ($blocked = $this->blockIfInactive($event, $request)) {
+            return $blocked;
+        }
+
         $q = trim((string) $request->get('q', ''));
         if (mb_strlen($q) < 2) {
             return response()->json([]);
@@ -259,6 +292,10 @@ class CheckinEventsController extends Controller
     public function storeAttendance(Request $request, $id)
     {
         $event = CheckinEvent::findOrFail($id);
+
+        if ($blocked = $this->blockIfInactive($event, $request)) {
+            return $blocked;
+        }
 
         $request->validate([
             'member_id' => 'required|integer|exists:fpm_users,MemberId',
