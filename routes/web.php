@@ -48,17 +48,20 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::post('add-user', 'ProfileController@addUser')->name('add_user');
 
     //App users
-    Route::get('users/import', 'UsersController@importCreate')->name('users.import.create');
-    Route::get('users/qr-code', 'UsersController@qr_code')->name('users.qr-code.create');
-    Route::post('users/qr-code/store', 'UsersController@qr_code_store')->name('users.qr-code.store');
-    Route::post('users/import/store', 'UsersController@importStore')->name('users.import.store');
-    Route::get('users/export', 'UsersController@export')->name('users.export');
-    Route::get('users/installation-report', 'UsersController@installationReport')->name('users.installation-report');
-    Route::get('users/{id}/toggle-scan-checkin', 'UsersController@toggleScanCheckin')->name('users.toggle-scan-checkin');
+    // page 8 (APP USERS). Pilot for the new Profile permission system.
+    Route::get('users/import', 'UsersController@importCreate')->name('users.import.create')->middleware('page-perm:8,full');
+    Route::get('users/qr-code', 'UsersController@qr_code')->name('users.qr-code.create')->middleware('page-perm:8,full');
+    Route::post('users/qr-code/store', 'UsersController@qr_code_store')->name('users.qr-code.store')->middleware('page-perm:8,full');
+    Route::post('users/import/store', 'UsersController@importStore')->name('users.import.store')->middleware('page-perm:8,full');
+    Route::get('users/export', 'UsersController@export')->name('users.export')->middleware('page-perm:8,view');
+    Route::get('users/installation-report', 'UsersController@installationReport')->name('users.installation-report')->middleware('page-perm:8,view');
+    Route::get('users/{id}/toggle-scan-checkin', 'UsersController@toggleScanCheckin')->name('users.toggle-scan-checkin')->middleware('page-perm:8,full');
 
-    Route::resource('users', 'UsersController');
+    Route::resource('users', 'UsersController')->only(['index'])->middleware('page-perm:8,view');
+    Route::resource('users', 'UsersController')->except(['index'])->middleware('page-perm:8,full');
     //Administrators
     Route::resource('admins', 'AdminsController');
+    Route::resource('profiles', 'ProfilesController');
 
     //Representatives Positions
     Route::resource('representative-positions', 'RepresentativePositionController');
@@ -135,17 +138,18 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::get('competency-vacancies/{id}/nominations', 'CompetencyVacanciesController@nominations')->name('competency-vacancies.nominations');
     Route::delete('competency-vacancies/{vacancyId}/nominations/{nominationId}', 'CompetencyVacanciesController@destroyNomination')->name('competency-vacancies.nominations.destroy');
 
-    Route::get('checkin-events', 'CheckinEventsController@index')->name('checkin-events.index');
-    Route::get('checkin-events/create', 'CheckinEventsController@create')->name('checkin-events.create');
-    Route::post('checkin-events', 'CheckinEventsController@store')->name('checkin-events.store');
-    Route::get('checkin-events/{id}/edit', 'CheckinEventsController@edit')->name('checkin-events.edit');
-    Route::put('checkin-events/{id}', 'CheckinEventsController@update')->name('checkin-events.update');
-    Route::delete('checkin-events/{id}', 'CheckinEventsController@destroy')->name('checkin-events.destroy');
-    Route::get('checkin-events/{id}/toggle-active', 'CheckinEventsController@toggleActive')->name('checkin-events.toggle-active');
-    Route::get('checkin-events/{id}/attendance', 'CheckinEventsController@attendance')->name('checkin-events.attendance');
-    Route::get('checkin-events/{id}/attendance/search', 'CheckinEventsController@searchMembers')->name('checkin-events.attendance.search');
-    Route::get('checkin-events/{id}/attendance/export', 'CheckinEventsController@exportAttendance')->name('checkin-events.attendance.export');
-    Route::post('checkin-events/{id}/attendance', 'CheckinEventsController@storeAttendance')->name('checkin-events.attendance.store');
+    // page 77 (Check-In Events). Pilot for the new Profile permission system.
+    Route::get('checkin-events', 'CheckinEventsController@index')->name('checkin-events.index')->middleware('page-perm:77,view');
+    Route::get('checkin-events/create', 'CheckinEventsController@create')->name('checkin-events.create')->middleware('page-perm:77,full');
+    Route::post('checkin-events', 'CheckinEventsController@store')->name('checkin-events.store')->middleware('page-perm:77,full');
+    Route::get('checkin-events/{id}/edit', 'CheckinEventsController@edit')->name('checkin-events.edit')->middleware('page-perm:77,full');
+    Route::put('checkin-events/{id}', 'CheckinEventsController@update')->name('checkin-events.update')->middleware('page-perm:77,full');
+    Route::delete('checkin-events/{id}', 'CheckinEventsController@destroy')->name('checkin-events.destroy')->middleware('page-perm:77,full');
+    Route::get('checkin-events/{id}/toggle-active', 'CheckinEventsController@toggleActive')->name('checkin-events.toggle-active')->middleware('page-perm:77,full');
+    Route::get('checkin-events/{id}/attendance', 'CheckinEventsController@attendance')->name('checkin-events.attendance')->middleware('page-perm:77,view');
+    Route::get('checkin-events/{id}/attendance/search', 'CheckinEventsController@searchMembers')->name('checkin-events.attendance.search')->middleware('page-perm:77,view');
+    Route::get('checkin-events/{id}/attendance/export', 'CheckinEventsController@exportAttendance')->name('checkin-events.attendance.export')->middleware('page-perm:77,view');
+    Route::post('checkin-events/{id}/attendance', 'CheckinEventsController@storeAttendance')->name('checkin-events.attendance.store')->middleware('page-perm:77,full');
     Route::get('competency-static', 'CompetencyStaticController@index')->name('competency-static.index');
     Route::post('competency-static', 'CompetencyStaticController@update')->name('competency-static.update');
 
@@ -285,33 +289,37 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     #delete News pdf used by the pdf_ajax_deleter
     Route::post("delete-news-pdf/{id}", 'NewsController@deletePdf');
 
-    //Album
-    Route::get('albums', 'AlbumController@index')->name('albums.index');
+    //Album — page 43 (Archive). Pilot for the new Profile permission system.
+    Route::get('albums', 'AlbumController@index')->name('albums.index')->middleware('page-perm:43,view');
 
-    Route::get('albums?type=videos', 'AlbumController@index')->name('albums.videos');
-    Route::get('albums?type=pdfs', 'AlbumController@index')->name('albums.pdfs');
-    Route::get('albums?type=images', 'AlbumController@index')->name('albums.images');
+    Route::get('albums?type=videos', 'AlbumController@index')->name('albums.videos')->middleware('page-perm:43,view');
+    Route::get('albums?type=pdfs', 'AlbumController@index')->name('albums.pdfs')->middleware('page-perm:43,view');
+    Route::get('albums?type=images', 'AlbumController@index')->name('albums.images')->middleware('page-perm:43,view');
 
-    Route::get('albums-create', 'AlbumController@create')->name('albums.create');
-    Route::post('albums-store', 'AlbumController@store')->name('albums.store');
-    Route::get('albums-edit/{id}', 'AlbumController@edit')->name('albums.edit');
-    Route::post('albums-update/{id}', 'AlbumController@update')->name('albums.update');
-    Route::post('albums-store', 'AlbumController@store')->name('albums.store');
-    Route::delete('albums-destroy/{id}', 'AlbumController@destroy')->name('albums.destroy');
+    Route::get('albums-create', 'AlbumController@create')->name('albums.create')->middleware('page-perm:43,full');
+    Route::post('albums-store', 'AlbumController@store')->name('albums.store')->middleware('page-perm:43,full');
+    Route::get('albums-edit/{id}', 'AlbumController@edit')->name('albums.edit')->middleware('page-perm:43,full');
+    Route::post('albums-update/{id}', 'AlbumController@update')->name('albums.update')->middleware('page-perm:43,full');
+    Route::post('albums-store', 'AlbumController@store')->name('albums.store')->middleware('page-perm:43,full');
+    Route::delete('albums-destroy/{id}', 'AlbumController@destroy')->name('albums.destroy')->middleware('page-perm:43,full');
 
     //Media
     //Route::post('media-update','MediaController@update');
+    // NOT tagged to page 43 — these 2 are a generic rich-text-editor image
+    // upload/delete helper used across many admin forms, not Archive-specific.
     Route::post('delete-image', 'MediaController@deleteImage')->name('image.delete');
     Route::post('upload-image', 'MediaController@uploadImage')->name('image.upload');
 
+    // NOT tagged — MediaController has no upload() method, this route 404s
+    // regardless (pre-existing dead route, left as-is).
     Route::post('media-upload', 'MediaController@upload')->name('media.upload');
 
-    Route::get('media-create/{type}/{id}', 'MediaController@create')->name('media.create');
-    Route::delete('media-delete/{id}', 'MediaController@destroy')->name('media.destroy');
-    Route::get('media-get/{album}', 'MediaController@index')->name('media.index');
-    Route::get('media-edit/{type}/{album}/{media}', 'MediaController@edit')->name('media.edit');
-    Route::post('media-update/{type}/{album}/{media}', 'MediaController@update')->name('media.update');
-    Route::post('media-store/{id}', 'MediaController@store')->name('media.store');
+    Route::get('media-create/{type}/{id}', 'MediaController@create')->name('media.create')->middleware('page-perm:43,full');
+    Route::delete('media-delete/{id}', 'MediaController@destroy')->name('media.destroy')->middleware('page-perm:43,full');
+    Route::get('media-get/{album}', 'MediaController@index')->name('media.index')->middleware('page-perm:43,view');
+    Route::get('media-edit/{type}/{album}/{media}', 'MediaController@edit')->name('media.edit')->middleware('page-perm:43,full');
+    Route::post('media-update/{type}/{album}/{media}', 'MediaController@update')->name('media.update')->middleware('page-perm:43,full');
+    Route::post('media-store/{id}', 'MediaController@store')->name('media.store')->middleware('page-perm:43,full');
 
     //Traking Module
     Route::get('district-coordinator', 'DistrictCoordinatorController@index')->name('district-coordinator.index');
