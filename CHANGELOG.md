@@ -8,6 +8,10 @@ All notable changes to the FPM-CMS (Laravel backend) are documented in this file
 
 - Bulk push notifications can now target specific groups via a "Groups" multi-select on the Send Notification form (`NotificationController`); leaving it empty still sends to all groups, matching the previous behavior.
 
+### Fixed
+
+- Adding check-in attendance for a member with a large `MemberId` (e.g. `90004300142`) threw a 500 error (`SQLSTATE[22003]: Numeric value out of range`) — `event_attendance.member_id` was created as `unsignedInteger` (max ~4.29 billion) instead of matching `fpm_users.MemberId`'s `bigint`. Widened the column to `bigint unsigned`.
+
 ## v1.0.0
 
 First production release after completing the Critical UI redesign, accessibility improvements, backend QR fixes, and membership application flow.
