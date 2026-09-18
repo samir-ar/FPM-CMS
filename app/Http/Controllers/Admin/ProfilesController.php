@@ -146,27 +146,25 @@ class ProfilesController extends Controller
         }
 
         // Show a page's extra-action checkboxes only while its level is
-        // set to View — hide them for None/Full, where they don't apply.
-        // Bound directly to each select (not document-level delegation) and
-        // listening for Select2's own select2:* events too, not just the
-        // plain "change" event — Select2 doesn\'t reliably bubble a native
-        // change event the way delegation on document expects.
+        // set to View — hide them for None/Full, where they don\'t apply.
+        // Polling instead of binding to a specific event — 2 different
+        // event-based approaches (plain "change" via delegation, then direct
+        // binding + Select2\'s own select2:* events) both failed to fire
+        // reliably here, so this just checks the actual value every 250ms
+        // instead of trying to catch the exact right event.
         $pageFields[] = '<script>
             $(function () {
-                function syncOne($box) {
-                    var pageId = $box.data("for-page");
-                    var level = $("select[name=\"permissions[" + pageId + "]\"]").val();
-                    $box.toggle(level === "view");
-                }
-                $(".extra-actions").each(function () {
-                    var $box = $(this);
-                    syncOne($box);
-                    var pageId = $box.data("for-page");
-                    $("select[name=\"permissions[" + pageId + "]\"]")
-                        .on("change select2:select select2:unselect select2:clear", function () {
-                            syncOne($box);
-                        });
-                });
+                setInterval(function () {
+                    $(".extra-actions").each(function () {
+                        var $box = $(this);
+                        var pageId = $box.data("for-page");
+                        var level = $("select[name=\"permissions[" + pageId + "]\"]").val();
+                        var shouldShow = (level === "view");
+                        if ($box.is(":visible") !== shouldShow) {
+                            $box.toggle(shouldShow);
+                        }
+                    });
+                }, 250);
             });
         </script>';
 
