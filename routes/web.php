@@ -148,8 +148,10 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::get('checkin-events/{id}/toggle-active', 'CheckinEventsController@toggleActive')->name('checkin-events.toggle-active')->middleware('page-perm:77,full');
     Route::get('checkin-events/{id}/attendance', 'CheckinEventsController@attendance')->name('checkin-events.attendance')->middleware('page-perm:77,view');
     Route::get('checkin-events/{id}/attendance/search', 'CheckinEventsController@searchMembers')->name('checkin-events.attendance.search')->middleware('page-perm:77,view');
-    Route::get('checkin-events/{id}/attendance/export', 'CheckinEventsController@exportAttendance')->name('checkin-events.attendance.export')->middleware('page-perm:77,view');
-    Route::post('checkin-events/{id}/attendance', 'CheckinEventsController@storeAttendance')->name('checkin-events.attendance.store')->middleware('page-perm:77,full');
+    // These 2 are independently grantable on top of View (see Profile edit form) —
+    // a View-only admin doesn't get them by default, but doesn't need Full either.
+    Route::get('checkin-events/{id}/attendance/export', 'CheckinEventsController@exportAttendance')->name('checkin-events.attendance.export')->middleware('page-perm:77,action:attendance.export');
+    Route::post('checkin-events/{id}/attendance', 'CheckinEventsController@storeAttendance')->name('checkin-events.attendance.store')->middleware('page-perm:77,action:attendance.store');
     // page 72
     Route::get('competency-static', 'CompetencyStaticController@index')->name('competency-static.index')->middleware('page-perm:72,view');
     Route::post('competency-static', 'CompetencyStaticController@update')->name('competency-static.update')->middleware('page-perm:72,full');

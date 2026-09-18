@@ -7,7 +7,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class ProfilePermission extends Model
 {
-    protected $fillable = ['profile_id', 'page_id', 'level'];
+    protected $fillable = ['profile_id', 'page_id', 'level', 'extra_actions'];
+
+    protected $casts = ['extra_actions' => 'array'];
 
     public function profile()
     {

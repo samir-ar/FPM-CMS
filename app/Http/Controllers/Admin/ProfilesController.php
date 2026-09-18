@@ -12,6 +12,17 @@ class ProfilesController extends Controller
 {
     use FormTrait;
 
+    // Named actions that can be granted independently on top of "View"
+    // (without going all the way to "Full") for specific pages. Add an
+    // entry here + gate the matching route with page-perm:<id>,action:<key>
+    // to offer the same fine-grained toggle for another page later.
+    private const PAGE_ACTIONS = [
+        77 => [ // Check-In Events
+            'attendance.store'  => 'Can add people to check-in (attendance)',
+            'attendance.export' => 'Can export attendance to Excel',
+        ],
+    ];
+
     public function index()
     {
         return view('components.table')->with([
@@ -84,6 +95,9 @@ class ProfilesController extends Controller
     private function form(Profile $profile, string $action, string $method)
     {
         $currentLevels = $profile->exists ? $profile->permissionMap() : [];
+        $currentExtraActions = $profile->exists
+            ? \App\V2\ProfilePermission::where('profile_id', $profile->id)->pluck('extra_actions', 'page_id')->all()
+            : [];
 
         $pages = Page::whereNull('parent_id')->orderBy('name')->get();
         $pageFields = [];
@@ -97,6 +111,23 @@ class ProfilesController extends Controller
                 null,
                 'col-md-4'
             );
+
+            // Extra per-action checkboxes for pages that have any defined
+            // (currently just Check-In Events) — grantable independently
+            // of the level above, so a View profile can still be given
+            // just "add people" or just "export" without full access.
+            foreach (self::PAGE_ACTIONS[$page->id] ?? [] as $actionKey => $label) {
+                $granted = in_array($actionKey, $currentExtraActions[$page->id] ?? [], true);
+                $pageFields[] = $this->drawHtml(
+                    'checkbox',
+                    '&nbsp;&nbsp;&nbsp;&nbsp;↳ ' . $label,
+                    "extra_actions[{$page->id}][]",
+                    $granted,
+                    $actionKey,
+                    null,
+                    'col-md-4'
+                );
+            }
         }
 
         return view('components.form')->with([
@@ -116,11 +147,7 @@ class ProfilesController extends Controller
                 [
                     'wrapper-class' => 'col-md-12',
                     'class'         => 'box-default',
-                    // Only Archive, Check-In Events, and APP USERS actually
-                    // enforce the View/Full distinction right now (Stage 1
-                    // pilot) — everywhere else, any level above None just
-                    // controls sidebar visibility, same as the old system.
-                    'box-header'    => 'Page Access — Full/View is only enforced today on Archive, Check-In Events, and APP USERS. Elsewhere, any level above None controls sidebar visibility only.',
+                    'box-header'    => 'Page Access — View/Full is enforced (blocks actual actions, not just the sidebar) on every page. A few pages also offer specific extra actions (indented, ↳) that can be granted on top of View without giving Full access.',
                     'form_fields'   => $pageFields,
                 ],
             ],
@@ -131,15 +158,20 @@ class ProfilesController extends Controller
     {
         $profile->permissions()->delete();
 
+        $extraActionsByPage = (array) $request->input('extra_actions', []);
+
         $rows = [];
         foreach ((array) $request->input('permissions', []) as $pageId => $level) {
             if ($level === 'view' || $level === 'full') {
                 $rows[] = [
-                    'profile_id' => $profile->id,
-                    'page_id'    => (int) $pageId,
-                    'level'      => $level,
-                    'created_at' => now(),
-                    'updated_at' => now(),
+                    'profile_id'     => $profile->id,
+                    'page_id'        => (int) $pageId,
+                    'level'          => $level,
+                    'extra_actions'  => !empty($extraActionsByPage[$pageId])
+                        ? json_encode(array_values($extraActionsByPage[$pageId]))
+                        : null,
+                    'created_at'     => now(),
+                    'updated_at'     => now(),
                 ];
             }
         }

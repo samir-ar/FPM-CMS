@@ -79,4 +79,22 @@ class User extends Authenticatable
     {
         return $this->permissionLevel($page_id) !== null;
     }
+
+    // A specific action (e.g. 'attendance.store') granted on top of a
+    // 'view' profile — lets a View-only admin do one specific Full-level
+    // thing without giving them Full access to the whole page. Meaningless
+    // to call this when level is already 'full' (that already allows
+    // everything) — CheckPagePermission only consults it in the 'view' case.
+    public function hasExtraAction($page_id, $action): bool
+    {
+        if (!$this->profile_id) {
+            return false;
+        }
+
+        $extraActions = \App\V2\ProfilePermission::where('profile_id', $this->profile_id)
+            ->where('page_id', $page_id)
+            ->value('extra_actions');
+
+        return in_array($action, $extraActions ?? [], true);
+    }
 }
