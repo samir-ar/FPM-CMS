@@ -7,6 +7,13 @@ All notable changes to the FPM-CMS (Laravel backend) are documented in this file
 ### Added
 
 - Bulk push notifications can now target specific groups via a "Groups" multi-select on the Send Notification form (`NotificationController`); leaving it empty still sends to all groups, matching the previous behavior.
+- Check-in attendance list (per event) now shows District, Town, Mobile Number, and Position (`LastUnitPosition`) for each attendee, plus an "Export to Excel" button (`CheckinAttendanceExport`).
+- APP USERS list is now searchable/sortable by Member ID, not just id/name/phone number.
+
+### Changed
+
+- Check-in scan result's "position" subtitle now comes strictly from `fpm_users.LastUnitPosition` — dropped the previous fallback to `Role` when `LastUnitPosition` was empty (shows nothing in that case, per explicit request, instead of falling back).
+- Check-in attendance table is now locked to 10 rows per page with the "Show entries" length dropdown removed.
 
 ## v1.0.0
 
