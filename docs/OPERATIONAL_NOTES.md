@@ -38,6 +38,11 @@ Before this, the "which pages can an admin see" checkboxes (`admins_pages` pivot
 - `CheckPagePermission` middleware (`page-perm:<page_id>,<view|full>` or `page-perm:<page_id>,action:<name>`) actually blocks the request server-side if the admin's assigned Profile doesn't grant enough — not just a hidden sidebar link.
 - Every admin needs a Profile assigned (Administrators → edit admin → Profile dropdown) or they're **fully blocked** from every permission-checked route. This is deliberate (secure-by-default for new admins), not a bug.
 - Manage Profiles at **Administrators → Profiles**.
+- **There are two separate, unrelated "create an admin" forms** — `Administrators → All Administrators → Add Admin` (`AdminsController`) and `Administrators → Add Account` (`ProfileController::addUserForm`/`addUser`, an older/legacy entry point). Both now have the Profile dropdown, but if a third one ever turns up, check it too — nothing enforces there's only one place admins get created.
+
+## Check-in events — inactive events block their own attendance
+
+A check-in event's منشط/غير نشط (`is_active`) toggle isn't just cosmetic on the admin side either: an inactive event's attendance page can't be opened, searched, exported, or added to (`CheckinEventsController::blockIfInactive()`, checked in every one of those 4 actions) — regardless of the admin's Profile permission level. This mirrors a rule the mobile app's own QR-scan flow already enforced (`ApiController::checkInMember`'s validation already required `is_active=1`); the admin side was simply missing it until 2026-09-18.
 
 ## Archive media storage — images vs. PDFs/videos
 
