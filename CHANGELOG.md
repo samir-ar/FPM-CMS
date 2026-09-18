@@ -7,6 +7,11 @@ All notable changes to the FPM-CMS (Laravel backend) are documented in this file
 ### Added
 
 - Bulk push notifications can now target specific groups via a "Groups" multi-select on the Send Notification form (`NotificationController`); leaving it empty still sends to all groups, matching the previous behavior.
+- **Admin Profiles & permissions system** — replaces the old per-admin page checkboxes (which only ever hid/showed sidebar links, never actually enforced anything) with a real, reusable Profile: a named set of None/View/Full permissions per page, assignable to many admins at once.
+  - Real server-side enforcement (`CheckPagePermission` middleware, `page-perm:<page_id>,<view|full>`) on all 39 top-level admin pages — a "View" profile is now actually blocked from create/edit/delete/toggle actions, not just hidden from the sidebar.
+  - Migration safety net: every existing admin was auto-assigned a "Super Admin" profile with Full access to every page, so nobody lost access when this shipped. New admins start with no profile (fully blocked) until deliberately assigned one.
+  - Per-action grants on top of View for specific pages (currently Check-In Events): "Can add people to check-in" and "Can export to Excel" can each be independently granted without giving Full access to the whole page.
+  - New "Profiles" admin screen (`Administrators → Profiles`) for creating/editing profiles and assigning them to admins.
 
 ## v1.0.0
 
