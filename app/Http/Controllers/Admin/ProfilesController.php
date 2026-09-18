@@ -147,14 +147,16 @@ class ProfilesController extends Controller
 
         // Show a page's extra-action checkboxes only while its level is
         // set to View — hide them for None/Full, where they don\'t apply.
-        // Polling instead of binding to a specific event — 2 different
-        // event-based approaches (plain "change" via delegation, then direct
-        // binding + Select2\'s own select2:* events) both failed to fire
-        // reliably here, so this just checks the actual value every 250ms
-        // instead of trying to catch the exact right event.
+        // Real root cause of every earlier failed attempt: this <script>
+        // renders inline in the body (as part of form_fields), BEFORE the
+        // layout\'s own jQuery/Select2 <script> tags load in the footer —
+        // so `$(...)` throws "$ is not defined" immediately, before any of
+        // the event-binding or polling code ever gets a chance to run. Defer
+        // with plain window.onload (no jQuery needed for that part) so this
+        // only runs once jQuery is actually guaranteed to exist.
         $pageFields[] = '<script>
-            $(function () {
-                setInterval(function () {
+            window.addEventListener("load", function () {
+                function sync() {
                     $(".extra-actions").each(function () {
                         var $box = $(this);
                         var pageId = $box.data("for-page");
@@ -164,7 +166,9 @@ class ProfilesController extends Controller
                             $box.toggle(shouldShow);
                         }
                     });
-                }, 250);
+                }
+                sync();
+                setInterval(sync, 250);
             });
         </script>';
 
