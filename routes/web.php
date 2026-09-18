@@ -144,6 +144,7 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::get('checkin-events/{id}/toggle-active', 'CheckinEventsController@toggleActive')->name('checkin-events.toggle-active');
     Route::get('checkin-events/{id}/attendance', 'CheckinEventsController@attendance')->name('checkin-events.attendance');
     Route::get('checkin-events/{id}/attendance/search', 'CheckinEventsController@searchMembers')->name('checkin-events.attendance.search');
+    Route::get('checkin-events/{id}/attendance/export', 'CheckinEventsController@exportAttendance')->name('checkin-events.attendance.export');
     Route::post('checkin-events/{id}/attendance', 'CheckinEventsController@storeAttendance')->name('checkin-events.attendance.store');
     Route::get('competency-static', 'CompetencyStaticController@index')->name('competency-static.index');
     Route::post('competency-static', 'CompetencyStaticController@update')->name('competency-static.update');
