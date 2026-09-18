@@ -122,21 +122,44 @@ class ProfilesController extends Controller
             // (currently just Check-In Events) — grantable independently
             // of the level above, so a View profile can still be given
             // just "add people" or just "export" without full access.
-            foreach (self::PAGE_ACTIONS[$page->id] ?? [] as $actionKey => $label) {
-                $granted = in_array($actionKey, $currentExtraActions[$page->id] ?? [], true);
-                $group .= $this->drawHtml(
-                    'checkbox',
-                    '&nbsp;&nbsp;&nbsp;&nbsp;↳ ' . $label,
-                    "extra_actions[{$page->id}][]",
-                    $granted,
-                    $actionKey,
-                    null,
-                    ''
-                );
+            // Only meaningful when the level is View (Full already implies
+            // every action, None means no access at all) — hidden by JS
+            // below unless View is the currently-selected value.
+            if ($pageActions = self::PAGE_ACTIONS[$page->id] ?? null) {
+                $checkboxes = '';
+                foreach ($pageActions as $actionKey => $label) {
+                    $granted = in_array($actionKey, $currentExtraActions[$page->id] ?? [], true);
+                    $checkboxes .= $this->drawHtml(
+                        'checkbox',
+                        '&nbsp;&nbsp;&nbsp;&nbsp;↳ ' . $label,
+                        "extra_actions[{$page->id}][]",
+                        $granted,
+                        $actionKey,
+                        null,
+                        ''
+                    );
+                }
+                $group .= '<div class="extra-actions" data-for-page="' . $page->id . '">' . $checkboxes . '</div>';
             }
 
             $pageFields[] = '<div class="col-md-4">' . $group . '</div>';
         }
+
+        // Show a page's extra-action checkboxes only while its level is
+        // set to View — hide them for None/Full, where they don't apply.
+        $pageFields[] = '<script>
+            $(function () {
+                function syncExtraActions() {
+                    $(".extra-actions").each(function () {
+                        var pageId = $(this).data("for-page");
+                        var level = $(\'select[name="permissions[\' + pageId + \']"]\').val();
+                        $(this).toggle(level === "view");
+                    });
+                }
+                syncExtraActions();
+                $(document).on("change", "select[name^=\'permissions[\']", syncExtraActions);
+            });
+        </script>';
 
         return view('components.form')->with([
             'layout'      => 'layouts.cms',
