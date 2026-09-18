@@ -102,14 +102,20 @@ class ProfilesController extends Controller
         $pages = Page::whereNull('parent_id')->orderBy('name')->get();
         $pageFields = [];
         foreach ($pages as $page) {
-            $pageFields[] = $this->drawHtml(
+            // Built as ONE combined col-md-4 cell (select + any extra-action
+            // checkboxes together), not as separate flat entries — Bootstrap's
+            // float grid here doesn't equalize row heights, so 3 independently
+            // floated fields can drift apart and land under the wrong
+            // neighboring page whenever an earlier label wraps to 2 lines.
+            // Grouping them into one div guarantees they stay together.
+            $group = $this->drawHtml(
                 'select-box',
                 $page->name,
                 "permissions[{$page->id}]",
                 $currentLevels[$page->id] ?? 'none',
                 ['none' => 'None', 'view' => 'View', 'full' => 'Full Control'],
                 null,
-                'col-md-4'
+                '' // no column class here — the outer wrapper below carries it
             );
 
             // Extra per-action checkboxes for pages that have any defined
@@ -118,16 +124,18 @@ class ProfilesController extends Controller
             // just "add people" or just "export" without full access.
             foreach (self::PAGE_ACTIONS[$page->id] ?? [] as $actionKey => $label) {
                 $granted = in_array($actionKey, $currentExtraActions[$page->id] ?? [], true);
-                $pageFields[] = $this->drawHtml(
+                $group .= $this->drawHtml(
                     'checkbox',
                     '&nbsp;&nbsp;&nbsp;&nbsp;↳ ' . $label,
                     "extra_actions[{$page->id}][]",
                     $granted,
                     $actionKey,
                     null,
-                    'col-md-4'
+                    ''
                 );
             }
+
+            $pageFields[] = '<div class="col-md-4">' . $group . '</div>';
         }
 
         return view('components.form')->with([
