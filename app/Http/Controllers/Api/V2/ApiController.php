@@ -1048,9 +1048,9 @@ class ApiController extends Controller
         }
 
         $member = \DB::table('fpm_users')->where('MemberId', request('member_id'))
-            ->first(['UserFullName', 'Role', 'LastUnitPosition']);
+            ->first(['UserFullName', 'LastUnitPosition']);
         $memberName = $member->UserFullName ?? null;
-        $position = (!empty($member->Role) ? $member->Role : ($member->LastUnitPosition ?? null)) ?: null;
+        $position = $member->LastUnitPosition ?: null;
 
         try {
             EventAttendance::create([
