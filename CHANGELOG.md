@@ -12,6 +12,7 @@ All notable changes to the FPM-CMS (Laravel backend) are documented in this file
   - Migration safety net: every existing admin was auto-assigned a "Super Admin" profile with Full access to every page, so nobody lost access when this shipped. New admins start with no profile (fully blocked) until deliberately assigned one.
   - Per-action grants on top of View for specific pages (currently Check-In Events): "Can add people to check-in" and "Can export to Excel" can each be independently granted without giving Full access to the whole page.
   - New "Profiles" admin screen (`Administrators → Profiles`) for creating/editing profiles and assigning them to admins.
+  - The "Add Account" form (`Administrators → Add Account`, a second/older admin-creation form separate from "All Administrators → Add Admin") also gained the Profile dropdown — previously it had no way to set one at all, silently creating admins with no profile (fully blocked).
 
 ## v1.0.0
 
