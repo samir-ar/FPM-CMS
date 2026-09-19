@@ -7,6 +7,7 @@ All notable changes to the FPM-CMS (Laravel backend) are documented in this file
 ### Added
 
 - Bulk push notifications can now target specific groups via a "Groups" multi-select on the Send Notification form (`NotificationController`); leaving it empty still sends to all groups, matching the previous behavior.
+- `php artisan app-users:dedupe` — cleans up legacy duplicate `app_users` rows left over from a bug fixed 2026-08-10 (soft-deleted rows were invisible to login lookup, so a phone-format mismatch spawned a new row instead of matching the existing one). Picks a canonical row per member (prefers verified + has a push token), merges any useful data from losing rows onto it, then soft-deletes the losers — never hard-deletes. Dry-run by default, `--commit` to apply. Run and verified on local (14,429 duplicate groups resolved, 17,409 rows soft-deleted, 0 remaining afterward) — not yet run on staging or production.
 
 ## v1.0.0
 
