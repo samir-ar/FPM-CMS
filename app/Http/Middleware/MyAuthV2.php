@@ -6,11 +6,13 @@ use Exception;
 use Closure;
 use App\Http\Traits\V2\TokenTrait;
 use App\Http\Traits\ResponseTrait;
+use App\Http\Traits\TracksUserActivityTrait;
 
 class MyAuthV2
 {
     use TokenTrait;
     use ResponseTrait;
+    use TracksUserActivityTrait;
 
     public function handle($request, Closure $next)
     {
@@ -38,6 +40,12 @@ class MyAuthV2
 
             }
 
+            if(!$user->member_status){
+                $error_code = 101;
+
+                throw new Exception('الحساب مغلق. يرجى التواصل مع أمانة سر التيار الوطني الحر.');
+            }
+
 
 
         } catch (Exception $e) {
@@ -46,6 +54,8 @@ class MyAuthV2
         }
 
         $request->merge(['user' => $user]);
+
+        $this->recordUserActivity($user->id);
 
         return $next($request);
     }

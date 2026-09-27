@@ -39,6 +39,7 @@ class AppUser extends Authenticatable
     public function volunteers()
     {
         return $this->belongsToMany(Volunteer::class, 'users_volunteers', 'user_id', 'volunteer_id')
+            ->withPivot('volunteer_field_id')
             ->withTimestamps();
     }
 

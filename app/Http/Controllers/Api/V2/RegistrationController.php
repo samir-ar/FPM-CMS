@@ -15,6 +15,7 @@ use App\Http\Requests;
 use App\Http\Traits\FileTrait;
 use App\Http\Traits\TokenTrait;
 use App\Http\Traits\ResponseTrait;
+use App\Http\Traits\TracksUserActivityTrait;
 use App\Http\Controllers\Controller;
 use App\Http\Repositories\UserRepository;
 use App\Http\Repositories\V2\RegistrationRepository;
@@ -25,6 +26,7 @@ class RegistrationController extends Controller
 {
     use FileTrait;
     use ResponseTrait;
+    use TracksUserActivityTrait;
 
 
     public function sendVerfication(Request $request, FpmApisRepository $fpmRepo, UserRepository $userRepo, RegistrationRepository $regRepo)
@@ -56,6 +58,10 @@ class RegistrationController extends Controller
 
         if(!isset($fpmResponse) && !$fpmResponse){
             return $this->api_error_response('invalid_parameters', 101, 'Invalid Credentials');
+        }
+
+        if(!$fpmResponse->member_status){
+            return $this->api_error_response('invalid_parameters', 101, 'الحساب مغلق. يرجى التواصل مع أمانة سر التيار الوطني الحر.');
         }
 
         $request->request->add(['image' => $fpmResponse->PersonImage, 'name' => $fpmResponse->UserFullName, 'token' => $token, 'email'=> $fpmResponse->Email]);
@@ -133,6 +139,8 @@ class RegistrationController extends Controller
         {
             return $this->api_error_response('invalid_parameters', 101, 'Invalid Pin Code');
         }
+
+        $this->recordUserActivity($user['id']);
 
         return $user;
     }
