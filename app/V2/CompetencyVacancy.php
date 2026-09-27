@@ -12,6 +12,7 @@ class CompetencyVacancy extends Model
         'start_date' => 'datetime',
         'end_date' => 'datetime',
         'is_active' => 'boolean',
+        'requires_nomination_category' => 'boolean',
     ];
 
     public static $types = [

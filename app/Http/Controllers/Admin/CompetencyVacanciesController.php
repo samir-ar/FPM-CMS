@@ -24,6 +24,9 @@ class CompetencyVacanciesController extends Controller
                 ->addColumn('status_badge', fn($row) => $row->is_active
                     ? "<span class='label label-success'>نشط</span>"
                     : "<span class='label label-default'>غير نشط</span>")
+                ->addColumn('category_badge', fn($row) => $row->requires_nomination_category
+                    ? "<span class='label label-info'>مفعّل</span>"
+                    : "<span class='label label-default'>غير مفعّل</span>")
                 ->addColumn('action', fn($row) =>
                     "<a href='" . route('admin.competency-vacancies.nominations', $row->id) . "' class='btn btn-xs btn-default' style='margin-right:4px'><i class='fa fa-users'></i> الترشيحات</a>" .
                     "<a href='" . route('admin.competency-vacancies.toggle-active', $row->id) . "' class='btn btn-xs " . ($row->is_active ? 'btn-warning' : 'btn-success') . "' style='margin-right:4px'>" .
@@ -31,7 +34,7 @@ class CompetencyVacanciesController extends Controller
                     "<a href='" . route('admin.competency-vacancies.edit', $row->id) . "' class='btn btn-xs btn-info' style='margin-right:4px'><i class='fa fa-edit'></i></a>" .
                     "<a data-toggle='modal' class='delete-link btn btn-xs btn-danger' href='#deleteModal' id='" .
                     route('admin.competency-vacancies.destroy', $row->id) . "'><i class='fa fa-trash'></i></a>")
-                ->rawColumns(['status_badge', 'action'])
+                ->rawColumns(['status_badge', 'category_badge', 'action'])
                 ->make(true);
         }
 
@@ -53,16 +56,17 @@ class CompetencyVacanciesController extends Controller
             'custom_btn'  =>
                 "<a href='" . route('admin.competency-vacancies.create') . "' class='btn btn-primary'>إضافة منصب</a>",
             'custom_btn1' => $filterButtons,
-            'headers'     => ['#', 'المسمى', 'النوع', 'تاريخ البدء', 'تاريخ الانتهاء', 'الحالة', 'Action'],
+            'headers'     => ['#', 'المسمى', 'النوع', 'تاريخ البدء', 'تاريخ الانتهاء', 'الحالة', 'نوع الترشيح', 'Action'],
             'action'      => route('admin.competency-vacancies.index'),
             'columns'     => json_encode([
-                ['data' => 'id',           'name' => 'id'],
-                ['data' => 'title',        'name' => 'title'],
-                ['data' => 'type_label',   'name' => 'type_label', 'searchable' => false, 'sortable' => false],
-                ['data' => 'start_date',   'name' => 'start_date'],
-                ['data' => 'end_date',     'name' => 'end_date'],
-                ['data' => 'status_badge', 'name' => 'status_badge', 'searchable' => false, 'sortable' => false],
-                ['data' => 'action',       'name' => 'action', 'searchable' => false, 'sortable' => false],
+                ['data' => 'id',             'name' => 'id'],
+                ['data' => 'title',          'name' => 'title'],
+                ['data' => 'type_label',     'name' => 'type_label', 'searchable' => false, 'sortable' => false],
+                ['data' => 'start_date',     'name' => 'start_date'],
+                ['data' => 'end_date',       'name' => 'end_date'],
+                ['data' => 'status_badge',   'name' => 'status_badge', 'searchable' => false, 'sortable' => false],
+                ['data' => 'category_badge', 'name' => 'category_badge', 'searchable' => false, 'sortable' => false],
+                ['data' => 'action',         'name' => 'action', 'searchable' => false, 'sortable' => false],
             ]),
         ]);
     }
@@ -93,6 +97,7 @@ class CompetencyVacanciesController extends Controller
                     $this->drawHtml('select-box', 'النوع', 'type', 'specific',
                         CompetencyVacancy::$types, '', 'col-md-12 required'),
                     $this->drawHtml('text', 'الوصف', 'description', null, null, '', 'col-md-12'),
+                    $this->drawHtml('checkbox', 'تفعيل قائمة "نوع الترشيح" عند التقديم لهذا المنصب', 'requires_nomination_category', null, null, '', 'col-md-12'),
                     $this->drawHtml('date-time-picker', 'تاريخ بدء الترشيح', 'start_date', null, null, '', 'col-md-6 required'),
                     $this->drawHtml('date-time-picker', 'تاريخ انتهاء الترشيح', 'end_date', null, null, '', 'col-md-6 required'),
                 ],
@@ -113,6 +118,7 @@ class CompetencyVacanciesController extends Controller
             'title'       => $request->title,
             'type'        => $request->type,
             'description' => $request->description ?: null,
+            'requires_nomination_category' => $request->boolean('requires_nomination_category'),
             'start_date'  => $request->start_date,
             'end_date'    => $request->end_date,
         ]);
@@ -139,6 +145,7 @@ class CompetencyVacanciesController extends Controller
                     $this->drawHtml('select-box', 'النوع', 'type', $vacancy->type,
                         CompetencyVacancy::$types, '', 'col-md-12 required'),
                     $this->drawHtml('text', 'الوصف', 'description', $vacancy->description, null, '', 'col-md-12'),
+                    $this->drawHtml('checkbox', 'تفعيل قائمة "نوع الترشيح" عند التقديم لهذا المنصب', 'requires_nomination_category', $vacancy->requires_nomination_category, null, '', 'col-md-12'),
                     $this->drawHtml('date-time-picker', 'تاريخ بدء الترشيح', 'start_date', $vacancy->start_date->format('Y-m-d H:i'), null, '', 'col-md-6 required'),
                     $this->drawHtml('date-time-picker', 'تاريخ انتهاء الترشيح', 'end_date', $vacancy->end_date->format('Y-m-d H:i'), null, '', 'col-md-6 required'),
                 ],
@@ -161,6 +168,7 @@ class CompetencyVacanciesController extends Controller
             'title'       => $request->title,
             'type'        => $request->type,
             'description' => $request->description ?: null,
+            'requires_nomination_category' => $request->boolean('requires_nomination_category'),
             'start_date'  => $request->start_date,
             'end_date'    => $request->end_date,
         ]);
@@ -201,11 +209,12 @@ class CompetencyVacanciesController extends Controller
             'table_title' => '',
             'slug'        => 'competency-vacancies-nominations-' . $vacancy->id,
             'custom_btn'  => "<a href='" . route('admin.competency-vacancies.index') . "' class='btn btn-default'>عودة الى المناصب</a>",
-            'headers'     => ['#', 'النوع', 'الاسم الكامل', 'القضاء', 'البلدة', 'رقم الهاتف', 'المهنة', 'المستوى التعليمي', 'الاختصاص', 'سبب الترشيح', 'مقدم الطلب', 'Action'],
+            'headers'     => ['#', 'النوع', 'نوع الترشيح', 'الاسم الكامل', 'القضاء', 'البلدة', 'رقم الهاتف', 'المهنة', 'المستوى التعليمي', 'الاختصاص', 'سبب الترشيح', 'مقدم الطلب', 'Action'],
             'action'      => route('admin.competency-vacancies.nominations', $vacancy->id),
             'columns'     => json_encode([
                 ['data' => 'id',                       'name' => 'id'],
                 ['data' => 'nomination_type_ar',        'name' => 'nomination_type', 'searchable' => false],
+                ['data' => 'nomination_category',       'name' => 'nomination_category'],
                 ['data' => 'full_name',                 'name' => 'full_name'],
                 ['data' => 'district',                  'name' => 'district'],
                 ['data' => 'town',                      'name' => 'town'],
