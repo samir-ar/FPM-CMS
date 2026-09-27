@@ -47,13 +47,55 @@ class PollsController extends Controller
                     return "<a href='" . route('admin.userPolls.index').'?poll_id='. $row->id ."'>Answers</a>";
                 })
 
+                ->addColumn('status_badge', function($row){
+                    $now = \Carbon\Carbon::now();
+                    $expiry = \Carbon\Carbon::parse($row->expiry_date);
+                    $graceEnd = $expiry->copy()->addHours(24);
+
+                    // Once the 24h post-expiry grace window is fully over, the poll
+                    // is permanently gone from the app regardless of "show" — the
+                    // toggle would have no visible effect, so hide it entirely.
+                    if ($now->gte($graceEnd)) {
+                        return "<span class='label label-default'>Expired</span>";
+                    }
+
+                    $isInGrace = $now->gte($expiry);
+
+                    if ($row->show) {
+                        $label = 'Active';
+                        if ($isInGrace) {
+                            $remaining = $now->diff($graceEnd);
+                            $label .= ' (' . $remaining->format('%hh %im left') . ')';
+                        }
+                        $badge = "<span class='label label-success'>{$label}</span>";
+                        $toggle = "<a href='" . route('admin.polls.toggle-active', $row->id) . "' class='btn btn-xs btn-warning' style='margin-left:8px;'>Disable</a>";
+                    } else {
+                        $badge = "<span class='label label-default'>Inactive</span>";
+                        $toggle = "<a href='" . route('admin.polls.toggle-active', $row->id) . "' class='btn btn-xs btn-success' style='margin-left:8px;'>Enable</a>";
+                    }
+
+                    return $badge . $toggle;
+                })
+
+                ->addColumn('guest_badge', function($row){
+                    if ($row->show_for_guest) {
+                        $badge = "<span class='label label-success'>Guests Allowed</span>";
+                        $toggle = "<a href='" . route('admin.polls.toggle-guest-access', $row->id) . "' class='btn btn-xs btn-warning' style='margin-left:8px;'>Make Members Only</a>";
+                    } else {
+                        $badge = "<span class='label label-default'>Members Only</span>";
+                        $toggle = "<a href='" . route('admin.polls.toggle-guest-access', $row->id) . "' class='btn btn-xs btn-success' style='margin-left:8px;'>Allow Guests</a>";
+                    }
+
+                    return $badge . $toggle;
+                })
+
                 ->addColumn('action', function($row){
                     return "<a class='edit-link' href='" . route('admin.polls.edit', $row->id) . "'>".
                         '<i class="fa fa-edit" aria-hidden="true"></i></a>'.
                         "<a data-toggle='modal' class='delete-link' href='#deleteModal' id='" .route('admin.polls.destroy', $row->id) . "'>".
                         "<i class='fa fa-trash' style='color: red;' aria-hidden='true'></i>";
                 })
-                ->rawColumns(['id', 'question', 'details', 'created_at', 'action', 'answers','my_question', 'my_details'])
+                ->rawColumns(['id', 'question', 'details', 'created_at', 'action', 'answers','my_question', 'my_details', 'status_badge', 'guest_badge'])
                 ->make(true);
         }
 
@@ -64,7 +106,7 @@ class PollsController extends Controller
             'table_title' => '',
             'slug'		=> 'Poll',
             'custom_btn' => "<a href='" . route('admin.polls.create') ."' class='btn btn-primary'>Add Polls</a>",
-            'headers'	=> ['id', 'Question',   'Archive Date', 'Answers', 'Action'],
+            'headers'	=> ['id', 'Question',   'Archive Date', 'Answers', 'Status', 'Guest Access', 'Action'],
             'action' => route('admin.polls.index'),
             'columns' => json_encode([
                 ['data' => 'id', 'name' => 'id'],
@@ -72,6 +114,8 @@ class PollsController extends Controller
                 //['data' =>  'my_details', 'name'=> 'my_details'],
                 ['data' =>  'created_at', 'name'=> 'created_at'],
                 ['data' =>  'answers', 'name'=> 'answers'],
+                ['data' =>  'status_badge', 'name'=> 'status_badge', 'searchable' => false, 'sortable' => false],
+                ['data' =>  'guest_badge', 'name'=> 'guest_badge', 'searchable' => false, 'sortable' => false],
                 ['data' => 'action', 'name' => 'action', 'searchable' => false, 'sortable' => false],
             ]),
 
@@ -108,6 +152,7 @@ class PollsController extends Controller
 
 
                         $this->drawHtml('checkbox', 'Show', 'show', true, null, '', 'col-md-12'),
+                        $this->drawHtml('checkbox', 'Allow Guests to See & Vote', 'show_for_guest', false, null, '', 'col-md-12'),
                     ],
                 ],
 
@@ -178,9 +223,10 @@ class PollsController extends Controller
                 'ar' => request('details_ar'),
             ]);
             */
-            $poll->strict_lang = request('strict_lang');
+            $poll->strict_lang = request('strict_lang') ?: 'ar';
 
             $poll->show = request('show') ? true : false;
+            $poll->show_for_guest = request('show_for_guest') ? true : false;
             $poll->expiry_date = Carbon::parse(request('expiry_date'))->toDateTimeString();
 
             $poll->save();
@@ -264,7 +310,7 @@ class PollsController extends Controller
                     'class' => 'box-default',
                     'box-header' => 'Content',
                     'form_fields' => [
-                        $this->drawHtml('select-box', 'Force Language', 'strict_lang', null, $this->strictLang(), '', 'col-md-12 required'),
+                        $this->drawHtml('select-box', 'Force Language', 'strict_lang', $poll->strict_lang, $this->strictLang(), '', 'col-md-12 required'),
 
                         $this->drawHtml('small_text', 'Question', 'question', $poll->getTranslation('question', 'en') , null, '', 'col-md-12 required'),
                         $this->drawHtml('small_text', 'Question(Arabic)', 'question_ar', $poll->getTranslation('question', 'ar') , null, '', 'col-md-12 right-to-left required'),
@@ -275,6 +321,7 @@ class PollsController extends Controller
                         */
                         $this->drawHtml('date-time-picker', 'Expiry Date', 'expiry_date', $poll->expiry_date, null, '', 'col-md-12 required'),
                         $this->drawHtml('checkbox', 'Show', 'show', $poll->show, null, '', 'col-md-12'),
+                        $this->drawHtml('checkbox', 'Allow Guests to See & Vote', 'show_for_guest', $poll->show_for_guest, null, '', 'col-md-12'),
                     ],
                 ],
 
@@ -326,23 +373,23 @@ class PollsController extends Controller
             */
 
             $poll->show = request('show') ? true : false;
+            $poll->show_for_guest = request('show_for_guest') ? true : false;
             $poll->expiry_date = Carbon::parse(request('expiry_date'))->toDateTimeString();
-            $poll->strict_lang = request('strict_lang');
+            $poll->strict_lang = request('strict_lang') ?: ($poll->strict_lang ?: 'ar');
 
             $poll->save();
 
             //remove options
-            $options = request('options');
-            $options = collect($options);
+            $options = collect(request('options', []));
 
-            $options = array_filter($options->pluck('id')->toArray());
+            $submittedIds = array_filter($options->pluck('id')->toArray());
 
-            $poll->options->each(function($o) use ($options){
-               if(!in_array($o->id, $options))
+            $poll->options->each(function($o) use ($submittedIds){
+               if(!in_array($o->id, $submittedIds))
                    $o->delete();
             });
 
-            foreach(request('options') as $o) {
+            foreach(request('options', []) as $o) {
 
                 if(!$o['name'])
                     continue;
@@ -377,6 +424,28 @@ class PollsController extends Controller
     {
         Poll::find($id)->delete();
         return back()->with('message', 'Poll Deleted Successfully');
+    }
+
+    public function toggleActive($id)
+    {
+        $poll = Poll::findOrFail($id);
+        $poll->show = !$poll->show;
+        $poll->save();
+
+        return back()->with('message', $poll->show
+            ? 'Poll enabled — now visible in the app.'
+            : 'Poll disabled — hidden from the app immediately.');
+    }
+
+    public function toggleGuestAccess($id)
+    {
+        $poll = Poll::findOrFail($id);
+        $poll->show_for_guest = !$poll->show_for_guest;
+        $poll->save();
+
+        return back()->with('message', $poll->show_for_guest
+            ? 'Guests can now see and vote on this poll.'
+            : 'This poll is members-only again.');
     }
 
     private function strictLang()
