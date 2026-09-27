@@ -105,6 +105,22 @@ class CommunityController extends Controller
         ];
     }
 
+    public function getSocialLinks(Request $request)
+    {
+        $links = \App\V2\SocialLink::where('is_active', true)
+            ->orderBy('order')
+            ->get();
+
+        return response()->json($links->map(function ($l) {
+            return [
+                'id' => $l->id,
+                'platform' => $l->platform,
+                'url' => $l->url,
+                'icon_key' => $l->icon_key ?: 'website',
+            ];
+        }));
+    }
+
     public function getBusinessTypes(Request $request)
     {
         $types = BusinessType::get()->sortBy(fn($t) => $t->getTranslation('name', 'ar'))->values();
@@ -141,6 +157,7 @@ class CommunityController extends Controller
         }
 
         $members = DirectoryMember::where('business_type_id', request('business_type_id'))
+            ->where('is_active', true)
             ->orderBy('order')
             ->get();
 
@@ -161,6 +178,49 @@ class CommunityController extends Controller
                     : null,
             ];
         }));
+    }
+
+    /**
+     * A member's own directory listing(s), by member_id — so Settings can show
+     * a visibility toggle only when they actually have one, and reflect its
+     * current on/off state.
+     */
+    public function getMyDirectoryListingStatus(Request $request)
+    {
+        $user = $request->user;
+
+        $listings = DirectoryMember::where('member_id', $user->member_id)->get();
+
+        if ($listings->isEmpty()) {
+            return response()->json(['has_listing' => false, 'is_active' => false]);
+        }
+
+        return response()->json([
+            'has_listing' => true,
+            // If they have more than one listing (multiple categories), treat
+            // it as "on" only when every one of them is currently visible.
+            'is_active' => $listings->every(fn($m) => (bool) $m->is_active),
+        ]);
+    }
+
+    public function toggleMyDirectoryListing(Request $request)
+    {
+        $user = $request->user;
+
+        $listings = DirectoryMember::where('member_id', $user->member_id)->get();
+
+        if ($listings->isEmpty()) {
+            return $this->api_error_response('invalid_parameters', 101, 'No directory listing found for this member');
+        }
+
+        $newState = !$listings->every(fn($m) => (bool) $m->is_active);
+
+        foreach ($listings as $listing) {
+            $listing->is_active = $newState;
+            $listing->save();
+        }
+
+        return response()->json(['has_listing' => true, 'is_active' => $newState]);
     }
 
     public function getCommunityPosts(Request $request)

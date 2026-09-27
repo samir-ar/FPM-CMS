@@ -40,14 +40,15 @@ class DirectoryMembersImport implements ToCollection
 
             $categoryName = trim((string) ($row[0] ?? ''));
             $name = trim((string) ($row[1] ?? ''));
-            $specialty = trim((string) ($row[2] ?? ''));
-            $phone = trim((string) ($row[3] ?? ''));
-            $country = trim((string) ($row[4] ?? ''));
-            $governorate = trim((string) ($row[5] ?? ''));
-            $district = trim((string) ($row[6] ?? ''));
-            $town = trim((string) ($row[7] ?? ''));
-            $syndicateNumber = trim((string) ($row[8] ?? ''));
-            $order = trim((string) ($row[9] ?? ''));
+            $memberId = trim((string) ($row[2] ?? ''));
+            $specialty = trim((string) ($row[3] ?? ''));
+            $phone = trim((string) ($row[4] ?? ''));
+            $country = trim((string) ($row[5] ?? ''));
+            $governorate = trim((string) ($row[6] ?? ''));
+            $district = trim((string) ($row[7] ?? ''));
+            $town = trim((string) ($row[8] ?? ''));
+            $syndicateNumber = trim((string) ($row[9] ?? ''));
+            $order = trim((string) ($row[10] ?? ''));
 
             if ($categoryName === '' || $name === '') {
                 $this->skipped++;
@@ -66,6 +67,7 @@ class DirectoryMembersImport implements ToCollection
             DirectoryMember::create([
                 'business_type_id' => $category->id,
                 'name' => $name,
+                'member_id' => $memberId ?: null,
                 'specialty' => $specialty ?: null,
                 'phone' => $phone ?: null,
                 'country' => $country ?: null,

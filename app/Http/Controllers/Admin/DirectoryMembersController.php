@@ -40,13 +40,20 @@ class DirectoryMembersController extends Controller
                 ->addColumn('business_type', function ($row) {
                     return $row->businessType->name ?? 'N/A';
                 })
+                ->addColumn('status_badge', function ($row) {
+                    $badge = "<span class='label label-" . ($row->is_active ? 'success' : 'default') . "'>" .
+                        ($row->is_active ? 'Active' : 'Inactive') . "</span>";
+                    $toggle = "<a href='" . route('admin.directory-members.toggle-active', $row->id) . "' class='btn btn-xs " . ($row->is_active ? 'btn-warning' : 'btn-success') . "' style='margin-left:8px;'>" .
+                        ($row->is_active ? 'Disable' : 'Enable') . "</a>";
+                    return $badge . $toggle;
+                })
                 ->addColumn('action', function ($row) {
                     return "<a class='edit-link' href='" . route('admin.directory-members.edit', $row->id) . "'>" .
                         '<i class="fa fa-edit" aria-hidden="true"></i></a>' .
                         "<a data-toggle='modal' class='delete-link' href='#deleteModal' id='" . route('admin.directory-members.destroy', $row->id) . "'>" .
                         "<i class='fa fa-trash' style='color: red;' aria-hidden='true'></i>";
                 })
-                ->rawColumns(['id', 'my_image', 'name', 'business_type', 'phone', 'specialty', 'country', 'governorate', 'district', 'town', 'syndicate_number', 'order', 'action'])
+                ->rawColumns(['id', 'my_image', 'name', 'member_id', 'business_type', 'phone', 'specialty', 'country', 'governorate', 'district', 'town', 'syndicate_number', 'order', 'status_badge', 'action'])
                 ->make(true);
         }
 
@@ -58,12 +65,13 @@ class DirectoryMembersController extends Controller
             'custom_btn' =>
                 "<a href='" . route('admin.directory-members.create') . "' class='btn btn-primary' style='margin-right:6px'>Add Person</a>" .
                 "<a href='" . route('admin.directory-members.import-form') . "' class='btn btn-success'>استيراد Excel</a>",
-            'headers' => ['id', 'Image', 'Name', 'Category', 'Specialty', 'Country', 'Governorate', 'District', 'Town', 'Syndicate #', 'Phone', 'Order', 'Action'],
+            'headers' => ['id', 'Image', 'Name', 'Member ID', 'Category', 'Specialty', 'Country', 'Governorate', 'District', 'Town', 'Syndicate #', 'Phone', 'Order', 'Status', 'Action'],
             'action' => route('admin.directory-members.index'),
             'columns' => json_encode([
                 ['data' => 'id', 'name' => 'id'],
                 ['data' => 'my_image', 'name' => 'my_image', 'searchable' => false, 'sortable' => false],
                 ['data' => 'name', 'name' => 'name'],
+                ['data' => 'member_id', 'name' => 'member_id'],
                 ['data' => 'business_type', 'name' => 'business_type'],
                 ['data' => 'specialty', 'name' => 'specialty'],
                 ['data' => 'country', 'name' => 'country'],
@@ -73,6 +81,7 @@ class DirectoryMembersController extends Controller
                 ['data' => 'syndicate_number', 'name' => 'syndicate_number'],
                 ['data' => 'phone', 'name' => 'phone'],
                 ['data' => 'order', 'name' => 'order'],
+                ['data' => 'status_badge', 'name' => 'status_badge', 'searchable' => false, 'sortable' => false],
                 ['data' => 'action', 'name' => 'action', 'searchable' => false, 'sortable' => false],
             ]),
         ]);
@@ -95,6 +104,7 @@ class DirectoryMembersController extends Controller
                         $this->drawHtml('small_text', 'Name', 'name', $request->old('name'), null, '', 'col-md-6 required'),
                         $this->drawHtml('select-box', 'Category', 'business_type_id', '', BusinessType::all()->pluck('name', 'id'), '', 'col-md-6 required'),
 
+                        $this->drawHtml('small_text', 'Member ID', 'member_id', $request->old('member_id'), null, '', 'col-md-6'),
                         $this->drawHtml('small_text', 'Specialty', 'specialty', $request->old('specialty'), null, '', 'col-md-6'),
                         $this->drawHtml('small_text', 'Phone', 'phone', $request->old('phone'), null, '', 'col-md-6'),
 
@@ -106,6 +116,7 @@ class DirectoryMembersController extends Controller
 
                         $this->drawHtml('image', 'Photo', 'image', null, null, '', 'col-md-12'),
                         $this->drawHtml('number', 'Order', 'order', $request->old('order'), null, '', 'col-md-12'),
+                        $this->drawHtml('checkbox', 'Enabled (shows in app)', 'is_active', true, null, '', 'col-md-12'),
                     ],
                 ],
             ],
@@ -122,6 +133,7 @@ class DirectoryMembersController extends Controller
         $member = new DirectoryMember();
         $member->name = request('name');
         $member->business_type_id = request('business_type_id');
+        $member->member_id = request('member_id');
         $member->specialty = request('specialty');
         $member->phone = request('phone');
         $member->country = request('country');
@@ -132,6 +144,7 @@ class DirectoryMembersController extends Controller
         $member->order = request('order') !== null && request('order') !== ''
             ? request('order')
             : (DirectoryMember::max('order') ?? 0) + 1;
+        $member->is_active = $request->has('is_active');
 
         if (request('image')) {
             $member->image = $this->moveFile(request('image'), 'images/directory_members');
@@ -162,6 +175,7 @@ class DirectoryMembersController extends Controller
                         $this->drawHtml('small_text', 'Name', 'name', $member->name, null, '', 'col-md-6 required'),
                         $this->drawHtml('select-box', 'Category', 'business_type_id', $member->business_type_id, BusinessType::all()->pluck('name', 'id'), '', 'col-md-6 required'),
 
+                        $this->drawHtml('small_text', 'Member ID', 'member_id', $member->member_id, null, '', 'col-md-6'),
                         $this->drawHtml('small_text', 'Specialty', 'specialty', $member->specialty, null, '', 'col-md-6'),
                         $this->drawHtml('small_text', 'Phone', 'phone', $member->phone, null, '', 'col-md-6'),
 
@@ -173,6 +187,7 @@ class DirectoryMembersController extends Controller
 
                         $this->drawHtml('image', 'Photo', 'image', $member->image ? 'images/directory_members/' . $member->image : null, null, '', 'col-md-12'),
                         $this->drawHtml('number', 'Order', 'order', $member->order, null, '', 'col-md-12'),
+                        $this->drawHtml('checkbox', 'Enabled (shows in app)', 'is_active', $member->is_active, null, '', 'col-md-12'),
                     ],
                 ],
             ],
@@ -194,6 +209,7 @@ class DirectoryMembersController extends Controller
 
         $member->name = request('name');
         $member->business_type_id = request('business_type_id');
+        $member->member_id = request('member_id');
         $member->specialty = request('specialty');
         $member->phone = request('phone');
         $member->country = request('country');
@@ -205,6 +221,7 @@ class DirectoryMembersController extends Controller
         if (request('order') !== null && request('order') !== '') {
             $member->order = request('order');
         }
+        $member->is_active = $request->has('is_active');
 
         if (request('image')) {
             $this->removeFile('images/directory_members/' . $member->image);
@@ -227,6 +244,17 @@ class DirectoryMembersController extends Controller
         $member->delete();
 
         return back()->with('message', 'Person Deleted Successfully');
+    }
+
+    public function toggleActive($id)
+    {
+        $member = DirectoryMember::findOrFail($id);
+        $member->is_active = !$member->is_active;
+        $member->save();
+
+        return back()->with('message', $member->is_active
+            ? 'Person enabled — now visible in the app.'
+            : 'Person disabled — hidden from the app.');
     }
 
     public function downloadTemplate()
