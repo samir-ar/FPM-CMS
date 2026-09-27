@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use DataTables;
 use App\Volunteer;
+use App\V2\VolunteerField;
 use Illuminate\Http\Request;
 use App\Http\Traits\FormTrait;
 use App\Http\Traits\FileTrait;
@@ -27,6 +28,13 @@ class VolunteerUsersController extends Controller
                     return Volunteer::find(request('volunteer_id'))->title;
                 })
 
+                ->addColumn('field', function($row){
+                    $fieldId = $row->pivot->volunteer_field_id ?? null;
+                    if (!$fieldId) return '—';
+                    $field = VolunteerField::find($fieldId);
+                    return $field ? $field->getTranslation('name', 'en') : '—';
+                })
+
                 ->addColumn('date', function($row){
                     return $row->created_at;
                 })
@@ -40,7 +48,7 @@ class VolunteerUsersController extends Controller
             'table_title' => '',
             'slug'		=> 'Poll',
             //'custom_btn' => "<a href='" . route('admin.userPolls.create') ."' class='btn btn-primary'></a>",
-            'headers'	=> ['id', 'FPM ID', 'Name', 'Phone Number', 'Position', 'Created At'],
+            'headers'	=> ['id', 'FPM ID', 'Name', 'Phone Number', 'Position', 'Field', 'Created At'],
             'action' => route('admin.volunteerUsers.index').'?volunteer_id='.request('volunteer_id'),
             'columns' => json_encode([
                 ['data' => 'id', 'name' => 'id'],
@@ -48,6 +56,7 @@ class VolunteerUsersController extends Controller
                 ['data' =>  'name', 'name'=> 'name'],
                 ['data' =>  'phone_number', 'name'=> 'phone_number'],
                 ['data' =>  'position', 'name'=> 'position'],
+                ['data' =>  'field', 'name'=> 'field', 'searchable' => false, 'sortable' => false],
                 ['data' =>  'date', 'name'=> 'date', 'searchable' => false, 'sortable' => false],
             ]),
 

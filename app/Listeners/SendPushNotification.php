@@ -80,6 +80,14 @@ class SendPushNotification
             $content_en = Str::limit(strip_tags($data['text']), 240);
             $content_ar = isset($data['text_ar']) ? Str::limit(strip_tags($data['text_ar']), 240) : '';
 
+            if (!empty($data['event_date'])) {
+                $eventDate = \Carbon\Carbon::parse($data['event_date']);
+                $content_en .= ' (' . $eventDate->format('M d, Y g:i A') . ')';
+                if ($content_ar !== '') {
+                    $content_ar .= ' (' . $eventDate->format('Y-m-d H:i') . ')';
+                }
+            }
+
             //WORK AROUND replace the &quot; (double quote) and &#39; (single quote) with '
             $content_en = str_replace("&quot;", "'", $content_en);
             $content_ar = str_replace("&quot;", "'", $content_ar);
@@ -102,10 +110,24 @@ class SendPushNotification
                 $player_ids = ['07c9cf0e-8051-11ec-9940-4ef164ba95fd'];
             }
 
+            $title_en = $data['title'];
+            $title_ar = isset($data['title_ar']) ? Str::limit($data['title_ar'], 65) : '';
+
+            // Force every recipient to receive a single language, regardless of
+            // their device locale, by mirroring that language into both keys.
+            $notificationLanguage = $data['notification_language'] ?? 'both';
+            if ($notificationLanguage === 'en') {
+                $title_ar = $title_en;
+                $content_ar = $content_en;
+            } elseif ($notificationLanguage === 'ar') {
+                $title_en = $title_ar;
+                $content_en = $content_ar;
+            }
+
             $info = [
                 'headings' => [
-                    'en' => $data['title'],
-                    'ar' => isset($data['title_ar']) ? Str::limit($data['title_ar'], 65) : '',
+                    'en' => $title_en,
+                    'ar' => $title_ar,
                 ],
                 'contents' => [
                     'en' => remove_special_characters($content_en),

@@ -27,7 +27,13 @@ class Volunteer extends Model
     public function users()
     {
         return $this->belongsToMany(AppUser::class, 'users_volunteers', 'volunteer_id', 'user_id')
+            ->withPivot('volunteer_field_id')
             ->withTimestamps();
+    }
+
+    public function fields()
+    {
+        return $this->hasMany(VolunteerField::class, 'volunteer_id', 'id');
     }
 
 }
