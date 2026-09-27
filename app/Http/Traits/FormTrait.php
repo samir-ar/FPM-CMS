@@ -330,6 +330,23 @@ trait FormTrait
             $text .= "</select></div>";
         }
 
+        elseif($type == 'icon-select'){
+            // $options: [key => [label, faIconClass]]. Renders a select2 dropdown
+            // that shows each option's actual Font Awesome icon in the list and
+            // in the selected value (uses the select2-font-awesome init already
+            // wired up in layouts/cms.blade.php).
+            $options = $options ?: [];
+            $text = '<div class="form-group '. ($class?:'') . '">' .
+                '<label>' .$label .'</label>'.
+                '<select name="'. $name .'" class="form-control select2 font-awesome" style="width: 100%;">';
+
+            foreach($options as $key => $opt){
+                $text .= "<option value='" . $key . "' data-icon='" . $opt[1] . "'" . ($key == $default ? ' selected' : '') . ">" . $opt[0] . "</option>";
+            }
+
+            $text .= "</select></div>";
+        }
+
         elseif($type == 'multiple-select-box'){
             $options  = $options ? : [];
             $default = $default ? : [];

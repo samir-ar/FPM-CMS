@@ -397,7 +397,7 @@
 
 
         //Initialize Select2 Elements
-        $('.select2').not('font-awesome').select2();
+        $('.select2').not('.font-awesome').select2();
 
         function formatText (icon) {
             return $('<span><i class="fa ' + $(icon.element).data('icon') + '"></i> ' + icon.text + '</span>');
