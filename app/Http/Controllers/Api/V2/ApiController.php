@@ -49,6 +49,7 @@ use App\V2\CompetencyProfile;
 use App\V2\CompetencyNomination;
 use App\V2\InternalElection;
 use App\V2\InternalElectionCandidate;
+use App\V2\ElectionState;
 
 use GuzzleHttp\Client;
 
@@ -108,8 +109,13 @@ class ApiController extends Controller
             'date_of_birth' => $fpmUser?->date_of_birth ?? $user->date_of_birth,
             'gender' => $fpmUser?->gender ?? $user->gender,
             'last_unit_position' => $fpmUser?->LastUnitPosition,
+            'last_position_unit_name' => $fpmUser?->LastPositionUnitName,
             'nashat_unit' => $fpmUser?->NashatUnit,
             'noufous_unit' => $fpmUser?->NoufousUnit,
+            // Not restricted to published elections on purpose — a candidate
+            // should be able to see and start reaching out to their voters
+            // before the election is officially published, not just once it goes live.
+            'is_internal_election_candidate' => InternalElectionCandidate::where('member_id', $user->member_id)->exists(),
         ]);
     }
 
@@ -370,7 +376,7 @@ class ApiController extends Controller
             $resolved = \App\V2\AppUser::where('token', $request->header('token'))->first();
             if ($resolved) $request->merge(['user' => $resolved, 'groups' => $resolved->groups->pluck('GroupId')->toArray()]);
         }
-        $events = $repo->getEventsPreviousByGroup(request('groups'));
+        $events = $repo->getEventsPreviousByGroup(request('groups'), !request('user'));
 
         $user = request('user');
 
@@ -632,7 +638,7 @@ class ApiController extends Controller
             $resolved = \App\V2\AppUser::where('token', $request->header('token'))->first();
             if ($resolved) $request->merge(['user' => $resolved, 'groups' => $resolved->groups->pluck('GroupId')->toArray()]);
         }
-        $events = $repo->getEventsUpcomingByGroup(request('groups'));
+        $events = $repo->getEventsUpcomingByGroup(request('groups'), !request('user'));
 
         $user = request('user');
 
@@ -896,7 +902,7 @@ class ApiController extends Controller
             $resolved = \App\V2\AppUser::where('token', $request->header('token'))->first();
             if ($resolved) $request->merge(['user' => $resolved, 'groups' => $resolved->groups->pluck('GroupId')->toArray()]);
         }
-        $polls = $repo->getPollsByGroups(request('user'), request('groups'));
+        $polls = $repo->getPollsByGroups(request('user'), request('groups'), request('device_id'));
         return response()->json($polls);
     }
 
@@ -905,7 +911,7 @@ class ApiController extends Controller
     public function getPreviousPolls(Request $request, ApiRepository $repo)
     {
         //previous polls
-        $polls = $repo->getPreviousPolls(request('user'), request('groups'));
+        $polls = $repo->getPreviousPolls(request('user'), request('groups'), request('device_id'));
 
         return response()->json($polls);
     }
@@ -924,26 +930,71 @@ class ApiController extends Controller
             return $this->api_error_response('missing_parameters', 101, implode(', ', $validator->messages()->all()));
         }
 
-        $repo->userAnswerPoll(request('user'), request('option_id'));
+        if (!request('user') && !request('device_id')) {
+            return $this->api_error_response('missing_parameters', 101, 'device_id is required to vote as a guest');
+        }
+
+        $option = \App\PollOption::find(request('option_id'));
+        $poll = \App\Poll::find($option->poll_id);
+
+        // The poll stays visible (results-only) for 24h after it closes, but
+        // voting itself must stop the moment expiry_date actually passes.
+        if (!$poll || \Carbon\Carbon::parse($poll->expiry_date)->isPast()) {
+            return $this->api_error_response('invalid_parameters', 101, 'This poll is closed');
+        }
+
+        if (!request('user') && !$poll->show_for_guest) {
+            return $this->api_error_response('invalid_parameters', 101, 'هذا الاستطلاع للأعضاء فقط');
+        }
+
+        if (request('user')) {
+            $repo->userAnswerPoll(request('user'), request('option_id'));
+        } else {
+            $repo->guestAnswerPoll(request('device_id'), request('option_id'));
+        }
 
         return response()->json(['message' => 'Thank you for participating.']);
     }
 
     public function volunteers(Request $request)
     {
-        return response()->json(Volunteer::all()->map(function ($v) {
+        $userId = $request->user?->id;
+
+        $appliedVolunteerIds = $userId
+            ? \Illuminate\Support\Facades\DB::table('users_volunteers')->where('user_id', $userId)->pluck('volunteer_id')->toArray()
+            : [];
+
+        return response()->json(Volunteer::with('fields')->where('is_active', true)->get()->map(function ($v) use ($appliedVolunteerIds) {
+            // Every volunteer opportunity now has a fixed display language (set by
+            // the admin), shown to every viewer regardless of their app's language.
+            // Falls back to Arabic for any legacy rows saved before this field existed.
+            $forcedLocale = in_array($v->display_language, ['en', 'ar']) ? $v->display_language : 'ar';
+
             return [
                 'id' => $v->id,
-                'title' => $v->title,
-                'text' => $v->text,
+                'title' => $v->getTranslation('title', $forcedLocale),
+                'text' => $v->getTranslation('text', $forcedLocale),
+                'language' => $forcedLocale,
                 'image' => $v->image ? Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/volunteers/' . $v->image) : null,
+                'event_date' => $v->event_date ? strtotime($v->event_date) : null,
+                // A member can only apply to one field per volunteer opportunity —
+                // once applied (to any field), the whole opportunity is "done" for them.
+                'already_applied' => in_array($v->id, $appliedVolunteerIds),
+                'fields' => $v->fields->map(function ($f) use ($forcedLocale) {
+                    return [
+                        'id' => $f->id,
+                        'name' => $f->getTranslation('name', $forcedLocale),
+                        'needed_count' => $f->needed_count,
+                        'filled_count' => \Illuminate\Support\Facades\DB::table('users_volunteers')->where('volunteer_field_id', $f->id)->count(),
+                    ];
+                }),
             ];
         }));
     }
 
     public function getPreviousEvents(Request $request, ApiRepository $repo)
     {
-        $events = $repo->getEventsPreviousByGroup(request('groups'))->orderByDesc('created_at')->limit(100)->get();
+        $events = $repo->getEventsPreviousByGroup(request('groups'), !request('user'))->orderByDesc('created_at')->limit(100)->get();
 
         return response()->json($events->map(function ($e) use ($repo) {
 
@@ -972,7 +1023,7 @@ class ApiController extends Controller
 
     public function getUpcomingEvents(Request $request, ApiRepository $repo)
     {
-        $events = $repo->getEventsUpcomingByGroup(request('groups'))->orderByDesc('created_at')->get();
+        $events = $repo->getEventsUpcomingByGroup(request('groups'), !request('user'))->orderByDesc('created_at')->get();
 
         return response()->json($events->map(function ($e) use ($repo) {
 
@@ -1097,13 +1148,41 @@ class ApiController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'volunteer_id' => 'exists:volunteers,id',
+            'volunteer_field_id' => 'nullable|exists:volunteer_fields,id',
         ]);
 
         if ($validator->fails()) {
             return $this->api_error_response('missing_parameters', 101, implode(', ', $validator->messages()->all()));
         }
 
-        $repo->saveVolunteer(request('user'), request('volunteer_id'));
+        $isActive = Volunteer::where('id', request('volunteer_id'))->value('is_active');
+        if (!$isActive) {
+            return $this->api_error_response('invalid_parameters', 101, 'This volunteer opportunity is no longer active');
+        }
+
+        // If a field was specified, make sure it actually belongs to this volunteer opportunity.
+        if (request('volunteer_field_id')) {
+            $belongs = \App\V2\VolunteerField::where('id', request('volunteer_field_id'))
+                ->where('volunteer_id', request('volunteer_id'))
+                ->exists();
+
+            if (!$belongs) {
+                return $this->api_error_response('invalid_parameters', 101, 'This field does not belong to the selected volunteer opportunity');
+            }
+        }
+
+        // A member can only apply to one field per volunteer opportunity — reject a
+        // second application to the same opportunity, whichever field it's for.
+        $alreadyApplied = \Illuminate\Support\Facades\DB::table('users_volunteers')
+            ->where('user_id', request('user')->id)
+            ->where('volunteer_id', request('volunteer_id'))
+            ->exists();
+
+        if ($alreadyApplied) {
+            return $this->api_error_response('invalid_parameters', 101, 'You have already applied to this opportunity');
+        }
+
+        $repo->saveVolunteer(request('user'), request('volunteer_id'), request('volunteer_field_id'));
 
         return response()->json(['message' => 'Thank you for applying.']);
     }
@@ -1341,6 +1420,7 @@ class ApiController extends Controller
                 return [
                     'id'       => $d->id,
                     'title'    => $d->title,
+                    'date'     => optional($d->document_date)->toDateString(),
                     'file_url' => $d->fileUrl(),
                 ];
             });
@@ -1348,19 +1428,59 @@ class ApiController extends Controller
         return response()->json($docs);
     }
 
-    public function getLegislativeDocs(Request $request)
+    public function getLegislativeCategories(Request $request)
+    {
+        $categories = \App\V2\LegislativeDocCategory::orderBy('order')->get()
+            ->map(fn($c) => [
+                'id'   => $c->id,
+                'name' => $c->getTranslation('name', 'ar'),
+            ]);
+        return response()->json($categories);
+    }
+
+    public function getLegislativeSubcategories(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'tab' => 'required|in:sawdir,iqtirahaat',
+            'category_id' => 'required|exists:legislative_doc_categories,id',
         ]);
         if ($validator->fails()) {
             return $this->api_error_response('missing_parameters', 101, implode(', ', $validator->messages()->all()));
         }
-        $docs = \App\V2\LegislativeDoc::where('tab', $request->tab)
+        $subcategories = \App\V2\LegislativeDocSubcategory::where('category_id', $request->category_id)
+            ->orderBy('order')->get()
+            ->map(fn($s) => [
+                'id'   => $s->id,
+                'name' => $s->getTranslation('name', 'ar'),
+            ]);
+        return response()->json($subcategories);
+    }
+
+    public function getLegislativeDocs(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'category_id' => 'required|exists:legislative_doc_categories,id',
+            'subcategory_id' => 'nullable|exists:legislative_doc_subcategories,id',
+        ]);
+        if ($validator->fails()) {
+            return $this->api_error_response('missing_parameters', 101, implode(', ', $validator->messages()->all()));
+        }
+
+        $query = \App\V2\LegislativeDoc::where('category_id', $request->category_id);
+
+        // A doc without a subcategory shows directly on the main category tab;
+        // picking a specific subcategory narrows down to just that subcategory's docs.
+        if ($request->subcategory_id) {
+            $query->where('subcategory_id', $request->subcategory_id);
+        } else {
+            $query->whereNull('subcategory_id');
+        }
+
+        $docs = $query->orderByRaw('date IS NULL')->orderBy('date', 'desc')
             ->orderBy('order')->get()
             ->map(fn($d) => [
                 'id'       => $d->id,
                 'title'    => $d->title,
+                'date'     => $d->date,
                 'file_url' => Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/storage/legislative_docs/' . $d->file_name),
             ]);
         return response()->json($docs);
@@ -1375,10 +1495,12 @@ class ApiController extends Controller
             return $this->api_error_response('missing_parameters', 101, implode(', ', $validator->messages()->all()));
         }
         $docs = \App\V2\NationalPlan::where('tab', $request->tab)
+            ->orderByRaw('date IS NULL')->orderBy('date', 'desc')
             ->orderBy('order')->get()
             ->map(fn($d) => [
                 'id'       => $d->id,
                 'title'    => $d->title,
+                'date'     => $d->date,
                 'file_url' => Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/storage/national_plans/' . $d->file_name),
             ]);
         return response()->json($docs);
@@ -1548,6 +1670,7 @@ class ApiController extends Controller
                     'end_date'           => $v->end_date->timestamp,
                     'my_nominations_count' => $myNominationsCount,
                     'max_nominations'    => self::COMPETENCY_MAX_NOMINATIONS_PER_VACANCY,
+                    'requires_nomination_category' => (bool) $v->requires_nomination_category,
                 ];
             });
 
@@ -1630,6 +1753,17 @@ class ApiController extends Controller
         $vacancy = CompetencyVacancy::findOrFail($request->vacancy_id);
         $now = now();
 
+        // Only vacancies with this explicitly enabled in the CMS ask for a
+        // "نوع الترشيح" category — everything else stays exactly as before.
+        if ($vacancy->requires_nomination_category) {
+            $categoryValidator = Validator::make($request->all(), [
+                'nomination_category' => 'required|in:سياسي,تنفيذي/اداري,مناطقي',
+            ]);
+            if ($categoryValidator->fails()) {
+                return $this->api_error_response('missing_parameters', 101, implode(', ', $categoryValidator->messages()->all()));
+            }
+        }
+
         if ($now->lt($vacancy->start_date) || $now->gt($vacancy->end_date)) {
             return $this->api_error_response('vacancy_closed', 102, 'الترشيح لهذا المنصب مقفل حالياً');
         }
@@ -1659,6 +1793,7 @@ class ApiController extends Controller
             'vacancy_id'                => $vacancy->id,
             'submitted_by_user_id'      => $user->id,
             'nomination_type'           => $request->nomination_type,
+            'nomination_category'       => $vacancy->requires_nomination_category ? $request->nomination_category : null,
             'full_name'                 => $request->full_name ?: $user->name,
             'district'                  => $request->district,
             'town'                      => $request->town,
@@ -1791,74 +1926,89 @@ class ApiController extends Controller
 
     ///Election Module
 
+    // Resolves a member's voting district from their synced TWH `district`
+    // text (e.g. "المتن الشمالي") to an `election_states.id`. `ElectionStateId`
+    // is not used here — it's unpopulated (0) for every member in this
+    // database, while `district` is TWH-synced and reliably current.
+    function resolveElectionStateId($userInfo)
+    {
+        if (!$userInfo || !$userInfo->district) {
+            return null;
+        }
+
+        return ElectionState::where('name', $userInfo->district)->value('id');
+    }
+
+    // Every currently-published election — a voter can be eligible for
+    // more than one at once, so callers must always work with the full
+    // list and a specific election, never assume there's just "the" one.
+    function getActiveElections()
+    {
+        return InternalElection::where('is_active', true)->orderBy('id', 'desc')->get();
+    }
+
+    // Returns one row per currently-published election, each annotated
+    // with whether this specific voter can vote in it right now and why
+    // not if not — the app shows this as a list to choose from.
     function canIVoteEndpoint(Request $request)
     {
         $userInfo = request('loggedInUser');
         $user = request('user');
+        $electionStateId = $this->resolveElectionStateId($userInfo);
 
-        $response = [
-            'is_election_available' => false,
-            'can_i_vote' => false,
-            'title' => null,
-            'message' => null
-        ];
+        $elections = $this->getActiveElections()->map(function ($election) use ($user, $electionStateId) {
+            $result = $this->canIVote($user, $electionStateId, $election);
 
-        $result = $this->canIVote($user, $userInfo->ElectionStateId);
+            $canVote = $result === 200;
+            $message = null;
 
-        if ($result === -1 || !$result) {
-            //the default response works fine
-        }
+            if ($result === 403) {
+                $message = 'غير مسموح لك بالتصويت في هذه الإنتخابات';
+            } elseif ($result === 500) {
+                $message = 'لا مرشحين عن دائرتك الإنتخابية';
+            } elseif ($result === 401) {
+                $message = 'لقد قمت بالتصويت';
+            } elseif ($result === false) {
+                $message = 'أقفل باب التصويت';
+            }
 
-        $response['election_state'] = $userInfo->ElectionStateId;
+            return [
+                'id' => $election->id,
+                'title' => $election->title,
+                'election_date' => $election->created_at ? $election->created_at->format('Y-m-d H:i') : null,
+                'closes_at' => $election->closes_at ? Carbon::parse($election->closes_at)->toIso8601String() : null,
+                'can_i_vote' => $canVote,
+                'message' => $message,
+            ];
+        })->values();
 
-        //Adding Title
-        $poll = InternalElection::where('is_active', true)->orderBy('id', 'desc')->first();
-        if ($poll) {
-            $response['title'] = $poll->title;
-        }
-
-
-        if ($result === 500) {
-            $response['message'] = 'لا مرشحين عن دائرتك الإنتخابية';
-            $response['is_election_available'] = true;
-            $response['can_i_vote'] = false;
-        }
-
-        if ($result === 401) {
-            $response['message'] = 'لقد قمت بالتصويت';
-            $response['is_election_available'] = true;
-            $response['can_i_vote'] = false;
-        }
-
-        if ($result === 200) {
-            $response['is_election_available'] = true;
-            $response['can_i_vote'] = true;
-        }
-
-
-
-        return response()->json($response);
+        return response()->json(['elections' => $elections]);
     }
 
-    //Check if the user can vote
-    function canIVote($user, $electionStateId)
+    //Check if the user can vote in one specific election
+    function canIVote($user, $electionStateId, $election)
     {
-        $election = InternalElection::orderBy('id', 'desc')->first();
-
         if (!$election) {
-            //No election is create yet
+            //Election doesn't exist, or isn't currently published
             return -1;
         }
 
-
-        if ($election->is_active == false) {
-            //the election has been closed - He can't vote even if he didn't yet
+        if ($election->closes_at && Carbon::parse($election->closes_at)->isPast()) {
+            //closing time has passed — treat the same as manually closed
             return false;
         }
 
 
+        // Allowed_to_vote is a mandatory per-member gate, required for
+        // everyone in addition to (not instead of) the district match below —
+        // defaults to 0, so a member must be explicitly flagged before any
+        // other condition is even checked.
+        if (!$user->Allowed_to_vote) {
+            return 403;
+        }
+
         //Check if there are condidates
-        $candidatesCount = InternalElection::orderBy('id', 'desc')->first()->candidates()->where('election_state_id', $electionStateId)->count();
+        $candidatesCount = $election->candidates()->whereHas('electionStates', function($q) use ($electionStateId){ $q->where('election_states.id', $electionStateId); })->count();
 
         if ($candidatesCount == 0) {
             return 500;
@@ -1876,54 +2026,63 @@ class ApiController extends Controller
     }
 
 
-    //get Candidates of the internal Elaction
+    //get Candidates of a specific internal election
     function getInternalElectionCandidates(Request $request)
     {
         $user = request('user');
         $userInfo = request('loggedInUser');
+        $electionStateId = $this->resolveElectionStateId($userInfo);
 
 
         if (!$user) {
             return $this->api_error_response('missing_parameters', 101, "user not found");
         }
 
-        $canIVote = $this->canIVote($user, $userInfo->ElectionStateId);
+        $validator = Validator::make($request->all(), [
+            'election_id' => 'required|integer',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->api_error_response('missing_parameters', 101, implode(', ', $validator->messages()->all()));
+        }
+
+        $election = InternalElection::where('id', request('election_id'))->where('is_active', true)->first();
+
+        $canIVote = $this->canIVote($user, $electionStateId, $election);
 
         if ($canIVote === -1) {
             return $this->api_error_response('missing_parameters', 101, "ما مِن إنتخابات في الوقت الراهن");
         }
 
-        if (!$canIVote || $canIVote === 401 || $canIVote === 500) {
+        if (!$canIVote || $canIVote === 401 || $canIVote === 500 || $canIVote === 403) {
             return $this->api_error_response('missing_parameters', 101, "لقد قمت بالتصويت أو أن صناديق الإقتراع قد أقفلت");
         }
 
         //The user can vote so return the cadidates list of his election region 'دائرة إنتخابية'
-        $candidates = InternalElection::orderBy('id', 'desc')->first()->candidates()->where('election_state_id', $userInfo->ElectionStateId)->get();
+        $candidates = $election->candidates()->whereHas('electionStates', function($q) use ($electionStateId){ $q->where('election_states.id', $electionStateId); })->get();
 
         return response()->json([
-            'max_to_rank' => $this->getMaxToRankNumber($candidates),
-            'cadidates' => $candidates->shuffle()->map(function ($candidate) {
+            'cadidates' => $candidates->sortBy(function ($candidate) {
+                // Admin-set display_order wins when set (lower first);
+                // candidates without one sort after, alphabetically by
+                // family name among themselves.
+                $order = $candidate->display_order !== null
+                    ? str_pad($candidate->display_order, 6, '0', STR_PAD_LEFT)
+                    : '999999';
+                return $order . '_' . $candidate->family_name;
+            })->values()->map(function ($candidate) {
                 return [
                     "name" => $candidate->name,
                     "id" => $candidate->id,
-                    "photo" => url($candidate->image_name)
+                    "photo" => $candidate->photo_url
                 ];
             })
         ], 200);
     }
 
-    function getMaxToRankNumber($candidates)
+    function canIVoteFor($user, $candidates, $electionStateId, $election)
     {
-        if ($candidates->count() >= 5) {
-            return 5;
-        } else {
-            return $candidates->count();
-        }
-    }
-
-    function canIVoteFor($user, $candidates, $electionStateId)
-    {
-        $_candidates = InternalElection::orderBy('id', 'desc')->first()->candidates()->where('election_state_id', $electionStateId)->get()->pluck('id')->toArray();
+        $_candidates = $election->candidates()->whereHas('electionStates', function($q) use ($electionStateId){ $q->where('election_states.id', $electionStateId); })->get()->pluck('id')->toArray();
 
 
         for ($i = 0; $i < count($candidates); $i++) {
@@ -1940,44 +2099,83 @@ class ApiController extends Controller
 
     function internalElectionVote(Request $request)
     {
-        //Can I vote
         $userInfo = request('loggedInUser');
         $user = request('user');
+        $electionStateId = $this->resolveElectionStateId($userInfo);
 
-        $result = $this->canIVote($user, $userInfo->ElectionStateId);
-
-        if ($result !== 200) {
-            return $this->api_error_response('missing_parameterss', 101, "لا يمكنك التصويت");
-        }
-
-        //Validate array of 5 items
         $validator = Validator::make($request->all(), [
-            'votes' => 'required|array',
-            'votes.*.rank' => 'required|distinct|between:1,5',
-            'votes.*.id' => 'required|distinct'
+            'election_id' => 'required|integer',
+            'candidate_id' => 'required|integer',
         ]);
 
         if ($validator->fails()) {
             return $this->api_error_response('missing_parameters', 101, implode(', ', $validator->messages()->all()));
         }
 
-        //Validate the submitted
-        $result = $this->canIVoteFor($user, request('votes'), $userInfo->ElectionStateId);
+        $election = InternalElection::where('id', request('election_id'))->where('is_active', true)->first();
+
+        $result = $this->canIVote($user, $electionStateId, $election);
+
+        if ($result !== 200) {
+            return $this->api_error_response('missing_parameterss', 101, "لا يمكنك التصويت");
+        }
+
+        //Validate the submitted candidate is actually in the voter's district, in this election
+        $result = $this->canIVoteFor($user, [['id' => request('candidate_id')]], $electionStateId, $election);
 
         if (!$result) {
-            return $this->api_error_response('missing_parameters', 101,  "لا يمكنك التصويت لان مرشح أو أكثر ليس من ضمن دائرتك الإنتخابية");
+            return $this->api_error_response('missing_parameters', 101,  "لا يمكنك التصويت لان هذا المرشح ليس من ضمن دائرتك الإنتخابية");
         }
 
-        //Current election id
-        $id = InternalElection::orderBy('id', 'DESC')->first()->id;
-
-        foreach (request('votes') as $candidate) {
-            $user->votes()->attach($candidate['id'], ['rank' => $candidate['rank'], 'internal_election_id' => $id, 'weight' => 5 - $candidate['rank'] + 1]);
-        }
+        $user->votes()->attach(request('candidate_id'), ['rank' => 1, 'internal_election_id' => $election->id, 'weight' => 1]);
 
         return response()->json([
             "message" => "لقد تم التصويت بنجاح شكراً"
         ], 201);
+    }
+
+    // For a registered candidate: every currently-eligible voter (member_status
+    // active + Allowed_to_vote flagged) across every district this candidate
+    // is running in, across all their candidate rows in any active election —
+    // not the general member list, so only actual candidates can see it.
+    function getMyDistrictVoters(Request $request)
+    {
+        $user = request('user');
+
+        if (!$user || !$user->member_id) {
+            return $this->api_error_response('missing_parameters', 101, "user not found");
+        }
+
+        // Not restricted to published elections — a candidate can see and
+        // start reaching out to their voters before the election goes live.
+        $candidateRows = InternalElectionCandidate::where('member_id', $user->member_id)
+            ->with('electionStates')
+            ->get();
+
+        if ($candidateRows->isEmpty()) {
+            return $this->api_error_response('unauthorized', 403, "هذه الصفحة مخصصة للمرشحين فقط");
+        }
+
+        $districtNames = $candidateRows
+            ->flatMap(function ($candidate) {
+                return $candidate->electionStates->pluck('name');
+            })
+            ->unique()
+            ->values();
+
+        $voters = FpmUser::whereIn('district', $districtNames)
+            ->where('member_status', 1)
+            ->where('Allowed_to_vote', 1)
+            ->orderBy('UserFullName')
+            ->get(['UserFullName', 'MobileNumber'])
+            ->map(function ($voter) {
+                return [
+                    'full_name' => $voter->UserFullName,
+                    'mobile_number' => $voter->MobileNumber,
+                ];
+            });
+
+        return response()->json(['voters' => $voters], 200);
     }
 
 

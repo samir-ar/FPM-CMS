@@ -30,6 +30,7 @@ Route::group(['namespace' => 'Api\V2', 'prefix' => 'v2/', 'middleware' => ['lang
     Route::post('country-codes', 'ApiController@getCountryCodes');
     Route::post('app-versions', 'ApiController@appVersions');
     Route::post('business-type', 'CommunityController@getBusinessTypes');
+    Route::post('social-links', 'CommunityController@getSocialLinks');
     Route::post('get-community', 'CommunityController@getCommunityPosts');
     Route::post('directory-members', 'CommunityController@getDirectoryMembers');
     Route::post('community-districts', 'CommunityController@getDistricts');
@@ -40,18 +41,14 @@ Route::group(['namespace' => 'Api\V2', 'prefix' => 'v2/', 'middleware' => ['lang
         Route::post('my-profile', 'ApiController@myProfile');
         Route::post('refresh-permissions', 'ApiController@refreshPermissions');
         Route::post('update-profile-info', 'ApiController@updateProfileInfo');
+        Route::post('my-directory-listing-status', 'CommunityController@getMyDirectoryListingStatus');
+        Route::post('toggle-directory-listing', 'CommunityController@toggleMyDirectoryListing');
         // Route::post('get-qr-code', 'ApiController@getQRCode');
         Route::post('google-forms', 'ApiController@getInternalProcess');
         Route::post('single-google-form', 'ApiController@getSingleInternalProcess');
         Route::post('memos', 'ApiController@getMemos');
         Route::post('members', 'ApiController@getMembers');
         Route::post('favorite-members', 'ApiController@getFavorites');
-        Route::post('get-poll','ApiController@getPollById');
-        Route::post('current-polls', 'ApiController@getPolls');
-        Route::post('previous-polls', 'ApiController@getPreviousPolls');
-        Route::post('answer-poll', 'ApiController@answerPoll');
-        Route::post('previous-events', 'ApiController@getPreviousEvents');
-        Route::post('upcoming-events', 'ApiController@getUpcomingEvents');
 
         Route::post('national-council-poll-can-i-vote', 'ApiController@canIVoteToNationalCouncilPollMessage');
         Route::post('national-council-poll-get', 'ApiController@getLatestNationalCouncilPoll');
@@ -62,23 +59,17 @@ Route::group(['namespace' => 'Api\V2', 'prefix' => 'v2/', 'middleware' => ['lang
         Route::get('get-internal-election-candidates','ApiController@getInternalElectionCandidates');
         Route::post('internal-election-vote','ApiController@internalElectionVote');
         Route::get('can-i-vote','ApiController@canIVoteEndpoint');
+        Route::get('my-district-voters','ApiController@getMyDistrictVoters');
         //////////////𝔼𝕟𝕕 𝕀𝕟𝕥𝕖𝕣𝕟𝕒𝕝 𝔼𝕝𝕖𝕔𝕥𝕚𝕠𝕟///////////////////
 
 
         //New Endpoints
-
-        #Events
-        Route::post('upcoming-events-paginated', 'ApiController@getUpcomingEventsWithPagination');
-        Route::post('previous-events-paginated', 'ApiController@getPreviousEventsWithPagination');
 
         #tracker
         Route::post('get-my-candidates-status','ApiController@getCandidates');
         Route::post('get-my-candidacy-status','ApiController@getCandidacy');
 
         //Albums
-        #Get All the albums
-        Route::post('get-all-albums','ApiController@getAllAlbums');
-        Route::post('get-album','ApiController@getAlbum');
         //Route::post('delete-album','ApiController@deleteAlbum');
         //Route::post('delete-media','ApiController@deleteMedia');
         //Route::post('create-album','ApiController@createAlbum');
@@ -97,7 +88,6 @@ Route::group(['namespace' => 'Api\V2', 'prefix' => 'v2/', 'middleware' => ['lang
         Route::post('logout', 'ApiController@logout');
         Route::post('messages', 'ApiController@getMessages');
         Route::post('getGroups', 'ApiController@getGroups');
-        Route::post('single-event', 'ApiController@getEventById');
         Route::post('single-news', 'ApiController@getNewsById');
         Route::post('live-stream', 'ApiController@getLiveStream');
 
@@ -128,6 +118,25 @@ Route::group(['namespace' => 'Api\V2', 'prefix' => 'v2/', 'middleware' => ['lang
         Route::post('i-pay', 'ApiController@pay');
         Route::post('e-bill', 'ApiController@bill');
         Route::post('get-wall-feed', 'ApiController@getWallFeed');
+
+        // Guest-visible per admin's "Show For Guest" flag (see feature/guest-access-rules)
+        Route::post('previous-events', 'ApiController@getPreviousEvents');
+        Route::post('upcoming-events', 'ApiController@getUpcomingEvents');
+        Route::post('upcoming-events-paginated', 'ApiController@getUpcomingEventsWithPagination');
+        Route::post('previous-events-paginated', 'ApiController@getPreviousEventsWithPagination');
+        Route::post('single-event', 'ApiController@getEventById');
+
+        // Archive is fully open to guests — no per-item filtering
+        Route::post('get-all-albums', 'ApiController@getAllAlbums');
+        Route::post('get-album', 'ApiController@getAlbum');
+
+        // Polls are visible to every guest — each poll's own "Show For Guest"
+        // flag decides whether they can actually vote (can_participate),
+        // not whether the poll shows up at all.
+        Route::post('get-poll', 'ApiController@getPollById');
+        Route::post('current-polls', 'ApiController@getPolls');
+        Route::post('previous-polls', 'ApiController@getPreviousPolls');
+        Route::post('answer-poll', 'ApiController@answerPoll');
     });
 
 
@@ -149,6 +158,8 @@ Route::group(['namespace' => 'Api\V2', 'prefix' => 'v2/', 'middleware' => ['lang
     Route::post('political-work', 'ApiController@getPoliticalWork');
     Route::post('internal-org', 'ApiController@getInternalOrg');
     Route::post('legislative-docs', 'ApiController@getLegislativeDocs');
+    Route::post('legislative-categories', 'ApiController@getLegislativeCategories');
+    Route::post('legislative-subcategories', 'ApiController@getLegislativeSubcategories');
     Route::post('national-plans', 'ApiController@getNationalPlans');
     Route::post('municipalities', 'ApiController@getMunicipalities');
     Route::post('municipality-members', 'ApiController@getMunicipalityMembers');

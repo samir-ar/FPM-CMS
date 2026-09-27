@@ -26,6 +26,7 @@ use Carbon\Carbon;
 use App\V2\Volunteer;
 use App\V2\PollOption;
 use App\V2\AppUserPoll;
+use App\V2\GuestPollVote;
 use App\V2\Representative;
 use App\Http\Traits\FileTrait;
 use App\V2\CouncilNationalPollPermission;
@@ -155,37 +156,63 @@ class ApiRepository
     }
 
 
-    public function getMappedOption($poll)
+    public function getMappedOption($poll, $locale = 'ar')
     {
-        $_options = $poll->options()->get()->map(function ($option) {
+        $_options = $poll->options()->get()->map(function ($option) use ($locale) {
             return (object)[
                 'id' => $option->id,
-                'option' => $option->getTranslation('option', 'ar')
+                'option' => $option->getTranslation('option', $locale)
             ];
         });
 
         return $_options;
     }
 
-    public function getPollsByGroups($user, $groups_ids)
+    public function getPollsByGroups($user, $groups_ids, $deviceId = null)
     {
-        $answered_polls = $user->polls->pluck('id')->toArray();
+        // A poll stays in this "current" list (and keeps voting/results visible)
+        // for as long as it hasn't expired, whether or not the user already voted —
+        // it used to disappear the moment the user voted, well before it closed.
+        // It also keeps showing for 24h after expiry_date passes, so members can
+        // still see the final results right after a poll closes — unless an admin
+        // explicitly disables it (show=false) in the CMS, which hides it immediately.
+        $isGuest = !$user;
+        $answered_polls = $isGuest
+            ? GuestPollVote::where('device_id', $deviceId)->pluck('poll_id')->toArray()
+            : $user->polls->pluck('id')->toArray();
 
-        return Poll::with('options')
-            ->whereNotIn('polls.id', $answered_polls)
-            ->where('expiry_date', '>', Carbon::today())
+        $query = Poll::with('options')
+            ->where('expiry_date', '>', Carbon::now()->subHours(24))
             ->whereHas('groups', function ($q) use ($groups_ids) {
-                return $q->whereIn('group_id', $groups_ids)->orWhere('group_id', 81)->orWhere('group_id', 82);
+                return $q->whereIn('group_id', $groups_ids ?? [])->orWhere('group_id', 81)->orWhere('group_id', 82);
             })
-            ->where('show', true)
-            ->get()
-            ->map(function ($r) {
+            ->where('show', true);
+
+        // Polls are members-only by default — a guest only ever sees the
+        // ones an admin explicitly flagged "Show For Guest" in the CMS.
+        if ($isGuest) {
+            $query->where('show_for_guest', true);
+        }
+
+        return $query->get()
+            ->map(function ($r) use ($answered_polls, $user, $deviceId) {
+                $alreadyVoted = in_array($r->id, $answered_polls);
+                // 'strict_lang' forces a single language for every viewer regardless
+                // of their app's language setting; default to Arabic (historically the
+                // only language poll options were ever actually filled in with).
+                $locale = in_array($r->strict_lang, ['en', 'ar']) ? $r->strict_lang : 'ar';
+
                 return [
+                    'id' => $r->id,
                     'expiry_date' => $r->expiry_date,
-                    'question' => $r->question,
-                    'details' => $r->details,
+                    'question' => $r->getTranslation('question', $locale),
+                    'details' => $r->getTranslation('details', $locale),
                     'strict_lang' => $r->strict_lang,
-                    'options' => ($r->options) ? $this->getMappedOption($r) : [],
+                    'language' => $locale,
+                    'already_voted' => $alreadyVoted,
+                    'options' => $alreadyVoted
+                        ? $this->getPollOptionsWithRatings($user?->id, $r->id, $locale, $deviceId)
+                        : (($r->options) ? $this->getMappedOption($r, $locale) : []),
                 ];
             });
     }
@@ -270,6 +297,15 @@ class ApiRepository
         $n->shares = $n->shares + 1;
         $n->save();
 
+        // Repeatable, not a toggle — matches the counter above, which also
+        // increments on every call rather than de-duplicating per user.
+        DB::table('user_shares')->insert([
+            'user_id' => $user->id,
+            'news_id' => $news_id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
         $placeholder = Placeholder::where('type', 'news')->first()->image;
 
         return [
@@ -292,7 +328,7 @@ class ApiRepository
     public function getPollById($user, $groups_ids, $poll_id)
     {
         $poll =  Poll::whereHas('groups', function ($q) use ($groups_ids) {
-            $q->whereIn('group_id', $groups_ids)->orWhere('group_id', 81)->orWhere('group_id', 82);
+            $q->whereIn('group_id', $groups_ids ?? [])->orWhere('group_id', 81)->orWhere('group_id', 82);
         })
             ->where('id', $poll_id)->first();
 
@@ -310,9 +346,28 @@ class ApiRepository
         );
     }
 
-    public function getPreviousPolls($user, $groups_ids)
+    public function getPreviousPolls($user, $groups_ids, $deviceId = null)
     {
         //return polls answerd with the answered option flagged
+        if (!$user) {
+            if (!$deviceId) {
+                return collect();
+            }
+
+            $pollIds = GuestPollVote::where('device_id', $deviceId)->pluck('poll_id')->unique();
+
+            return Poll::whereIn('id', $pollIds)->whereHas('groups', function ($q) use ($groups_ids) {
+                return $q->whereIn('group_id', $groups_ids ?? [])->orWhere('group_id', 81)->orWhere('group_id', 82);
+            })->get()->map(function ($p) use ($deviceId) {
+                return [
+                    'question' => $p->question,
+                    'date' => $p->created_at->toDateString(),
+                    'strict_lang' => $p->strict_lang,
+                    'answer' => $this->getPollOptionsWithRatings(null, $p->id, 'ar', $deviceId),
+                ];
+            });
+        }
+
         return $user->polls()->whereHas('groups', function ($q) use ($groups_ids) {
             return $q->whereIn('group_id', $groups_ids)->orWhere('group_id', 81)->orWhere('group_id', 82);
         })->get()->map(function ($p) use ($user) {
@@ -347,16 +402,39 @@ class ApiRepository
         return true;
     }
 
-    public function getPollOptionsWithRatings($user_id, $poll_id)
+    // Anonymous equivalent of userAnswerPoll, keyed by device_id instead of
+    // a member — updateOrCreate handles both a first vote and someone
+    // changing their answer via the same unique(device_id, poll_id) row.
+    public function guestAnswerPoll($deviceId, $option_id)
     {
-        $total_count = AppUserPoll::where('poll_id', $poll_id)->count();
+        $option = PollOption::find($option_id);
+        $poll_id = $option->poll_id;
 
-        return Poll::find($poll_id)->options()->get()->map(function ($o) use ($total_count, $user_id) {
+        GuestPollVote::updateOrCreate(
+            ['device_id' => $deviceId, 'poll_id' => $poll_id],
+            ['option_id' => $option_id]
+        );
+
+        return true;
+    }
+
+    public function getPollOptionsWithRatings($user_id, $poll_id, $locale = 'ar', $deviceId = null)
+    {
+        $total_count = AppUserPoll::where('poll_id', $poll_id)->count()
+            + GuestPollVote::where('poll_id', $poll_id)->count();
+
+        return Poll::find($poll_id)->options()->get()->map(function ($o) use ($total_count, $user_id, $locale, $deviceId) {
+            $optionCount = $o->answers->count() + GuestPollVote::where('option_id', $o->id)->count();
+
+            $answered = $user_id
+                ? ($o->answers->where('app_user_id', $user_id)->first() ? true : false)
+                : ($deviceId ? GuestPollVote::where('device_id', $deviceId)->where('option_id', $o->id)->exists() : false);
+
             return [
                 'id' => $o->id,
-                'percentage' => number_format(round(($o->answers->count() * 100) / $total_count, 0)),
-                'option' => $o->option,
-                'answered' => $o->answers->where('app_user_id', $user_id)->first() ? true : false,
+                'percentage' => $total_count > 0 ? number_format(round(($optionCount * 100) / $total_count, 0)) : '0',
+                'option' => $o->getTranslation('option', $locale),
+                'answered' => $answered,
             ];
         });
     }
@@ -368,25 +446,37 @@ class ApiRepository
         })->orderBy('created_at', 'desc')->where('is_published', true);
     }
 
-    public function getEventsPreviousByGroup($groups_ids)
+    public function getEventsPreviousByGroup($groups_ids, $guestOnly = false)
     {
         $groups_ids = $groups_ids ?? [];
-        return Event::with('images')->whereHas('groups', function ($q) use ($groups_ids) {
+        $query = Event::with('images')->whereHas('groups', function ($q) use ($groups_ids) {
             return $q->whereIn('group_id', $groups_ids)->orWhere('group_id', 81)->orWhere('group_id', 82);
         })->where('to_date', '<', Carbon::today());
+
+        if ($guestOnly) {
+            $query->where('show_for_guest', true);
+        }
+
+        return $query;
     }
 
-    public function getEventsUpcomingByGroup($groups_ids)
+    public function getEventsUpcomingByGroup($groups_ids, $guestOnly = false)
     {
         $groups_ids = $groups_ids ?? [];
-        return Event::with('images')->whereHas('groups', function ($q) use ($groups_ids) {
+        $query = Event::with('images')->whereHas('groups', function ($q) use ($groups_ids) {
             return $q->whereIn('group_id', $groups_ids)->orWhere('group_id', 81)->orWhere('group_id', 82);
         })->where('to_date', '>', Carbon::today())->limit(20);
+
+        if ($guestOnly) {
+            $query->where('show_for_guest', true);
+        }
+
+        return $query;
     }
 
-    public function saveVolunteer($user, $volunteer_id)
+    public function saveVolunteer($user, $volunteer_id, $volunteer_field_id = null)
     {
-        $user->volunteers()->attach($volunteer_id);
+        $user->volunteers()->attach($volunteer_id, ['volunteer_field_id' => $volunteer_field_id]);
 
         return;
     }

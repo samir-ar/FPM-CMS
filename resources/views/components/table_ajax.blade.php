@@ -137,16 +137,6 @@
                     @endif
 
 
-                    @if (isset($showPublishInternalElectionButton))
-                        <div class='last-elelction-controller'> 
-                            <b>Last Election</b>
-                            @if ($row)
-                                <button  id="{{$row->id}}" class="publish btn {{ (($row->is_active)?'btn-success':'')}}"> publish </button>
-                                @endif
-                                </div>
-                                <a class="btn btn-danger" href="{{ route('admin.internal-election-votes.reset') }}"> DELETE ALL VOTES </a>
-                    @endif
-
                     @if(isset($districts))
                         <div class="dropdown">
                             <button onclick="toggleDropdown()" class=" btn btn-success">Districts <span class="fa fa-angle-down"></span></button>
@@ -190,6 +180,11 @@
                     @if(isset($custom_btn1))
                         <div style="float:left;">
                             {!! $custom_btn1 !!}
+                        </div>
+                    @endif
+                    @if(isset($custom_btn2))
+                        <div style="float:left;">
+                            {!! $custom_btn2 !!}
                         </div>
                     @endif
                 </div>

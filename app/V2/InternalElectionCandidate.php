@@ -8,6 +8,11 @@ use Storage;
 class InternalElectionCandidate extends Model
 {
     public $timestamps = false;
+
+    // Yajra DataTables serializes each row to an array before applying
+    // ->addColumn() overrides — without this, computed-only attributes
+    // like `name` are missing from that array and the table breaks.
+    protected $appends = ['name', 'photo_url'];
     // public function getImageNameAttribute($attr){
     //     if(!$attr) return null;
     //     // return "/images/candidates"."/".$attr;
@@ -15,6 +20,24 @@ class InternalElectionCandidate extends Model
 
     // }
 
+
+    // Kept as `name` so every existing read (sorting, the duplicate check,
+    // the admin list, the results report) keeps working unchanged even
+    // though the name is now stored as 3 separate columns.
+    public function getNameAttribute(){
+        return trim($this->first_name . ' ' . $this->father_name . ' ' . $this->family_name);
+    }
+
+    // fpm-linked candidates (member_id set) have no local image_name —
+    // their photo is served live from the same endpoint the app already
+    // uses for representatives' photos.
+    public function getPhotoUrlAttribute(){
+        if ($this->member_id) {
+            return url('api/v2/member-photo/' . $this->member_id);
+        }
+
+        return url('images/candidates/' . $this->image_name);
+    }
 
     public function internalElection(){
         return $this->belongsTo(InternalElection::class,"election_id");
@@ -24,8 +47,8 @@ class InternalElectionCandidate extends Model
         return $this->hasMany(InternalElectionVote::class,"candidate_id");
     }
 
-    public function electionState(){
-        return $this->belongsTo(ElectionState::class);
+    public function electionStates(){
+        return $this->belongsToMany(ElectionState::class, 'internal_election_candidate_states', 'candidate_id', 'election_state_id');
     }
 
     public function scopeOrderByCommentRank($query, $order = 'desc')

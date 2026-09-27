@@ -18,42 +18,51 @@ body{
     padding:40px;
 }
 
+.page-logo{
+    display: block;
+    width: 267px;
+    /* Source image is a 534x534 square with the actual logo only in the
+       middle band — crop the top/bottom 25% each via object-fit instead
+       of touching the source file. */
+    height: 133px;
+    object-fit: cover;
+    object-position: center;
+    margin: 0 auto;
+}
+
 header{
     display: flex;
     align-items: center;
     justify-content: center;
     flex-direction: column;
+    width: 100%;
+    text-align: center;
 }
-header img{
-    width:130px;
-}
-
 header h1{
     font-size:22px;
     color: var(--black);
-    margin-top:20px;
-    padding: 20px;
+    padding: 0 20px;
     background-color: #ffffff;
-    position: relative;
+    white-space: nowrap;
 }
 
-header h1::after{
-    content: "";
-    height:1px;
-    background-color:var(--orange);
-    position: absolute;
-    width: 100%;
-    left: 100%;
-    top: 50%;
+/* Flanking orange lines around the title — a plain flex row instead of the
+   old absolutely-positioned ::before/::after trick, which relied on the
+   pseudo-elements' containing block matching h1's own box and broke under
+   this page's RTL layout. flex:1 on each line always keeps them equal and
+   adjacent to the title, regardless of direction. */
+.title-row{
+    display: flex;
+    align-items: center;
+    width: 600px;
+    max-width: 90%;
+    margin: 20px auto 0;
+    gap: 16px;
 }
-header h1::before{
-    right: 100%;
-    content: "";
-    height:1px;
-    background-color:var(--orange);
-    position: absolute;
-    width: 100%;
-    top: 50%;
+.title-line{
+    flex: 1;
+    height: 1px;
+    background-color: var(--orange);
 }
 
 
@@ -73,10 +82,7 @@ main h2{
 
 .election-state-container{
     width: 68%;
-    margin-right: 50%;
-    transform: translateX(50%);
-    margin-top:30px;
-    height : 300px;
+    margin: 30px auto 0;
 }
 
 body{
@@ -102,20 +108,158 @@ body{
 }
 
 th,td{
-    text-align: center;
+    padding: 10px 14px;
+    border: 1px solid #e5e5e5;
 }
 
 th{
     white-space:nowrap;
 }
 
-.table{
+/* Alignment lives on this inner wrapper, not on th/td directly — the table
+   cells themselves ignored text-align in this RTL + table-layout:fixed
+   combination, so content is wrapped in a plain block element that gets
+   its own definite 100%-width box to align within. */
+.cell{
+    display: block;
+    width: 100%;
+    text-align: right;
+}
+.cell-center{
+    text-align: center;
+}
 
+.table{
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
     margin-bottom:100px;
+}
+
+.election-meta{
+    color: var(--black);
+    font-size: 14px;
+    opacity: .7;
+    margin-top: 4px;
+}
+
+.winner-row{
+    background-color: #fff4e0;
+    font-weight: 900;
+}
+
+.winner-badge{
+    margin-inline-start: 4px;
+}
+
+.candidate-photo{
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    vertical-align: middle;
+}
+
+.no-data{
+    text-align: center;
+    padding: 40px;
+    color: var(--black);
+    opacity: .6;
+}
+
+.district-filter{
+    margin-bottom: 25px;
+}
+
+/* Native <details>/<summary> — a dropdown that opens/closes with zero JS. */
+.district-filter-dropdown{
+    position: relative;
+    display: inline-block;
+}
+
+.district-filter-dropdown > summary{
+    list-style: none;
+    cursor: pointer;
+    background-color: var(--orange);
+    color: #ffffff;
+    padding: 8px 20px;
+    border-radius: 4px;
+    font-weight: 900;
+    font-size: 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.district-filter-dropdown > summary::-webkit-details-marker{
+    display: none;
+}
+.district-filter-dropdown > summary::after{
+    content: "\25BE";
+}
+.district-filter-dropdown[open] > summary::after{
+    content: "\25B4";
+}
+
+.district-filter-panel{
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 6px;
+    background-color: #ffffff;
+    border: 1px solid var(--light-gray);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,.12);
+    padding: 14px;
+    min-width: 220px;
+    max-height: 260px;
+    overflow-y: auto;
+    z-index: 10;
+}
+
+.district-filter-option{
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    padding: 4px 0;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.district-filter-actions{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--light-gray);
+}
+
+.district-filter-apply{
+    background-color: var(--orange);
+    color: #ffffff;
+    border: none;
+    border-radius: 4px;
+    padding: 6px 16px;
+    font-family: inherit;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.district-filter-reset{
+    font-size: 12px;
+    color: var(--black);
+    opacity: .7;
+    text-decoration: underline;
 }
 
 
 @media print {
+    .no-print{
+        display: none !important;
+    }
+
     body table{
         transform:translateX(13%);
         background-color: #f68f1f;

@@ -69,3 +69,11 @@
 							<input id='sendAnotherFormFlag' type="hidden" name="submitAnotherOne" />
 	</form>
 @endsection
+
+@section('footer_resources')
+	@if(isset($scripts))
+		@foreach($scripts as $script)
+			<script src="{{url($script)}}"></script>
+		@endforeach
+	@endif
+@endsection

@@ -35,9 +35,7 @@ Route::group(['middleware' => ['my-auth', 'fpm-auth']], function () {
 });
 
 Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 'admin', 'as' => 'admin.'], function () {
-    Route::get('/', function () {
-        return view('cms.index');
-    })->name('dashboard');
+    Route::get('/', 'UserActivityController@index')->name('dashboard');
 
     //Route::get('/', 'ProfileController@editForm')->name('dashboard');
     Route::resource('profile', 'ProfileController', ['only' => ['edit', 'update']]);
@@ -81,6 +79,8 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::get('legislative-docs/{id}/edit', 'LegislativeDocsController@edit')->name('legislative-docs.edit');
     Route::put('legislative-docs/{id}', 'LegislativeDocsController@update')->name('legislative-docs.update');
     Route::delete('legislative-docs/{id}', 'LegislativeDocsController@destroy')->name('legislative-docs.destroy');
+    Route::resource('legislative-doc-categories', 'LegislativeDocCategoriesController');
+    Route::resource('legislative-doc-subcategories', 'LegislativeDocSubcategoriesController');
 
     //National Plans (الخطط الوطنية المقدمة)
     Route::get('national-plans', 'NationalPlansController@index')->name('national-plans.index');
@@ -162,6 +162,7 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::get('directory-members/{id}/edit', 'DirectoryMembersController@edit')->name('directory-members.edit');
     Route::put('directory-members/{id}', 'DirectoryMembersController@update')->name('directory-members.update');
     Route::delete('directory-members/{id}', 'DirectoryMembersController@destroy')->name('directory-members.destroy');
+    Route::get('directory-members/{id}/toggle-active', 'DirectoryMembersController@toggleActive')->name('directory-members.toggle-active');
     Route::get('directory-members-import', 'DirectoryMembersController@importForm')->name('directory-members.import-form');
     Route::post('directory-members-import', 'DirectoryMembersController@importStore')->name('directory-members.import-store');
     Route::get('directory-members-template', 'DirectoryMembersController@downloadTemplate')->name('directory-members.template');
@@ -180,6 +181,15 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::resource('laws', 'LawsController');
     Route::resource('internal-processes','InternalProcessController');
 
+    //User Activity report
+    Route::get('user-activity', 'UserActivityController@index')->name('user-activity.index');
+    Route::get('content-engagement', 'ContentEngagementController@index')->name('content-engagement.index');
+    Route::get('content-engagement/{id}', 'ContentEngagementController@show')->name('content-engagement.show');
+
+    //Social Links
+    Route::resource('social-links', 'SocialLinksController');
+    Route::get('social-links/{id}/toggle-active', 'SocialLinksController@toggleActive')->name('social-links.toggle-active');
+
     //Achievements
     Route::resource('achievements', 'AchievementsController');
 
@@ -191,6 +201,8 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
 
     //polls
     Route::resource('polls', 'PollsController');
+    Route::get('polls/{id}/toggle-active', 'PollsController@toggleActive')->name('polls.toggle-active');
+    Route::get('polls/{id}/toggle-guest-access', 'PollsController@toggleGuestAccess')->name('polls.toggle-guest-access');
 
     //events
     Route::resource('events', 'EventsController');
@@ -200,6 +212,9 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
 
     //volunteers
     Route::resource('volunteers', 'VolunteersController');
+    Route::get('volunteers/{id}/send-notification', 'VolunteersController@sendNotificationForm')->name('volunteers.send-notification.form');
+    Route::post('volunteers/{id}/send-notification', 'VolunteersController@sendNotification')->name('volunteers.send-notification');
+    Route::get('volunteers/{id}/toggle-active', 'VolunteersController@toggleActive')->name('volunteers.toggle-active');
 
     //EventFiles
     Route::resource('eventImages', 'EventImagesController');
@@ -386,8 +401,13 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     //Internal Election
     Route::resource('internal-election', 'InternalElectionController');
     Route::post('internal-election/publish/{id}', 'InternalElectionController@publish');
+    Route::post('internal-election/update-closes-at/{id}', 'InternalElectionController@updateClosesAt')->name('internal-election.update-closes-at');
     Route::get('internal-election/export/{id}', 'InternalElectionController@export')->name('internal-election.export');
     Route::get('internal-election-vote/reset', 'InternalElectionController@reset')->name('internal-election-votes.reset');
+    Route::get('internal-election-import-allowed-voters', 'InternalElectionController@importAllowedVotersForm')->name('internal-election.import-allowed-voters-form');
+    Route::get('internal-election-import-allowed-voters-template', 'InternalElectionController@downloadAllowedVotersTemplate')->name('internal-election.import-allowed-voters-template');
+    Route::post('internal-election-import-allowed-voters', 'InternalElectionController@importAllowedVotersStore')->name('internal-election.import-allowed-voters-store');
+    Route::post('internal-election-reset-allowed-to-vote', 'InternalElectionController@resetAllowedToVote')->name('internal-election.reset-allowed-to-vote');
 
 
     //Internal Election Candidates
@@ -395,6 +415,8 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::post('internal-election-cadidates-store', 'InternalElectionCandidatesController@store')->name('internal-election-candidates.store');
     Route::get('internal-election-cadidates-create', 'InternalElectionCandidatesController@create')->name('internal-election-candidates.create');
     Route::delete('internal-election-cadidates-delete/{id}', 'InternalElectionCandidatesController@destroy')->name('internal-election-candidates.destroy');
+    Route::get('internal-election-cadidates-search-fpm', 'InternalElectionCandidatesController@searchFpmUsers')->name('internal-election-candidates.search-fpm');
+    Route::post('internal-election-cadidates-update-order/{id}', 'InternalElectionCandidatesController@updateOrder')->name('internal-election-candidates.update-order');
 
     //National Council Poll Questions Answer
     /*Route::resource('national-council-poll.questions.answers','NationalCouncilPollQuestionAnswersController');*/
