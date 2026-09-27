@@ -16,7 +16,7 @@ class NationalPlansController extends Controller
     public function index(Request $request)
     {
         if ($request->ajax()) {
-            $data = NationalPlan::orderBy('tab')->orderBy('order');
+            $data = NationalPlan::orderByRaw('date IS NULL')->orderBy('date', 'desc')->orderBy('order');
             return DataTables::of($data)
                 ->addColumn('tab_label', fn($r) => NationalPlan::$tabs[$r->tab] ?? $r->tab)
                 ->addColumn('action', fn($r) =>
@@ -33,12 +33,13 @@ class NationalPlansController extends Controller
             'table_title' => '',
             'slug'        => 'national-plans',
             'custom_btn'  => "<a href='" . route('admin.national-plans.create') . "' class='btn btn-primary'>إضافة خطة</a>",
-            'headers'     => ['id', 'القطاع', 'العنوان', 'Action'],
+            'headers'     => ['id', 'القطاع', 'العنوان', 'التاريخ', 'Action'],
             'action'      => route('admin.national-plans.index'),
             'columns'     => json_encode([
                 ['data' => 'id',        'name' => 'id'],
                 ['data' => 'tab_label', 'name' => 'tab_label'],
                 ['data' => 'title',     'name' => 'title'],
+                ['data' => 'date',      'name' => 'date'],
                 ['data' => 'action',    'name' => 'action', 'searchable' => false, 'sortable' => false],
             ]),
         ]);
@@ -58,6 +59,7 @@ class NationalPlansController extends Controller
                 'form_fields'   => [
                     $this->drawHtml('select-box', 'القطاع', 'tab', null, NationalPlan::$tabs, '', 'col-md-12 required'),
                     $this->drawHtml('small_text', 'العنوان', 'title', null, null, '', 'col-md-12 required'),
+                    $this->drawHtml('date-picker', 'التاريخ', 'date', now()->toDateString(), null, '', 'col-md-12 required'),
                     $this->drawHtml('file', 'ملف PDF', 'pdf', null, 'application/pdf', '', 'col-md-12 required'),
                     $this->drawHtml('small_text', 'الترتيب', 'order', '0', null, '', 'col-md-6'),
                 ],
@@ -70,6 +72,7 @@ class NationalPlansController extends Controller
         $this->validate($request, [
             'tab'   => 'required|in:iqtisad,kahraba,maa,muhajareen,lamarkaziya',
             'title' => 'required',
+            'date'  => 'required|date',
             'pdf'   => 'required|mimes:pdf|max:20480',
             'order' => 'nullable|integer',
         ]);
@@ -77,6 +80,7 @@ class NationalPlansController extends Controller
         $plan = new NationalPlan();
         $plan->tab       = $request->tab;
         $plan->title     = $request->title;
+        $plan->date      = \Carbon\Carbon::parse($request->date)->toDateString();
         $plan->file_name = $this->moveFile($request->file('pdf'), 'national_plans');
         $plan->order     = $request->order ?? 0;
         $plan->save();
@@ -100,6 +104,7 @@ class NationalPlansController extends Controller
                 'form_fields'   => [
                     $this->drawHtml('select-box', 'القطاع', 'tab', $plan->tab, NationalPlan::$tabs, '', 'col-md-12 required'),
                     $this->drawHtml('small_text', 'العنوان', 'title', $plan->title, null, '', 'col-md-12 required'),
+                    $this->drawHtml('date-picker', 'التاريخ', 'date', $plan->date, null, '', 'col-md-12 required'),
                     $this->drawHtml('file', 'ملف PDF جديد', 'pdf', null, 'application/pdf', '', 'col-md-12'),
                     $this->drawHtml('small_text', 'الترتيب', 'order', $plan->order, null, '', 'col-md-6'),
                 ],
@@ -113,11 +118,13 @@ class NationalPlansController extends Controller
         $this->validate($request, [
             'tab'   => 'required|in:iqtisad,kahraba,maa,muhajareen,lamarkaziya',
             'title' => 'required',
+            'date'  => 'required|date',
             'pdf'   => 'nullable|mimes:pdf|max:20480',
             'order' => 'nullable|integer',
         ]);
         $plan->tab   = $request->tab;
         $plan->title = $request->title;
+        $plan->date  = \Carbon\Carbon::parse($request->date)->toDateString();
         $plan->order = $request->order ?? 0;
         if ($request->hasFile('pdf')) {
             $this->removeFile('national_plans/' . $plan->file_name);

@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class NationalPlan extends Model
 {
     protected $table = 'national_plans';
-    protected $fillable = ['tab', 'title', 'file_name', 'order'];
+    protected $fillable = ['tab', 'title', 'date', 'file_name', 'order'];
 
     public static array $tabs = [
         'iqtisad'    => 'الإقتصادي',
