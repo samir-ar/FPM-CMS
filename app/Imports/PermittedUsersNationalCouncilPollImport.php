@@ -41,12 +41,17 @@ class PermittedUsersNationalCouncilPollImport implements ToCollection
             */
 
             ###### Jihad Updates ######
-            if(!$row[0]) continue;
+            $memberId = trim((string) ($row[0] ?? ''));
+            // Skips blank rows and the template's own header row (a real
+            // FPM member ID is always numeric) — also tolerates a
+            // single-column file (member ID only, no weight), defaulting
+            // to weight 1 instead of crashing on the missing column.
+            if ($memberId === '' || !ctype_digit($memberId)) continue;
             CouncilNationalPollPermission::create([
-                'member_id'=> $row[0],
+                'member_id'=> $memberId,
                 //'user_id' => $account->id,
                 'poll_id' => $this->pollId,
-                'vote_weight' => $row[1]
+                'vote_weight' => $row[1] ?? 1
             ]);
             ###########################
         }
