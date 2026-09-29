@@ -50,12 +50,10 @@ class InternalElectionController extends Controller
             })
 
             ->addColumn('action', function($row){
-                return "
-
-                <a class='edit-link' href='" . route('admin.internal-election.edit', $row->id) . "'>".
-
+                return "<a class='edit-link' href='" . route('admin.internal-election.edit', $row->id) . "'>".
+                    '<i class="fa fa-edit" aria-hidden="true"></i></a>'.
                     "<a data-toggle='modal' class='delete-link' href='#deleteModal' id='" .route('admin.internal-election.destroy', $row->id) . "'>".
-                    "<i class='fa fa-trash' style='color: red;' aria-hidden='true'></i>";
+                    "<i class='fa fa-trash' style='color: red;' aria-hidden='true'></i></a>";
             })
 
             ->rawColumns(['title','status','closes','action'])
