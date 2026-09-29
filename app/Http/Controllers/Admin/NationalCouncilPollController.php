@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Traits\FileTrait;
 use App\Http\Traits\FormTrait;
 use App\Imports\PermittedUsersNationalCouncilPollImport;
+use App\Exports\CouncilNationalPollTemplateExport;
+use App\Exceptions\InvalidVotersFileException;
 use App\V2\CouncilNationalPoll;
 use App\V2\CouncilNationalPollPermission;
 use App\V2\CouncilNationalPollVote;
@@ -14,6 +16,7 @@ use DataTables;
 use App\Http\Controllers\Controller;
 use App\V2\AppUser;
 use App\V2\User;
+use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
 
 class NationalCouncilPollController extends Controller
@@ -117,7 +120,7 @@ class NationalCouncilPollController extends Controller
                     'box-header' => 'Permissions',
                     'form_fields' => [
                         $this->drawHtml('file', 'List of permitted people', 'excel', '' , null, '', 'col-md-12 '),
-                        "<p>The excel structure should be as following: | FPM ID | Weight |</p>"
+                        "<p>Both columns are required: | Member ID | Weight | — <a href='" . route('admin.national-council-poll.voters-template') . "'>Download sample Excel</a>.</p>"
                     ]
                 ],[
                     'wrapper-class' => 'col-md-12 ',
@@ -161,7 +164,7 @@ class NationalCouncilPollController extends Controller
                         'box-header' => 'Permissions',
                         'form_fields' => [
                             $this->drawHtml('file', 'List of permitted people', 'excel', '' , null, '', 'col-md-12 '),
-                            "<p>The excel structure should be as following: | FPM ID | Weight |</p>"
+                            "<p>Both columns are required: | Member ID | Weight | — <a href='" . route('admin.national-council-poll.voters-template') . "'>Download sample Excel</a>.</p>"
                         ]
                     ]
 
@@ -210,14 +213,18 @@ class NationalCouncilPollController extends Controller
         $poll->title  = $request->title;
         $poll->save();
 
-        if($request->excel){
-            //Delete all the already existing records
-            CouncilNationalPollPermission::where('poll_id',$poll->id)->get()->each(function($user){
-                $user->delete();
-            });
-
-            //Add new permitted list
-            Excel::import(new PermittedUsersNationalCouncilPollImport($poll->id), $request->excel);
+        if ($request->excel) {
+            try {
+                // Wrapped in one transaction so a bad file rolls back the
+                // delete too — the previous list stays intact on failure
+                // instead of being wiped with nothing to replace it.
+                DB::transaction(function () use ($poll, $request) {
+                    CouncilNationalPollPermission::where('poll_id', $poll->id)->delete();
+                    Excel::import(new PermittedUsersNationalCouncilPollImport($poll->id), $request->excel);
+                });
+            } catch (InvalidVotersFileException $e) {
+                return redirect()->back()->withErrors(['excel' => $e->getMessage()])->withInput();
+            }
         }
         //$poll->groups()->sync(request('groups'));
 
@@ -231,18 +238,30 @@ class NationalCouncilPollController extends Controller
             'excel' => 'nullable|mimes:xlsx,csv,xls'
         ]);
 
-        $poll = new CouncilNationalPoll();
+        try {
+            // Wrapped in one transaction — if the voters file is invalid,
+            // the poll creation itself rolls back too, instead of leaving
+            // an orphaned poll with zero voters behind.
+            DB::transaction(function () use ($request) {
+                $poll = new CouncilNationalPoll();
+                $poll->is_published = (request('is_published'))?true:false;
+                $poll->title  = $request->title;
+                $poll->save();
 
-        $poll->is_published = (request('is_published'))?true:false;
-        $poll->title  = $request->title;
-        $poll->save();
-
-        //Add the permitted list, if provided now — can also be added later via Edit
-        if ($request->excel) {
-            Excel::import(new PermittedUsersNationalCouncilPollImport($poll->id), $request->excel);
+                //Add the permitted list, if provided now — can also be added later via Edit
+                if ($request->excel) {
+                    Excel::import(new PermittedUsersNationalCouncilPollImport($poll->id), $request->excel);
+                }
+            });
+        } catch (InvalidVotersFileException $e) {
+            return redirect()->back()->withErrors(['excel' => $e->getMessage()])->withInput();
         }
 
         return redirect()->route('admin.national-council-poll.index')->with('message', 'Poll has been created successfully');
+    }
+
+    public function downloadVotersTemplate(){
+        return Excel::download(new CouncilNationalPollTemplateExport(), 'national_council_poll_voters_template.xlsx');
     }
 
 

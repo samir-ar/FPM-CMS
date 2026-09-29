@@ -421,6 +421,7 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     //National Council Poll
     Route::get('national-council-poll/{id}/clear', 'NationalCouncilPollController@clear')->name('national-council-poll.clear');
     Route::get('national-council-poll/{id}/results', 'NationalCouncilPollController@results')->name('national-council-poll.results');
+    Route::get('national-council-poll-voters-template', 'NationalCouncilPollController@downloadVotersTemplate')->name('national-council-poll.voters-template');
     Route::resource('national-council-poll', 'NationalCouncilPollController');
 
     //National Council Poll Questions
