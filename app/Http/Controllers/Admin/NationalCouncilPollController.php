@@ -174,7 +174,15 @@ class NationalCouncilPollController extends Controller
     }
 
     private function getPermittedTable($pollId){
-        $listPermissions = CouncilNationalPollPermission::where('poll_id',$pollId)->join('app_users','council_national_poll_permissions.member_id','=','app_users.member_id')->get();
+        // Joining directly to app_users on member_id fans one permission
+        // row out into several displayed rows whenever a member has more
+        // than one app_users account (a known, separate duplicate-accounts
+        // issue) — look names up separately instead, one per member_id.
+        $listPermissions = CouncilNationalPollPermission::where('poll_id', $pollId)->get();
+        $names = AppUser::whereIn('member_id', $listPermissions->pluck('member_id'))
+            ->get(['member_id', 'name'])
+            ->unique('member_id')
+            ->keyBy('member_id');
 
         $html = "<table class='table table-striped table-dark'>";
 
@@ -189,7 +197,7 @@ class NationalCouncilPollController extends Controller
         foreach ($listPermissions as $permission){
             $html .="<tr>";
             $html .= "<td>".$permission->member_id."</td>";
-            $html .= "<td>".$permission->name."</td>";
+            $html .= "<td>".($names->get($permission->member_id)->name ?? '')."</td>";
             $html .= "<td>".$permission->vote_weight."</td>";
             $html .="</tr>";
         }
