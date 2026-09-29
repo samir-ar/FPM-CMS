@@ -228,7 +228,7 @@ class NationalCouncilPollController extends Controller
     {
         $this->validate($request, [
             'Title' => 'required_with:details',
-            'excel' => 'required|mimes:xlsx,csv,xls'
+            'excel' => 'nullable|mimes:xlsx,csv,xls'
         ]);
 
         $poll = new CouncilNationalPoll();
@@ -237,8 +237,10 @@ class NationalCouncilPollController extends Controller
         $poll->title  = $request->title;
         $poll->save();
 
-        //Add the permitted list
-        Excel::import(new PermittedUsersNationalCouncilPollImport($poll->id), $request->excel);
+        //Add the permitted list, if provided now — can also be added later via Edit
+        if ($request->excel) {
+            Excel::import(new PermittedUsersNationalCouncilPollImport($poll->id), $request->excel);
+        }
 
         return redirect()->route('admin.national-council-poll.index')->with('message', 'Poll has been created successfully');
     }

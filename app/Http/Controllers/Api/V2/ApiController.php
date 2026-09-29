@@ -49,6 +49,7 @@ use App\V2\CompetencyProfile;
 use App\V2\CompetencyNomination;
 use App\V2\InternalElection;
 use App\V2\InternalElectionCandidate;
+use App\V2\InternalElectionPermission;
 use App\V2\ElectionState;
 
 use GuzzleHttp\Client;
@@ -841,7 +842,11 @@ class ApiController extends Controller
         $poll  = CouncilNationalPoll::find($request->poll_id);
 
         //$weight = App\V2\CouncilNationalPollPermission::where('poll_id', $poll->id)->where('user_id', $request->user->id)->first()->vote_weight;
-        $weight = App\V2\CouncilNationalPollPermission::where('poll_id', $poll->id)->where('member_id', $request->user->member_id)->first()->vote_weight;
+        $permission = App\V2\CouncilNationalPollPermission::where('poll_id', $poll->id)->where('member_id', $request->user->member_id)->first();
+        if (!$permission) {
+            return $this->api_error_response('can_vote', 101, 'لا يمكنك التصويت');
+        }
+        $weight = $permission->vote_weight;
 
         foreach ($request->answers as $answer) {
 
@@ -1962,9 +1967,7 @@ class ApiController extends Controller
             $canVote = $result === 200;
             $message = null;
 
-            if ($result === 403) {
-                $message = 'غير مسموح لك بالتصويت في هذه الإنتخابات';
-            } elseif ($result === 500) {
+            if ($result === 500) {
                 $message = 'لا مرشحين عن دائرتك الإنتخابية';
             } elseif ($result === 401) {
                 $message = 'لقد قمت بالتصويت';
@@ -1979,8 +1982,14 @@ class ApiController extends Controller
                 'closes_at' => $election->closes_at ? Carbon::parse($election->closes_at)->toIso8601String() : null,
                 'can_i_vote' => $canVote,
                 'message' => $message,
+                // Result 403 = not Allowed_to_vote / no district match at all —
+                // not eligible in any way, so it's dropped from the list
+                // entirely below rather than shown as a disabled tile.
+                '_hide' => $result === 403,
             ];
-        })->values();
+        })->filter(fn ($e) => !$e['_hide'])
+            ->map(fn ($e) => collect($e)->except('_hide')->all())
+            ->values();
 
         return response()->json(['elections' => $elections]);
     }
@@ -1999,11 +2008,15 @@ class ApiController extends Controller
         }
 
 
-        // Allowed_to_vote is a mandatory per-member gate, required for
-        // everyone in addition to (not instead of) the district match below —
-        // defaults to 0, so a member must be explicitly flagged before any
-        // other condition is even checked.
-        if (!$user->Allowed_to_vote) {
+        // Per-election allowlist, uploaded by admin staff for this specific
+        // election (internal_election_permissions) — required for everyone
+        // in addition to (not instead of) the district match below. Replaces
+        // the old global Allowed_to_vote column (removed 2026-09-29).
+        $isAllowed = InternalElectionPermission::where('election_id', $election->id)
+            ->where('member_id', $user->member_id)
+            ->exists();
+
+        if (!$isAllowed) {
             return 403;
         }
 
@@ -2135,9 +2148,10 @@ class ApiController extends Controller
     }
 
     // For a registered candidate: every currently-eligible voter (member_status
-    // active + Allowed_to_vote flagged) across every district this candidate
-    // is running in, across all their candidate rows in any active election —
-    // not the general member list, so only actual candidates can see it.
+    // active + on the per-election allowlist) across every district this
+    // candidate is running in, across all their candidate rows in any active
+    // election — not the general member list, so only actual candidates can
+    // see it.
     function getMyDistrictVoters(Request $request)
     {
         $user = request('user');
@@ -2163,19 +2177,51 @@ class ApiController extends Controller
             ->unique()
             ->values();
 
+        // Allowed in at least one of this candidate's own elections — a
+        // voter permitted for a different, unrelated election shouldn't show up here.
+        $electionIds = $candidateRows->pluck('election_id')->unique()->values();
+        $allowedMemberIds = InternalElectionPermission::whereIn('election_id', $electionIds)
+            ->pluck('member_id');
+
         $voters = FpmUser::whereIn('district', $districtNames)
             ->where('member_status', 1)
-            ->where('Allowed_to_vote', 1)
+            ->whereIn('MemberId', $allowedMemberIds)
+            ->orderBy('town')
             ->orderBy('UserFullName')
-            ->get(['UserFullName', 'MobileNumber'])
+            ->get(['UserFullName', 'MobileNumber', 'town'])
             ->map(function ($voter) {
                 return [
-                    'full_name' => $voter->UserFullName,
+                    'full_name' => $this->shortVoterName($voter->UserFullName),
                     'mobile_number' => $voter->MobileNumber,
+                    'town' => $voter->town,
                 ];
             });
 
         return response()->json(['voters' => $voters], 200);
+    }
+
+    // Drops the father/grandfather middle name(s), keeping just first + family
+    // name — e.g. "جورج طنوس طنوس سلوم" -> "جورج سلوم" — for the district
+    // voters list, which only needs enough to identify who to call.
+    function shortVoterName($fullName)
+    {
+        $parts = preg_split('/\s+/', trim($fullName ?? ''));
+
+        if (count($parts) <= 2) {
+            return $fullName;
+        }
+
+        // Common Lebanese compound-surname prefixes (e.g. "ابي زيد", "ابو
+        // خليل") — keep the prefix attached to the family name instead of
+        // dropping it as if it were a middle/father name.
+        $compoundPrefixes = ['ابي', 'أبي', 'ابو', 'أبو', 'بو'];
+        $familyStart = count($parts) - 1;
+
+        if ($familyStart > 0 && in_array($parts[$familyStart - 1], $compoundPrefixes)) {
+            $familyStart--;
+        }
+
+        return $parts[0] . ' ' . implode(' ', array_slice($parts, $familyStart));
     }
 
 

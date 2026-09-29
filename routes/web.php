@@ -404,10 +404,7 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::post('internal-election/update-closes-at/{id}', 'InternalElectionController@updateClosesAt')->name('internal-election.update-closes-at');
     Route::get('internal-election/export/{id}', 'InternalElectionController@export')->name('internal-election.export');
     Route::get('internal-election-vote/reset', 'InternalElectionController@reset')->name('internal-election-votes.reset');
-    Route::get('internal-election-import-allowed-voters', 'InternalElectionController@importAllowedVotersForm')->name('internal-election.import-allowed-voters-form');
     Route::get('internal-election-import-allowed-voters-template', 'InternalElectionController@downloadAllowedVotersTemplate')->name('internal-election.import-allowed-voters-template');
-    Route::post('internal-election-import-allowed-voters', 'InternalElectionController@importAllowedVotersStore')->name('internal-election.import-allowed-voters-store');
-    Route::post('internal-election-reset-allowed-to-vote', 'InternalElectionController@resetAllowedToVote')->name('internal-election.reset-allowed-to-vote');
 
 
     //Internal Election Candidates

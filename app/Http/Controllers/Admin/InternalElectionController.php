@@ -11,7 +11,8 @@ use App\V2\InternalElection;
 use App\V2\ElectionState;
 use App\V2\InternalElectionCandidate;
 use App\V2\InternalElectionVote;
-use App\Imports\AllowedToVoteImport;
+use App\V2\InternalElectionPermission;
+use App\Imports\InternalElectionAllowedVotersImport;
 use App\Exports\AllowedToVoteTemplateExport;
 use Carbon\Carbon;
 use Maatwebsite\Excel\Facades\Excel;
@@ -70,7 +71,6 @@ class InternalElectionController extends Controller
             'slug'		=> 'Archives',
             'custom_btn' => "<a href='" . route('admin.internal-election.create') ."' class='btn btn-primary'>Add Election</a>",
             'custom_btn1' => "<a class='btn btn-danger' href='" . route('admin.internal-election-votes.reset') . "'>DELETE ALL VOTES</a>",
-            'custom_btn2' => "<a class='btn btn-success' href='" . route('admin.internal-election.import-allowed-voters-form') . "'>استيراد قائمة المسموح لهم بالتصويت</a>",
             'headers'	=> ['id','Title', 'Status', 'Closes at', 'Action'],
             'action' => route('admin.internal-election.index'),
             'columns' => json_encode([
@@ -113,36 +113,8 @@ class InternalElectionController extends Controller
         return redirect()->route('admin.internal-election.index')->with('message', 'Election has been reset successfully');
     }
 
-    public function importAllowedVotersForm(){
-        return view('internal-election.import-allowed-voters')->with([
-            'layout' => 'layouts.cms',
-            'pageTitle' => 'استيراد قائمة المسموح لهم بالتصويت',
-        ]);
-    }
-
     public function downloadAllowedVotersTemplate(){
         return Excel::download(new AllowedToVoteTemplateExport(), 'allowed_to_vote_template.xlsx');
-    }
-
-    public function importAllowedVotersStore(Request $request){
-        $this->validate($request, [
-            'file' => 'required|mimes:xlsx,xls,csv',
-        ]);
-
-        $import = new AllowedToVoteImport();
-        Excel::import($import, $request->file('file'));
-
-        return redirect()->route('admin.internal-election.index')
-            ->with('message', "تم الاستيراد — {$import->matched} عضو تم تفعيل حق التصويت له"
-                . ($import->notFound > 0 ? "، {$import->notFound} رقم انتساب غير موجود" : ""));
-    }
-
-    public function resetAllowedToVote(){
-        \App\V2\FpmUser::query()->update(['Allowed_to_vote' => 0]);
-        \App\V2\AppUser::query()->update(['Allowed_to_vote' => 0]);
-
-        return redirect()->route('admin.internal-election.import-allowed-voters-form')
-            ->with('message', 'تم إعادة تعيين جميع الأعضاء — لا أحد مسموح له بالتصويت الآن');
     }
 
     public function create(Request $request){
@@ -163,16 +135,24 @@ class InternalElectionController extends Controller
                         $this->drawHtml('date-time-picker', 'موعد إقفال التصويت (اختياري)', 'closes_at', '', null, '', 'col-md-6'),
                     ],
                 ],
+                [
+                    'wrapper-class' => 'col-md-12',
+                    'class' => 'box-primary',
+                    'box-header' => 'Permissions',
+                    'form_fields' => [
+                        $this->drawHtml('file', 'List of permitted voters', 'excel', '', null, '', 'col-md-12'),
+                        "<p>The excel structure should be as following: | FPM ID | — <a href='" . route('admin.internal-election.import-allowed-voters-template') . "'>Download template</a>. Can also be added later from Edit.</p>",
+                    ],
+                ],
             ]
         ]);
     }
-
-
 
     public function store(Request $request){
         $this->validate($request, [
             'title' => 'required',
             'closes_at' => 'nullable|date',
+            'excel' => 'nullable|mimes:xlsx,csv,xls',
         ]);
 
         $internal = new InternalElection();
@@ -183,7 +163,99 @@ class InternalElectionController extends Controller
 
         $internal->save();
 
+        if ($request->excel) {
+            Excel::import(new InternalElectionAllowedVotersImport($internal->id), $request->excel);
+        }
+
         return redirect(route('admin.internal-election.index'))->with('message', 'Election has been created successfully');
+    }
+
+    public function edit($id, Request $request){
+        $internal = InternalElection::find($id);
+        if (!$internal) {
+            return redirect(route('admin.internal-election.index'))->withErrors('Election not found');
+        }
+
+        return view('components.form')->with([
+            'layout'         => 'layouts.cms',
+            'pageTitle'		=> 'Edit Election',
+            'method'		=> 'update',
+            'form_action'	=> route('admin.internal-election.update', $id),
+
+            'boxes' => [
+                [
+                    'wrapper-class' => 'col-md-12',
+                    'class' => 'box-default',
+                    'box-header' => 'Info',
+                    'form_fields' => [
+                        $this->drawHtml('small_text', 'عنوان الانتخابات', 'title', $internal->title, null, '', 'col-md-12 required right-to-left'),
+                        $this->drawHtml('date-time-picker', 'موعد إقفال التصويت (اختياري)', 'closes_at', $internal->closes_at ? Carbon::parse($internal->closes_at)->format('Y-m-d\TH:i') : '', null, '', 'col-md-6'),
+                    ],
+                ],
+                [
+                    'wrapper-class' => 'col-md-12',
+                    'class' => 'box-primary',
+                    'box-header' => 'Permissions',
+                    'form_fields' => [
+                        $this->drawHtml('file', 'List of permitted voters', 'excel', '', null, '', 'col-md-12'),
+                        "<p>Uploading a new file replaces the current list below. The excel structure should be as following: | FPM ID | — <a href='" . route('admin.internal-election.import-allowed-voters-template') . "'>Download template</a>.</p>",
+                    ],
+                ],
+                [
+                    'wrapper-class' => 'col-md-12',
+                    'class' => 'box-primary',
+                    'box-header' => 'Permitted',
+                    'form_fields' => [
+                        $this->getPermittedTable($id),
+                    ],
+                ],
+            ]
+        ]);
+    }
+
+    public function update($id, Request $request){
+        $this->validate($request, [
+            'title' => 'required',
+            'closes_at' => 'nullable|date',
+            'excel' => 'nullable|mimes:xlsx,csv,xls',
+        ]);
+
+        $internal = InternalElection::find($id);
+        if (!$internal) {
+            return redirect(route('admin.internal-election.index'))->withErrors('Election not found');
+        }
+
+        $internal->title = request('title');
+        $internal->closes_at = request('closes_at') ? Carbon::parse(request('closes_at'))->toDateTimeString() : null;
+        $internal->save();
+
+        if ($request->excel) {
+            // Full replace, not a merge — matches National Council Poll's
+            // re-upload behavior.
+            InternalElectionPermission::where('election_id', $internal->id)->delete();
+            Excel::import(new InternalElectionAllowedVotersImport($internal->id), $request->excel);
+        }
+
+        return redirect(route('admin.internal-election.index'))->with('message', 'Election has been updated successfully');
+    }
+
+    private function getPermittedTable($electionId){
+        $listPermissions = InternalElectionPermission::where('election_id', $electionId)
+            ->join('app_users', 'internal_election_permissions.member_id', '=', 'app_users.member_id')
+            ->get(['internal_election_permissions.member_id', 'app_users.name']);
+
+        $html = "<table class='table table-striped table-dark'>";
+        $html .= "<thead><tr><th scope='col'>Member Id</th><th scope='col'>Name</th></tr></thead>";
+
+        foreach ($listPermissions as $permission) {
+            $html .= "<tr>";
+            $html .= "<td>" . $permission->member_id . "</td>";
+            $html .= "<td>" . $permission->name . "</td>";
+            $html .= "</tr>";
+        }
+
+        $html .= "</table>";
+        return $html;
     }
 
     public function destroy($id){
