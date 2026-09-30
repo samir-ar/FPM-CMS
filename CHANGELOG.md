@@ -4,6 +4,25 @@ All notable changes to the FPM-CMS (Laravel backend) are documented in this file
 
 ## Unreleased
 
+Committed and deployed to staging **and production** 2026-09-29/30 (the first time this project's recent work reached production):
+
+### Added
+
+- **National Council Poll — admin-side hardening.** The voter-list Excel import previously defaulted a missing `weight` column to 1 silently; now requires both Member ID and Weight explicitly, failing with a clear Arabic message + a downloadable sample template instead of a raw crash. Poll save + import now happen in one DB transaction, so a bad file can't leave an orphaned poll or wipe an existing voter list on re-upload.
+- **Internal Election — per-election voter allowlist**, replacing the global `Allowed_to_vote` column entirely. New `internal_election_permissions` table (`election_id` + `member_id`), uploaded inline on the election's own create/edit form (previously required no admin UI at all beyond a direct DB edit). Migration backfills one permission row per (currently-active election × previously-`Allowed_to_vote=1` member) so nobody lost voting access at cutover. Also built real `edit()`/`update()` controller methods for the first time — the routes existed but had nothing behind them.
+- `database/migrations/2026_09_30_120000_backfill_pages_missing_from_manual_local_additions.php` — 14 real admin sidebar pages (Political Work, Municipalities, Mukhtars, Internal Org, Legislative Docs, National Plans, Competency Platform, Business Types, Community Posts, Directory Members, Check-In Events, Social Links, Legislative Doc Categories, Community parent) had only ever been added to local's `pages` table manually through the admin UI, never via a migration — so they never reached staging/production despite the underlying feature code being deployed. Idempotent by `url`.
+
+### Fixed
+
+- `getPermittedTable()` (both National Council Poll and Internal Election admin "who's permitted" views) joined directly to `app_users` on `member_id`, fanning one real permission row into N displayed rows whenever that member has N duplicate `app_users` accounts — fixed to look names up separately.
+- Internal Election's admin list had a broken Edit link — the `<a>` tag had no icon/text inside it and was never closed before the delete link opened, so there was nothing visible to click even though the edit page itself worked fine when reached directly by URL.
+- Production's `.env` had a literal typo, `CACHE_DRIVER=file\`` (stray backtick) — silently tolerated by the old Laravel version running there, hard-crashed under Laravel 10's stricter cache-store validation. Found and fixed during the production PHP 7.4→8.2 cutover.
+
+### Infrastructure
+
+- **Production cutover**: PHP upgraded from 7.4-only to 8.2-FPM, full `develop` branch code deployed, 73 migrations run against the real database — done live with zero downtime beyond a few seconds and zero data loss, full backups throughout. Full playbook in project memory (`reference_production_server.md`) if this needs repeating for a future major deploy.
+- CloudFront CDN set up in front of the `fpm-web-files` S3 bucket (staging only so far) — fixes a recurring client-side image-loading flakiness traced to DNS resolution issues specific to the raw S3 domain.
+
 ### Added
 
 - Bulk push notifications can now target specific groups via a "Groups" multi-select on the Send Notification form (`NotificationController`); leaving it empty still sends to all groups, matching the previous behavior.
