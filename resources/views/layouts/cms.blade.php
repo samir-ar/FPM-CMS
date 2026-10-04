@@ -243,7 +243,7 @@
     <footer class="main-footer">
         <div class="pull-right hidden-xs">
         </div>
-        <strong>Swift IT Solution 2026 &copy;</strong>
+        <strong><a href="https://swiftsls.com" target="_blank" rel="noopener"><b>Swift IT Solution 2026 &copy;</b></a></strong>
     </footer>
 
     <!-- Control Sidebar -->
