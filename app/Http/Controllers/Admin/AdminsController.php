@@ -237,7 +237,9 @@ class AdminsController extends Controller
 
     public function destroy($id)
     {
-        User::find($id)->delete();
+        $admin = User::find($id);
+        $admin->pages()->detach();
+        $admin->delete();
 
         return back()->with('message', 'Admin Deleted');
     }
