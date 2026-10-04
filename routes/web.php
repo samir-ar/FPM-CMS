@@ -61,6 +61,9 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     //Representatives Positions
     Route::resource('representative-positions', 'RepresentativePositionController');
 
+    //Store Analytics (iOS + Android)
+    Route::get('store-analytics', 'StoreAnalyticsController@index')->name('store-analytics.index');
+
     //App Versions - Force Updates
     Route::get('app-versions', 'AppVersionsController@edit')->name('app-versions.edit');
     Route::put('app-versions/update', 'AppVersionsController@update')->name('app-versions.update');

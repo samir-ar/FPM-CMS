@@ -73,4 +73,20 @@ return [
         'token' => env('INSTAGRAM_TOKEN'),
     ],
 
+    'google_play' => [
+        'package_name' => env('GOOGLE_PLAY_PACKAGE_NAME', 'com.microbits.fpm'),
+        'credentials_path' => env('GOOGLE_PLAY_CREDENTIALS_PATH', storage_path('app/credentials/google-play-reporting.json')),
+        'stats_bucket' => env('GOOGLE_PLAY_STATS_BUCKET', 'pubsite_prod_8017453829340598667'),
+        'oauth_client_path' => env('GOOGLE_PLAY_OAUTH_CLIENT_PATH', storage_path('app/credentials/google-oauth-client.json')),
+        'stats_refresh_token' => env('GOOGLE_PLAY_STATS_REFRESH_TOKEN'),
+    ],
+
+    'app_store_connect' => [
+        'issuer_id' => env('APP_STORE_CONNECT_ISSUER_ID'),
+        'key_id' => env('APP_STORE_CONNECT_KEY_ID'),
+        'private_key_path' => env('APP_STORE_CONNECT_PRIVATE_KEY_PATH', storage_path('app/credentials/AuthKey_' . env('APP_STORE_CONNECT_KEY_ID') . '.p8')),
+        'app_id' => env('APP_STORE_CONNECT_APP_ID', '1083351430'),
+        'bundle_id' => env('APP_STORE_CONNECT_BUNDLE_ID', 'com.microbits.fpm'),
+    ],
+
 ];
