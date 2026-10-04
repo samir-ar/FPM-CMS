@@ -243,7 +243,7 @@
     <footer class="main-footer">
         <div class="pull-right hidden-xs">
         </div>
-        <strong>Designed by <a href="https://tedmob.com"><b>TEDMOB.com</b></a></strong>
+        <strong>Swift IT Solution 2026 &copy;</strong>
     </footer>
 
     <!-- Control Sidebar -->
