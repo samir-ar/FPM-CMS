@@ -577,7 +577,7 @@ trait FormTrait
         else if($type == 'checkbox'){
             $text = '<div class="form-group ' . ($class?:'') . '">'.
                 '<label>' . $label . '<input  type="checkbox" name="' . $name . '" class="minimal" ' .
-                ($default == true ? 'checked' : "") . ' value="' . ($options ? $options : 'on') . '"> </label>'.
+                ($default == true ? 'checked' : "") . ' value="' . ($options !== null ? $options : 'on') . '"> </label>'.
                 '</div>';
         }
 
