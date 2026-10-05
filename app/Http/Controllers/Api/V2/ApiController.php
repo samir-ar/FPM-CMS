@@ -96,6 +96,19 @@ class ApiController extends Controller
     {
         $user = $request->user;
 
+        // Opportunistic player_id sync: the login screen reads OneSignal's
+        // pushSubscription.id too early (before OneSignal finishes
+        // registering with APNs/FCM), so it's often empty at that point.
+        // This endpoint is called every time the Home page loads for a
+        // logged-in user — by then OneSignal has had much more time — so
+        // it doubles as a reliable place to catch a player_id that wasn't
+        // captured (or changed) at login.
+        $playerId = $request->input('player_id');
+        if (!empty($playerId) && $playerId !== $user->player_id) {
+            $user->player_id = $playerId;
+            $user->save();
+        }
+
         // fpm_users (synced nightly from TWH) is the source of truth for
         // these fields — app_users' own columns are only a fallback for
         // orphaned accounts whose member_id has no matching roster row.

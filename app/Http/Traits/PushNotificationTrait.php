@@ -3,6 +3,7 @@ namespace App\Http\Traits;
 use App\V2\AppUser;
 use DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 trait PushNotificationTrait
 {
@@ -60,7 +61,7 @@ trait PushNotificationTrait
 
 
                     //for ios
-                    $media_id = 'id'.str_random(5);
+                    $media_id = 'id'.Str::random(5);
                     $fields['ios_attachments'] = [$media_id => $info['image']];
 
                 }
@@ -153,7 +154,7 @@ trait PushNotificationTrait
 
 
                 //for ios
-                $media_id = 'id'.str_random(5);
+                $media_id = 'id'.Str::random(5);
                 $fields['ios_attachments'] = [$media_id => $info['image']];
 
             }
