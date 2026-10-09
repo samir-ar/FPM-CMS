@@ -2153,7 +2153,20 @@ class ApiController extends Controller
             return $this->api_error_response('missing_parameters', 101,  "لا يمكنك التصويت لان هذا المرشح ليس من ضمن دائرتك الإنتخابية");
         }
 
-        $user->votes()->attach(request('candidate_id'), ['rank' => 1, 'internal_election_id' => $election->id, 'weight' => 1]);
+        // The canIVote() "already voted" check above isn't atomic with this
+        // insert - under real concurrent load (double-tap, a network retry,
+        // two sessions) two requests could both pass it. A unique DB
+        // constraint on (user_id, internal_election_id) is the actual
+        // guarantee; this just turns that into the same friendly message
+        // instead of a raw 500 if it's ever hit.
+        try {
+            $user->votes()->attach(request('candidate_id'), ['rank' => 1, 'internal_election_id' => $election->id, 'weight' => 1]);
+        } catch (\Illuminate\Database\QueryException $e) {
+            if ($e->getCode() === '23000') {
+                return $this->api_error_response('missing_parameterss', 101, "لا يمكنك التصويت");
+            }
+            throw $e;
+        }
 
         return response()->json([
             "message" => "لقد تم التصويت بنجاح شكراً"
