@@ -132,6 +132,7 @@ class InternalElectionController extends Controller
                     'form_fields' => [
                         $this->drawHtml('small_text', 'عنوان الانتخابات', 'title', '', null, '', 'col-md-12 required right-to-left'),
                         $this->drawHtml('date-time-picker', 'موعد إقفال التصويت (اختياري)', 'closes_at', '', null, '', 'col-md-6'),
+                        $this->drawHtml('checkbox', 'Require selfie verification to vote', 'requires_selfie', false, null, '', 'col-md-12'),
                     ],
                 ],
                 [
@@ -159,6 +160,7 @@ class InternalElectionController extends Controller
         $internal->is_active = false;
         $internal->title = request('title');
         $internal->closes_at = request('closes_at') ? Carbon::parse(request('closes_at'))->toDateTimeString() : null;
+        $internal->requires_selfie = request('requires_selfie') ? true : false;
 
         $internal->save();
 
@@ -189,6 +191,7 @@ class InternalElectionController extends Controller
                     'form_fields' => [
                         $this->drawHtml('small_text', 'عنوان الانتخابات', 'title', $internal->title, null, '', 'col-md-12 required right-to-left'),
                         $this->drawHtml('date-time-picker', 'موعد إقفال التصويت (اختياري)', 'closes_at', $internal->closes_at ? Carbon::parse($internal->closes_at)->format('Y-m-d\TH:i') : '', null, '', 'col-md-6'),
+                        $this->drawHtml('checkbox', 'Require selfie verification to vote', 'requires_selfie', $internal->requires_selfie, null, '', 'col-md-12'),
                     ],
                 ],
                 [
@@ -226,6 +229,7 @@ class InternalElectionController extends Controller
 
         $internal->title = request('title');
         $internal->closes_at = request('closes_at') ? Carbon::parse(request('closes_at'))->toDateTimeString() : null;
+        $internal->requires_selfie = request('requires_selfie') ? true : false;
         $internal->save();
 
         if ($request->excel) {
@@ -270,6 +274,41 @@ class InternalElectionController extends Controller
         return back()->with('message', 'Election Deleted Successfully');
     }
 
+
+    // Per-voter dispute review — not a tally, individual rows with the
+    // selfie captured at vote time next to the voter's real on-file photo.
+    // Shows real voters' faces tied to their vote, so nothing is listed
+    // until a specific district is picked rather than dumping every vote
+    // in the election at once.
+    public function votes($id, Request $request){
+        $election = InternalElection::find($id);
+        if(!$election){
+            return redirect(route('admin.internal-election.index'))->withErrors('Election not found');
+        }
+
+        $stateIds = \DB::table('internal_election_candidate_states')
+            ->join('internal_election_candidates', 'internal_election_candidates.id', '=', 'internal_election_candidate_states.candidate_id')
+            ->where('internal_election_candidates.election_id', $election->id)
+            ->distinct()
+            ->pluck('internal_election_candidate_states.election_state_id');
+
+        $allStates = ElectionState::whereIn('id', $stateIds)->orderBy('name')->get();
+
+        $selectedStateId = request()->filled('state_id') ? (int) request('state_id') : null;
+
+        $votes = collect();
+        if ($selectedStateId) {
+            $votes = InternalElectionVote::with(['user', 'candidate'])
+                ->where('internal_election_id', $election->id)
+                ->whereHas('candidate.electionStates', function($q) use ($selectedStateId){
+                    $q->where('election_states.id', $selectedStateId);
+                })
+                ->get();
+        }
+
+        return view('internal-election.votes', compact('election', 'allStates', 'selectedStateId', 'votes'))
+            ->with('pageTitle', 'Vote Dispute Review - ' . $election->title);
+    }
 
     public function export($id){
         $election = InternalElection::find($id);

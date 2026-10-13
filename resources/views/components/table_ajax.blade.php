@@ -134,6 +134,7 @@
 
                     @if (isset($generateInternalElectionReport))
                         <a href='{{route("admin.internal-election.export",request('id'))}}' role="button" class="btn btn-primary">Export</a>
+                        <a href='{{route("admin.internal-election.votes",request('id'))}}' role="button" class="btn btn-warning">Vote Dispute Review</a>
                     @endif
 
 

@@ -57,6 +57,7 @@ Route::group(['namespace' => 'Api\V2', 'prefix' => 'v2/', 'middleware' => ['lang
 
         /////////////////𝕀𝕟𝕥𝕖𝕣𝕟𝕒𝕝 𝔼𝕝𝕖𝕔𝕥𝕚𝕠𝕟/////////////////////
         Route::get('get-internal-election-candidates','ApiController@getInternalElectionCandidates');
+        Route::post('internal-election-selfie-upload-url','ApiController@internalElectionSelfieUploadUrl');
         Route::post('internal-election-vote','ApiController@internalElectionVote');
         Route::get('can-i-vote','ApiController@canIVoteEndpoint');
         Route::get('my-district-voters','ApiController@getMyDistrictVoters');

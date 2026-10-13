@@ -51,6 +51,7 @@ use App\V2\InternalElection;
 use App\V2\InternalElectionCandidate;
 use App\V2\InternalElectionPermission;
 use App\V2\ElectionState;
+use Illuminate\Support\Str;
 
 use GuzzleHttp\Client;
 
@@ -1993,6 +1994,7 @@ class ApiController extends Controller
                 'title' => $election->title,
                 'election_date' => $election->created_at ? $election->created_at->format('Y-m-d H:i') : null,
                 'closes_at' => $election->closes_at ? Carbon::parse($election->closes_at)->toIso8601String() : null,
+                'requires_selfie' => (bool) $election->requires_selfie,
                 'can_i_vote' => $canVote,
                 'message' => $message,
                 // Result 403 = not Allowed_to_vote / no district match at all —
@@ -2123,6 +2125,30 @@ class ApiController extends Controller
     }
 
 
+    // Internal-election selfie uploads go straight to S3 via a presigned
+    // PUT URL, never through this app server - a server-mediated upload
+    // would tie up a PHP-FPM worker for the whole upload duration on every
+    // vote, during the exact kind of concurrent-vote spike that's already
+    // the capacity bottleneck on election day.
+    function internalElectionSelfieUploadUrl(Request $request)
+    {
+        $user = request('user');
+
+        if (!$user) {
+            return $this->api_error_response('missing_parameters', 101, "user not found");
+        }
+
+        $fileName = time() . '_' . Str::random(12) . '.jpg';
+        $path = config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/internal_election_selfies/' . $fileName;
+
+        $uploadUrl = Storage::disk('s3')->temporaryUploadUrl($path, now()->addMinutes(5));
+
+        return response()->json([
+            'upload_url' => $uploadUrl['url'] ?? $uploadUrl,
+            'filename' => $fileName,
+        ]);
+    }
+
     function internalElectionVote(Request $request)
     {
         $userInfo = request('loggedInUser');
@@ -2153,6 +2179,30 @@ class ApiController extends Controller
             return $this->api_error_response('missing_parameters', 101,  "لا يمكنك التصويت لان هذا المرشح ليس من ضمن دائرتك الإنتخابية");
         }
 
+        // selfie_filename is only mandatory for elections that have the
+        // requires_selfie toggle turned on by the admin - everything else
+        // about voting is unchanged for elections without it.
+        $selfieValidator = Validator::make($request->all(), [
+            'selfie_filename' => $election->requires_selfie ? 'required|string' : 'nullable|string',
+        ]);
+
+        if ($selfieValidator->fails()) {
+            return $this->api_error_response('missing_parameters', 101, implode(', ', $selfieValidator->messages()->all()));
+        }
+
+        $selfieFilename = request('selfie_filename');
+
+        if ($election->requires_selfie) {
+            $path = config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/internal_election_selfies/' . $selfieFilename;
+
+            // Without this, a client could skip the actual upload and just
+            // send a made-up filename, defeating the whole point of the
+            // verification step.
+            if (!Storage::disk('s3')->exists($path)) {
+                return $this->api_error_response('missing_parameters', 101, "لم يتم العثور على صورة التحقق، الرجاء إعادة المحاولة");
+            }
+        }
+
         // The canIVote() "already voted" check above isn't atomic with this
         // insert - under real concurrent load (double-tap, a network retry,
         // two sessions) two requests could both pass it. A unique DB
@@ -2160,7 +2210,13 @@ class ApiController extends Controller
         // guarantee; this just turns that into the same friendly message
         // instead of a raw 500 if it's ever hit.
         try {
-            $user->votes()->attach(request('candidate_id'), ['rank' => 1, 'internal_election_id' => $election->id, 'weight' => 1]);
+            $user->votes()->attach(request('candidate_id'), [
+                'rank' => 1,
+                'internal_election_id' => $election->id,
+                'weight' => 1,
+                'selfie_path' => $election->requires_selfie ? $selfieFilename : null,
+                'voted_at' => now(),
+            ]);
         } catch (\Illuminate\Database\QueryException $e) {
             if ($e->getCode() === '23000') {
                 return $this->api_error_response('missing_parameterss', 101, "لا يمكنك التصويت");

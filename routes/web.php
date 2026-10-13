@@ -406,6 +406,7 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::post('internal-election/publish/{id}', 'InternalElectionController@publish');
     Route::post('internal-election/update-closes-at/{id}', 'InternalElectionController@updateClosesAt')->name('internal-election.update-closes-at');
     Route::get('internal-election/export/{id}', 'InternalElectionController@export')->name('internal-election.export');
+    Route::get('internal-election/{id}/votes', 'InternalElectionController@votes')->name('internal-election.votes');
     Route::get('internal-election-vote/reset', 'InternalElectionController@reset')->name('internal-election-votes.reset');
     Route::get('internal-election-import-allowed-voters-template', 'InternalElectionController@downloadAllowedVotersTemplate')->name('internal-election.import-allowed-voters-template');
 
