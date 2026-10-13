@@ -132,6 +132,7 @@ class InternalElectionController extends Controller
                     'form_fields' => [
                         $this->drawHtml('small_text', 'عنوان الانتخابات', 'title', '', null, '', 'col-md-12 required right-to-left'),
                         $this->drawHtml('date-time-picker', 'موعد إقفال التصويت (اختياري)', 'closes_at', '', null, '', 'col-md-6'),
+                        $this->drawHtml('checkbox', 'Require selfie verification to vote', 'requires_selfie', false, null, '', 'col-md-12'),
                     ],
                 ],
                 [
@@ -159,6 +160,7 @@ class InternalElectionController extends Controller
         $internal->is_active = false;
         $internal->title = request('title');
         $internal->closes_at = request('closes_at') ? Carbon::parse(request('closes_at'))->toDateTimeString() : null;
+        $internal->requires_selfie = request('requires_selfie') ? true : false;
 
         $internal->save();
 
@@ -189,6 +191,7 @@ class InternalElectionController extends Controller
                     'form_fields' => [
                         $this->drawHtml('small_text', 'عنوان الانتخابات', 'title', $internal->title, null, '', 'col-md-12 required right-to-left'),
                         $this->drawHtml('date-time-picker', 'موعد إقفال التصويت (اختياري)', 'closes_at', $internal->closes_at ? Carbon::parse($internal->closes_at)->format('Y-m-d\TH:i') : '', null, '', 'col-md-6'),
+                        $this->drawHtml('checkbox', 'Require selfie verification to vote', 'requires_selfie', $internal->requires_selfie, null, '', 'col-md-12'),
                     ],
                 ],
                 [
@@ -226,6 +229,7 @@ class InternalElectionController extends Controller
 
         $internal->title = request('title');
         $internal->closes_at = request('closes_at') ? Carbon::parse(request('closes_at'))->toDateTimeString() : null;
+        $internal->requires_selfie = request('requires_selfie') ? true : false;
         $internal->save();
 
         if ($request->excel) {
@@ -239,18 +243,30 @@ class InternalElectionController extends Controller
     }
 
     private function getPermittedTable($electionId){
+        // A real election can have thousands of permitted voters (e.g.
+        // ~15,000 for the Nov 2026 internal election) - paginated (25/page)
+        // via a plain query-string page param + prev/next links, same
+        // zero-JS convention as the results report's district filter,
+        // rather than loading every row into one giant inline table.
+        $page = max(1, (int) request('permitted_page', 1));
+        $perPage = 25;
+
+        $listPermissions = InternalElectionPermission::where('election_id', $electionId)
+            ->orderBy('id')
+            ->paginate($perPage, ['*'], 'permitted_page', $page);
+
         // Joining directly to app_users on member_id fans one permission
         // row out into several displayed rows whenever a member has more
         // than one app_users account (a known, separate duplicate-accounts
         // issue) — look names up separately instead, one per member_id.
-        $listPermissions = InternalElectionPermission::where('election_id', $electionId)->get();
         $names = AppUser::whereIn('member_id', $listPermissions->pluck('member_id'))
             ->get(['member_id', 'name'])
             ->unique('member_id')
             ->keyBy('member_id');
 
-        $html = "<table class='table table-striped table-dark'>";
-        $html .= "<thead><tr><th scope='col'>Member Id</th><th scope='col'>Name</th></tr></thead>";
+        $html = "<p class='text-muted'>" . $listPermissions->total() . " permitted voter(s) total.</p>";
+        $html .= "<table class='table table-striped table-dark'>";
+        $html .= "<thead><tr><th scope='col'>Member Id</th><th scope='col'>Name</th></tr></thead><tbody>";
 
         foreach ($listPermissions as $permission) {
             $html .= "<tr>";
@@ -259,7 +275,37 @@ class InternalElectionController extends Controller
             $html .= "</tr>";
         }
 
-        $html .= "</table>";
+        $html .= "</tbody></table>";
+        $html .= $this->buildPermittedPaginationLinks($listPermissions, $page);
+
+        return $html;
+    }
+
+    private function buildPermittedPaginationLinks($paginator, $page){
+        $lastPage = $paginator->lastPage();
+        if ($lastPage <= 1) {
+            return '';
+        }
+
+        $baseParams = request()->except('permitted_page');
+        $urlFor = function ($p) use ($baseParams) {
+            return request()->url() . '?' . http_build_query(array_merge($baseParams, ['permitted_page' => $p])) . '#permitted-voters';
+        };
+
+        $html = "<div id='permitted-voters' style='display:flex;gap:10px;align-items:center;margin-top:8px;'>";
+
+        if ($page > 1) {
+            $html .= "<a class='btn btn-default btn-sm' href='" . $urlFor($page - 1) . "'>&laquo; Previous</a>";
+        }
+
+        $html .= "<span>Page {$page} of {$lastPage}</span>";
+
+        if ($page < $lastPage) {
+            $html .= "<a class='btn btn-default btn-sm' href='" . $urlFor($page + 1) . "'>Next &raquo;</a>";
+        }
+
+        $html .= "</div>";
+
         return $html;
     }
 
@@ -270,6 +316,41 @@ class InternalElectionController extends Controller
         return back()->with('message', 'Election Deleted Successfully');
     }
 
+
+    // Per-voter dispute review — not a tally, individual rows with the
+    // selfie captured at vote time next to the voter's real on-file photo.
+    // Shows real voters' faces tied to their vote, so nothing is listed
+    // until a specific district is picked rather than dumping every vote
+    // in the election at once.
+    public function votes($id, Request $request){
+        $election = InternalElection::find($id);
+        if(!$election){
+            return redirect(route('admin.internal-election.index'))->withErrors('Election not found');
+        }
+
+        $stateIds = \DB::table('internal_election_candidate_states')
+            ->join('internal_election_candidates', 'internal_election_candidates.id', '=', 'internal_election_candidate_states.candidate_id')
+            ->where('internal_election_candidates.election_id', $election->id)
+            ->distinct()
+            ->pluck('internal_election_candidate_states.election_state_id');
+
+        $allStates = ElectionState::whereIn('id', $stateIds)->orderBy('name')->get();
+
+        $selectedStateId = request()->filled('state_id') ? (int) request('state_id') : null;
+
+        $votes = collect();
+        if ($selectedStateId) {
+            $votes = InternalElectionVote::with(['user', 'candidate'])
+                ->where('internal_election_id', $election->id)
+                ->whereHas('candidate.electionStates', function($q) use ($selectedStateId){
+                    $q->where('election_states.id', $selectedStateId);
+                })
+                ->get();
+        }
+
+        return view('internal-election.votes', compact('election', 'allStates', 'selectedStateId', 'votes'))
+            ->with('pageTitle', 'Vote Dispute Review - ' . $election->title);
+    }
 
     public function export($id){
         $election = InternalElection::find($id);
