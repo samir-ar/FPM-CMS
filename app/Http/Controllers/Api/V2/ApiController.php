@@ -2264,17 +2264,28 @@ class ApiController extends Controller
         $allowedMemberIds = InternalElectionPermission::whereIn('election_id', $electionIds)
             ->pluck('member_id');
 
+        // Who's actually voted yet, across this candidate's own elections -
+        // joined through app_users since internal_election_votes.user_id
+        // points there, not at MemberId directly.
+        $votedMemberIds = \DB::table('internal_election_votes')
+            ->join('app_users', 'app_users.id', '=', 'internal_election_votes.user_id')
+            ->whereIn('internal_election_votes.internal_election_id', $electionIds)
+            ->whereNull('app_users.deleted_at')
+            ->pluck('app_users.member_id')
+            ->unique();
+
         $voters = FpmUser::whereIn('district', $districtNames)
             ->where('member_status', 1)
             ->whereIn('MemberId', $allowedMemberIds)
             ->orderBy('town')
             ->orderBy('UserFullName')
-            ->get(['UserFullName', 'MobileNumber', 'town'])
-            ->map(function ($voter) {
+            ->get(['MemberId', 'UserFullName', 'MobileNumber', 'town'])
+            ->map(function ($voter) use ($votedMemberIds) {
                 return [
                     'full_name' => $this->shortVoterName($voter->UserFullName),
                     'mobile_number' => $voter->MobileNumber,
                     'town' => $voter->town,
+                    'has_voted' => $votedMemberIds->contains($voter->MemberId),
                 ];
             });
 
