@@ -713,8 +713,7 @@ class ApiController extends Controller
     //App Versions -  Force Update
     public function appVersions()
     {
-        // $settings = Setting::select(['android_version', 'ios_version', 'force_update_ios', 'force_update_android', 'update_title', 'update_message'])->first();
-        $settings = ['android_version' => '1.1.1', 'ios_version' => '3.0.10', 'force_update_ios' => false, 'force_update_android' => false, 'update_title' => 'Title', 'update_message' => 'Text'];
+        $settings = Setting::select(['android_version', 'ios_version', 'force_update_ios', 'force_update_android', 'update_title', 'update_message'])->first();
         return response()->json($settings);
     }
 
