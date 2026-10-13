@@ -52,7 +52,7 @@
                             </td>
                             <td>
                                 @if($vote->user && $vote->user->member_id)
-                                    <img src="{{ url('api/v2/member-photo/' . $vote->user->member_id) }}" style="width:100px;height:100px;object-fit:cover;" onerror="this.style.visibility='hidden'">
+                                    <img src="/api/v2/member-photo/{{ $vote->user->member_id }}" style="width:100px;height:100px;object-fit:cover;" onerror="this.style.visibility='hidden'">
                                 @else
                                     <span class="text-muted">none</span>
                                 @endif
