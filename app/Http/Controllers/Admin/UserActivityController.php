@@ -148,4 +148,42 @@ class UserActivityController extends Controller
             ->distinct('app_user_id')
             ->count('app_user_id');
     }
+
+    /** Member list behind a DAU/WAU/MAU/YAU tile, for the "click to see who" popup. */
+    public function members(string $period)
+    {
+        $today = Carbon::now(config('app.timezone'))->toDateString();
+
+        $sinceDate = match ($period) {
+            'today' => $today,
+            'week'  => Carbon::parse($today)->subDays(6)->toDateString(),
+            'month' => Carbon::parse($today)->subDays(29)->toDateString(),
+            'year'  => Carbon::parse($today)->subDays(364)->toDateString(),
+            default => null,
+        };
+
+        if (!$sinceDate) {
+            return response()->json(['error' => 'Invalid period'], 400);
+        }
+
+        // district/town come from fpm_users, not app_users — app_users'
+        // own copies of those columns aren't reliably kept in sync.
+        $members = DB::table('user_activity_logs')
+            ->join('app_users', 'app_users.id', '=', 'user_activity_logs.app_user_id')
+            ->leftJoin('fpm_users', 'fpm_users.MemberId', '=', 'app_users.member_id')
+            ->select(
+                'app_users.member_id',
+                'app_users.name',
+                'fpm_users.district',
+                'fpm_users.town',
+                DB::raw('MAX(user_activity_logs.activity_date) as last_active')
+            )
+            ->whereNull('app_users.deleted_at')
+            ->where('user_activity_logs.activity_date', '>=', $sinceDate)
+            ->groupBy('app_users.member_id', 'app_users.name', 'fpm_users.district', 'fpm_users.town')
+            ->orderByDesc('last_active')
+            ->get();
+
+        return response()->json($members);
+    }
 }

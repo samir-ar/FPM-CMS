@@ -9,7 +9,7 @@
 
 <div class="row">
     <div class="col-md-3 col-sm-6">
-        <div class="small-box bg-aqua">
+        <div class="small-box bg-aqua" style="cursor:pointer" onclick="openActivityModal('today', 'Active Today')">
             <div class="inner">
                 <h3>{{ number_format($dau) }}</h3>
                 <p>Active Today</p>
@@ -18,7 +18,7 @@
         </div>
     </div>
     <div class="col-md-3 col-sm-6">
-        <div class="small-box bg-green">
+        <div class="small-box bg-green" style="cursor:pointer" onclick="openActivityModal('week', 'Active This Week')">
             <div class="inner">
                 <h3>{{ number_format($wau) }}</h3>
                 <p>Active This Week</p>
@@ -27,7 +27,7 @@
         </div>
     </div>
     <div class="col-md-3 col-sm-6">
-        <div class="small-box bg-yellow">
+        <div class="small-box bg-yellow" style="cursor:pointer" onclick="openActivityModal('month', 'Active This Month')">
             <div class="inner">
                 <h3>{{ number_format($mau) }}</h3>
                 <p>Active This Month</p>
@@ -36,12 +36,39 @@
         </div>
     </div>
     <div class="col-md-3 col-sm-6">
-        <div class="small-box bg-red">
+        <div class="small-box bg-red" style="cursor:pointer" onclick="openActivityModal('year', 'Active This Year')">
             <div class="inner">
                 <h3>{{ number_format($yau) }}</h3>
                 <p>Active This Year</p>
             </div>
             <div class="icon"><i class="fa fa-calendar-o"></i></div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="activityMembersModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title" id="activityMembersModalTitle">Active Members</h4>
+            </div>
+            <div class="modal-body" style="max-height: 60vh; overflow-y: auto;">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Member ID</th>
+                            <th>Name</th>
+                            <th>District</th>
+                            <th>Town</th>
+                            <th>Last Activity</th>
+                        </tr>
+                    </thead>
+                    <tbody id="activityMembersModalBody">
+                        <tr><td colspan="5" class="text-center text-muted">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
@@ -161,6 +188,31 @@
 
 @section('footer_resources')
 <script>
+    function openActivityModal(period, title) {
+        $('#activityMembersModalTitle').text(title);
+        $('#activityMembersModalBody').html('<tr><td colspan="5" class="text-center text-muted">Loading...</td></tr>');
+        $('#activityMembersModal').modal('show');
+
+        $.getJSON('{{ url('admin/user-activity/members') }}/' + period, function (members) {
+            if (!members.length) {
+                $('#activityMembersModalBody').html('<tr><td colspan="5" class="text-center text-muted">No members found.</td></tr>');
+                return;
+            }
+            var rows = members.map(function (m) {
+                return '<tr>' +
+                    '<td>' + (m.member_id || '—') + '</td>' +
+                    '<td>' + (m.name || '—') + '</td>' +
+                    '<td>' + (m.district || '—') + '</td>' +
+                    '<td>' + (m.town || '—') + '</td>' +
+                    '<td>' + (m.last_active || '—') + '</td>' +
+                    '</tr>';
+            }).join('');
+            $('#activityMembersModalBody').html(rows);
+        }).fail(function () {
+            $('#activityMembersModalBody').html('<tr><td colspan="5" class="text-center text-muted">Failed to load.</td></tr>');
+        });
+    }
+
     $(function () {
         Morris.Line({
             element: 'activity-trend-chart',

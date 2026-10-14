@@ -186,6 +186,7 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
 
     //User Activity report
     Route::get('user-activity', 'UserActivityController@index')->name('user-activity.index');
+    Route::get('user-activity/members/{period}', 'UserActivityController@members')->name('user-activity.members');
     Route::get('content-engagement', 'ContentEngagementController@index')->name('content-engagement.index');
     Route::get('content-engagement/{id}', 'ContentEngagementController@show')->name('content-engagement.show');
 
