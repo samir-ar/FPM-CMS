@@ -20,6 +20,12 @@
             </div>
         </form>
 
+        @if($suspiciousDeviceIds->isNotEmpty())
+            <div class="alert alert-danger">
+                ⚠ {{ $suspiciousDeviceIds->count() }} device(s) were used to cast votes for more than one member in this election — rows are highlighted below (across all districts, not just the one selected).
+            </div>
+        @endif
+
         @if(!$selectedStateId)
             <div class="alert alert-info">Select a district above to list its votes for this election.</div>
         @elseif($votes->isEmpty())
@@ -32,17 +38,27 @@
                         <th>Member ID</th>
                         <th>Candidate</th>
                         <th>Voted At</th>
+                        <th>Device ID</th>
                         <th>Selfie (captured at vote time)</th>
                         <th>On-file Photo</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach($votes as $vote)
-                        <tr>
+                        @php
+                            $isSuspicious = $vote->device_id && $suspiciousDeviceIds->contains($vote->device_id);
+                        @endphp
+                        <tr class="{{ $isSuspicious ? 'danger' : '' }}">
                             <td>{{ $vote->user->name ?? '—' }}</td>
                             <td>{{ $vote->user->member_id ?? '—' }}</td>
                             <td>{{ $vote->candidate->name ?? '—' }}</td>
                             <td>{{ $vote->voted_at ? \Carbon\Carbon::parse($vote->voted_at)->format('Y-m-d H:i:s') : '—' }}</td>
+                            <td>
+                                {{ $vote->device_id ?? '—' }}
+                                @if($isSuspicious)
+                                    <span class="label label-danger">reused</span>
+                                @endif
+                            </td>
                             <td>
                                 @if($vote->selfie_url)
                                     <img src="{{ $vote->selfie_url }}" style="width:100px;height:100px;object-fit:cover;" onerror="this.style.visibility='hidden'">

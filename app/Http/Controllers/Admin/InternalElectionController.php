@@ -348,7 +348,18 @@ class InternalElectionController extends Controller
                 ->get();
         }
 
-        return view('internal-election.votes', compact('election', 'allStates', 'selectedStateId', 'votes'))
+        // Fraud signal: the same device used to cast votes for more than one
+        // distinct member, anywhere in this election - not scoped to the
+        // currently selected district, since the whole point is catching
+        // reuse an admin browsing one district at a time would never see.
+        $suspiciousDeviceIds = \DB::table('internal_election_votes')
+            ->where('internal_election_id', $election->id)
+            ->whereNotNull('device_id')
+            ->groupBy('device_id')
+            ->havingRaw('COUNT(DISTINCT user_id) > 1')
+            ->pluck('device_id');
+
+        return view('internal-election.votes', compact('election', 'allStates', 'selectedStateId', 'votes', 'suspiciousDeviceIds'))
             ->with('pageTitle', 'Vote Dispute Review - ' . $election->title);
     }
 

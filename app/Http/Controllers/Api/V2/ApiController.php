@@ -2215,6 +2215,7 @@ class ApiController extends Controller
                 'weight' => 1,
                 'selfie_path' => $election->requires_selfie ? $selfieFilename : null,
                 'voted_at' => now(),
+                'device_id' => request('device_id'),
             ]);
         } catch (\Illuminate\Database\QueryException $e) {
             if ($e->getCode() === '23000') {
