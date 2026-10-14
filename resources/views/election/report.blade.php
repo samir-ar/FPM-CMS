@@ -79,13 +79,16 @@
                         <tbody>
                             @foreach ($candidates as $i => $candidate)
                                 @php
-                                    // Top 3 by rank are the winners — only once voting has
-                                    // actually started, so an untouched election doesn't
-                                    // highlight the first 3 rows by list order alone.
+                                    // Top 3 by rank are the winners, 4th is the رديف
+                                    // (alternate) — steps up to a full winner only if
+                                    // one of the top 3 later resigns/is removed. Only
+                                    // once voting has actually started, so an untouched
+                                    // election doesn't highlight rows by list order alone.
                                     $isWinner = $voters > 0 && $i < 3;
+                                    $isAlternate = $voters > 0 && $i === 3;
                                     $pct = $voters > 0 ? round($candidate->votes_count * 100 / $voters) : 0;
                                 @endphp
-                                <tr class="{{ $isWinner ? 'winner-row' : '' }}">
+                                <tr class="{{ $isWinner ? 'winner-row' : ($isAlternate ? 'alternate-row' : '') }}">
                                     <th scope="row"><div class="cell cell-center">{{ $i + 1 }}</div></th>
                                     <td class="photo-cell">
                                         <img src="{{ $candidate->photo_url }}" class="candidate-photo" onerror="this.style.visibility='hidden'">
@@ -95,6 +98,8 @@
                                             {{ $candidate->name }}
                                             @if($isWinner)
                                                 <span class="winner-badge" title="من ضمن الفائزين الثلاثة الأوائل">&#127942;</span>
+                                            @elseif($isAlternate)
+                                                <span class="alternate-badge" title="رديف — يصبح فائزاً كاملاً في حال استقالة أو إقالة أحد الفائزين الثلاثة">رديف</span>
                                             @endif
                                         </div>
                                     </td>

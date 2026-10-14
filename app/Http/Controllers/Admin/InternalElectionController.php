@@ -401,8 +401,24 @@ class InternalElectionController extends Controller
                     $q->where('election_states.id', $state->id);
                 })
                 ->withCount(['internalElectionVotes as votes_count'])
-                ->orderByDesc('votes_count')
                 ->get();
+
+            // Tie-break rule: on equal votes, the older candidate ranks
+            // higher. Only candidates linked to a real FPM member have a
+            // birthdate on file - manually-entered candidates (no
+            // member_id) fall back to stable relative order instead.
+            $birthDates = \DB::table('fpm_users')
+                ->whereIn('MemberId', $candidates->pluck('member_id')->filter())
+                ->pluck('BirthDate', 'MemberId');
+
+            $candidates = $candidates->sort(function($a, $b) use ($birthDates) {
+                if ($a->votes_count !== $b->votes_count) {
+                    return $b->votes_count <=> $a->votes_count;
+                }
+                $aBirth = $birthDates->get($a->member_id);
+                $bBirth = $birthDates->get($b->member_id);
+                return ($aBirth && $bBirth) ? $aBirth <=> $bBirth : 0;
+            })->values();
 
             return [
                 'state' => $state,
