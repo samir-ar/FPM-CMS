@@ -268,6 +268,7 @@
             lineColors: ['#dd4b39'],
             resize: true,
             smooth: false,
+            parseTime: false,
         });
 
         Morris.Bar({
