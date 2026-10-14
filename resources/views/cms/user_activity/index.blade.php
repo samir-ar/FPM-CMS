@@ -288,6 +288,7 @@
             lineColors: ['#00c0ef'],
             resize: true,
             smooth: false,
+            parseTime: false,
         });
 
         Morris.Line({
@@ -299,6 +300,7 @@
             lineColors: ['#00a65a'],
             resize: true,
             smooth: false,
+            parseTime: false,
         });
     });
 </script>
