@@ -53,21 +53,35 @@
                 <button type="button" class="close" data-dismiss="modal">&times;</button>
                 <h4 class="modal-title" id="activityMembersModalTitle">Active Members</h4>
             </div>
-            <div class="modal-body" style="max-height: 60vh; overflow-y: auto;">
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>Member ID</th>
-                            <th>Name</th>
-                            <th>District</th>
-                            <th>Town</th>
-                            <th>Last Activity</th>
-                        </tr>
-                    </thead>
-                    <tbody id="activityMembersModalBody">
-                        <tr><td colspan="5" class="text-center text-muted">Loading...</td></tr>
-                    </tbody>
-                </table>
+            <div class="modal-body">
+                <div class="row" style="margin-bottom: 15px;">
+                    <div class="col-sm-6">
+                        <select id="activityDistrictFilter" class="form-control">
+                            <option value="">All districts</option>
+                        </select>
+                    </div>
+                    <div class="col-sm-6">
+                        <select id="activityTownFilter" class="form-control">
+                            <option value="">All towns</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="max-height: 55vh; overflow-y: auto;">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Member ID</th>
+                                <th>Name</th>
+                                <th>District</th>
+                                <th>Town</th>
+                                <th>Last Activity</th>
+                            </tr>
+                        </thead>
+                        <tbody id="activityMembersModalBody">
+                            <tr><td colspan="5" class="text-center text-muted">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
@@ -188,26 +202,77 @@
 
 @section('footer_resources')
 <script>
+    var activityModalMembers = [];
+
+    function escapeHtml(s) {
+        return $('<div>').text(s == null ? '' : s).html();
+    }
+
+    function renderActivityRows(members) {
+        if (!members.length) {
+            $('#activityMembersModalBody').html('<tr><td colspan="5" class="text-center text-muted">No members found.</td></tr>');
+            return;
+        }
+        var rows = members.map(function (m) {
+            return '<tr>' +
+                '<td>' + escapeHtml(m.member_id || '—') + '</td>' +
+                '<td>' + escapeHtml(m.name || '—') + '</td>' +
+                '<td>' + escapeHtml(m.district || '—') + '</td>' +
+                '<td>' + escapeHtml(m.town || '—') + '</td>' +
+                '<td>' + escapeHtml(m.last_active || '—') + '</td>' +
+                '</tr>';
+        }).join('');
+        $('#activityMembersModalBody').html(rows);
+    }
+
+    function applyActivityFilters() {
+        var district = $('#activityDistrictFilter').val();
+        var town = $('#activityTownFilter').val();
+        var filtered = activityModalMembers.filter(function (m) {
+            return (!district || m.district === district) && (!town || m.town === town);
+        });
+        renderActivityRows(filtered);
+    }
+
+    function populateActivityDistrictOptions() {
+        var districts = activityModalMembers
+            .map(function (m) { return m.district; })
+            .filter(function (d, i, arr) { return d && arr.indexOf(d) === i; })
+            .sort();
+        var options = '<option value="">All districts</option>';
+        districts.forEach(function (d) { options += '<option value="' + escapeHtml(d) + '">' + escapeHtml(d) + '</option>'; });
+        $('#activityDistrictFilter').html(options);
+    }
+
+    function populateActivityTownOptions(district) {
+        var towns = activityModalMembers
+            .filter(function (m) { return !district || m.district === district; })
+            .map(function (m) { return m.town; })
+            .filter(function (t, i, arr) { return t && arr.indexOf(t) === i; })
+            .sort();
+        var options = '<option value="">All towns</option>';
+        towns.forEach(function (t) { options += '<option value="' + escapeHtml(t) + '">' + escapeHtml(t) + '</option>'; });
+        $('#activityTownFilter').html(options);
+    }
+
+    $('#activityDistrictFilter').on('change', function () {
+        populateActivityTownOptions($(this).val());
+        applyActivityFilters();
+    });
+    $('#activityTownFilter').on('change', applyActivityFilters);
+
     function openActivityModal(period, title) {
         $('#activityMembersModalTitle').text(title);
         $('#activityMembersModalBody').html('<tr><td colspan="5" class="text-center text-muted">Loading...</td></tr>');
+        $('#activityDistrictFilter').html('<option value="">All districts</option>');
+        $('#activityTownFilter').html('<option value="">All towns</option>');
         $('#activityMembersModal').modal('show');
 
         $.getJSON('{{ url('admin/user-activity/members') }}/' + period, function (members) {
-            if (!members.length) {
-                $('#activityMembersModalBody').html('<tr><td colspan="5" class="text-center text-muted">No members found.</td></tr>');
-                return;
-            }
-            var rows = members.map(function (m) {
-                return '<tr>' +
-                    '<td>' + (m.member_id || '—') + '</td>' +
-                    '<td>' + (m.name || '—') + '</td>' +
-                    '<td>' + (m.district || '—') + '</td>' +
-                    '<td>' + (m.town || '—') + '</td>' +
-                    '<td>' + (m.last_active || '—') + '</td>' +
-                    '</tr>';
-            }).join('');
-            $('#activityMembersModalBody').html(rows);
+            activityModalMembers = members;
+            populateActivityDistrictOptions();
+            populateActivityTownOptions('');
+            renderActivityRows(members);
         }).fail(function () {
             $('#activityMembersModalBody').html('<tr><td colspan="5" class="text-center text-muted">Failed to load.</td></tr>');
         });

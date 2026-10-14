@@ -168,6 +168,10 @@ class UserActivityController extends Controller
 
         // district/town come from fpm_users, not app_users — app_users'
         // own copies of those columns aren't reliably kept in sync.
+        // last_active uses created_at (a real timestamp) rather than
+        // activity_date (date-only) - one log row per member per day, so
+        // this is the moment their most recent day's activity was first
+        // recorded, the closest real time-of-day data actually tracked.
         $members = DB::table('user_activity_logs')
             ->join('app_users', 'app_users.id', '=', 'user_activity_logs.app_user_id')
             ->leftJoin('fpm_users', 'fpm_users.MemberId', '=', 'app_users.member_id')
@@ -176,7 +180,7 @@ class UserActivityController extends Controller
                 'app_users.name',
                 'fpm_users.district',
                 'fpm_users.town',
-                DB::raw('MAX(user_activity_logs.activity_date) as last_active')
+                DB::raw('MAX(user_activity_logs.created_at) as last_active')
             )
             ->whereNull('app_users.deleted_at')
             ->where('user_activity_logs.activity_date', '>=', $sinceDate)
