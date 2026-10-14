@@ -188,6 +188,18 @@ class UserActivityController extends Controller
             ->orderByDesc('last_active')
             ->get();
 
+        // last_active is stored in UTC (see TracksUserActivityTrait) -
+        // convert to Beirut time for display, same as everywhere else an
+        // admin-facing timestamp is shown. Sort order above is unaffected
+        // since a fixed-offset conversion preserves relative ordering.
+        $members->each(function ($m) {
+            if ($m->last_active) {
+                $m->last_active = Carbon::parse($m->last_active, 'UTC')
+                    ->setTimezone(config('app.timezone'))
+                    ->toDateTimeString();
+            }
+        });
+
         return response()->json($members);
     }
 }
