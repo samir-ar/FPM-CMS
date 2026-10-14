@@ -52,7 +52,7 @@ class HomeController extends Controller
             ? \Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/storage/images/news/' . $news->source_image)
             : null;
 
-        $snippet = \Illuminate\Support\Str::limit(strip_tags($news->details ?? ''), 200);
+        $snippet = \Illuminate\Support\Str::limit(html_entity_decode(strip_tags($news->details ?? '')), 200);
 
         return view('news-public', compact('news', 'imageUrl', 'snippet'));
     }
