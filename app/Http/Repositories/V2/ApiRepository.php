@@ -20,6 +20,7 @@ use App\V2\Polls;
 use App\V2\Event;
 use App\V2\Law;
 use App\V2\Biography;
+use App\V2\Person;
 use DOMDocument;
 use App\V2\Content;
 use Carbon\Carbon;
@@ -83,6 +84,24 @@ class ApiRepository
     public function getBiographyDetails($id)
     {
         $bio = Biography::where('person_id',$id)->where('deleted_at',null)->first();
+
+        // The same real person can appear as a separate `persons` row in
+        // more than one category (e.g. listed under both "الرئيس" and
+        // "المجلس التنفيذي"), but a biography is only ever linked to one
+        // specific row. Fall back to matching by name so every listing of
+        // that person shows the same biography, not just the one it was
+        // originally attached to.
+        if (!$bio && ($person = Person::find($id))) {
+            $targetName = $person->getTranslation('name', 'ar');
+            $matchingPersonIds = Person::all(['id', 'name'])
+                ->filter(fn ($p) => $p->getTranslation('name', 'ar') === $targetName)
+                ->pluck('id');
+            $bio = Biography::whereIn('person_id', $matchingPersonIds)->where('deleted_at', null)->first();
+        }
+
+        if (!$bio) {
+            return null;
+        }
 
         return [
             'title' => $bio->getTranslation('title', 'ar'),
