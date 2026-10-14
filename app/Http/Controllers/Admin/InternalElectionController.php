@@ -420,6 +420,12 @@ class InternalElectionController extends Controller
                 return ($aBirth && $bBirth) ? $aBirth <=> $bBirth : 0;
             })->values();
 
+            // Exposed on each candidate so the report can show it on demand
+            // (e.g. to explain a tie-break outcome) without a separate lookup.
+            $candidates->each(function($c) use ($birthDates) {
+                $c->birth_date = $birthDates->get($c->member_id);
+            });
+
             return [
                 'state' => $state,
                 'candidates' => $candidates,

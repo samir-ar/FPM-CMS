@@ -157,6 +157,14 @@ th{
     font-weight: 700;
 }
 
+.birthdate-col{
+    display: none;
+}
+
+body.show-birthdates .birthdate-col{
+    display: table-cell;
+}
+
 .alternate-badge{
     margin-inline-start: 4px;
     display: inline-block;

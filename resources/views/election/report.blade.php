@@ -37,6 +37,10 @@
                     </details>
                 </form>
 
+                <button type="button" id="toggle-birthdates" class="district-filter-apply no-print" onclick="document.body.classList.toggle('show-birthdates')">
+                    عرض / إخفاء تاريخ الميلاد
+                </button>
+
                 @forelse ($results as $row)
                     @php
                         $state = $row['state'];
@@ -61,11 +65,12 @@
 
                     <table class="table" dir="rtl">
                         <colgroup>
-                            <col style="width:8%">
-                            <col style="width:12%">
-                            <col style="width:42%">
-                            <col style="width:19%">
-                            <col style="width:19%">
+                            <col style="width:7%">
+                            <col style="width:11%">
+                            <col style="width:33%">
+                            <col style="width:16%">
+                            <col style="width:16%">
+                            <col class="birthdate-col" style="width:17%">
                         </colgroup>
                         <thead>
                             <tr>
@@ -74,6 +79,7 @@
                                 <th scope="col"><div class="cell">إسم المرشح</div></th>
                                 <th scope="col"><div class="cell">عدد الأصوات</div></th>
                                 <th scope="col"><div class="cell">النسبة</div></th>
+                                <th scope="col" class="birthdate-col"><div class="cell">تاريخ الميلاد</div></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -105,6 +111,7 @@
                                     </td>
                                     <td><div class="cell">{{ $candidate->votes_count }}</div></td>
                                     <td><div class="cell">{{ $pct }}%</div></td>
+                                    <td class="birthdate-col"><div class="cell">{{ $candidate->birth_date ? \Carbon\Carbon::parse($candidate->birth_date)->format('Y-m-d') : '—' }}</div></td>
                                 </tr>
                             @endforeach
                         </tbody>
