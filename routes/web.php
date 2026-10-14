@@ -26,6 +26,41 @@ Route::get('/', function () {
     return view('welcome');
 });
 
+Route::get('/news/{id}', 'HomeController@showNews')->name('news.show');
+
+// Served as explicit routes (not static files) so this works regardless of
+// whether the webserver's config blocks dotfile paths like .well-known —
+// a known common nginx default. Required for Android App Links / iOS
+// Universal Links to open shared news links directly in the app.
+Route::get('/.well-known/assetlinks.json', function () {
+    return response()->json([
+        [
+            'relation' => ['delegate_permission/common.handle_all_urls'],
+            'target' => [
+                'namespace' => 'android_app',
+                'package_name' => 'com.microbits.fpm',
+                'sha256_cert_fingerprints' => [
+                    'FD:F7:7C:C8:85:18:CA:FA:37:BB:43:03:18:7B:94:D6:D9:01:BA:02:7A:3D:58:57:69:A8:13:C4:4C:C8:11:04',
+                ],
+            ],
+        ],
+    ]);
+});
+
+Route::get('/.well-known/apple-app-site-association', function () {
+    return response()->json([
+        'applinks' => [
+            'apps' => [],
+            'details' => [
+                [
+                    'appID' => 'Q9F8568DCD.com.microbits.fpm',
+                    'paths' => ['/news/*'],
+                ],
+            ],
+        ],
+    ]);
+});
+
 Route::group(['middleware' => [], 'prefix' => 'webview', 'as' => 'webview.'], function () {
     Route::get('faqs', 'HomeController@faqs');
 });
