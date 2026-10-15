@@ -135,6 +135,7 @@ class InternalElectionController extends Controller
                         $this->drawHtml('small_text', 'عنوان الانتخابات', 'title', '', null, '', 'col-md-12 required right-to-left'),
                         $this->drawHtml('date-time-picker', 'موعد إقفال التصويت (اختياري)', 'closes_at', '', null, '', 'col-md-6'),
                         $this->drawHtml('checkbox', 'Require selfie verification to vote', 'requires_selfie', false, null, '', 'col-md-12'),
+                        $this->drawHtml('checkbox', 'Voter list visible to candidates/granted viewers', 'voter_list_visible', true, null, '', 'col-md-12'),
                     ],
                 ],
                 [
@@ -163,6 +164,7 @@ class InternalElectionController extends Controller
         $internal->title = request('title');
         $internal->closes_at = request('closes_at') ? Carbon::parse(request('closes_at'))->toDateTimeString() : null;
         $internal->requires_selfie = request('requires_selfie') ? true : false;
+        $internal->voter_list_visible = request('voter_list_visible') ? true : false;
 
         $internal->save();
 
@@ -194,6 +196,7 @@ class InternalElectionController extends Controller
                         $this->drawHtml('small_text', 'عنوان الانتخابات', 'title', $internal->title, null, '', 'col-md-12 required right-to-left'),
                         $this->drawHtml('date-time-picker', 'موعد إقفال التصويت (اختياري)', 'closes_at', $internal->closes_at ? Carbon::parse($internal->closes_at)->format('Y-m-d\TH:i') : '', null, '', 'col-md-6'),
                         $this->drawHtml('checkbox', 'Require selfie verification to vote', 'requires_selfie', $internal->requires_selfie, null, '', 'col-md-12'),
+                        $this->drawHtml('checkbox', 'Voter list visible to candidates/granted viewers', 'voter_list_visible', $internal->voter_list_visible, null, '', 'col-md-12'),
                     ],
                 ],
                 [
@@ -233,6 +236,7 @@ class InternalElectionController extends Controller
         $internal->title = request('title');
         $internal->closes_at = request('closes_at') ? Carbon::parse(request('closes_at'))->toDateTimeString() : null;
         $internal->requires_selfie = request('requires_selfie') ? true : false;
+        $internal->voter_list_visible = request('voter_list_visible') ? true : false;
         $internal->save();
 
         if ($request->excel) {

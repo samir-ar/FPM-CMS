@@ -2289,7 +2289,12 @@ class ApiController extends Controller
 
         // Not restricted to published elections — a candidate can see and
         // start reaching out to their voters before the election goes live.
+        // voter_list_visible is a separate on/off switch from is_active
+        // (published) — lets an admin turn list visibility off for a
+        // specific election (e.g. once voting starts) without touching
+        // whether the election itself is published.
         $candidateRows = InternalElectionCandidate::where('member_id', $user->member_id)
+            ->whereHas('internalElection', fn($q) => $q->where('voter_list_visible', true))
             ->with('electionStates')
             ->get();
 
@@ -2297,6 +2302,7 @@ class ApiController extends Controller
         // staff) — same district-scoped visibility a candidate gets,
         // without being a registered candidate themselves.
         $viewerRows = InternalElectionVoterViewer::where('member_id', $user->member_id)
+            ->whereHas('internalElection', fn($q) => $q->where('voter_list_visible', true))
             ->with('electionState')
             ->get();
 
