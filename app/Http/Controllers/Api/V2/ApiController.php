@@ -133,8 +133,15 @@ class ApiController extends Controller
             // before the election is officially published, not just once it goes live.
             // Also true for a granted (non-candidate) voter-list viewer, so the
             // existing app-side flag/tile works for them with no app update needed.
-            'is_internal_election_candidate' => InternalElectionCandidate::where('member_id', $user->member_id)->exists()
-                || InternalElectionVoterViewer::where('member_id', $user->member_id)->exists(),
+            // Does respect voter_list_visible though — this flag controls the
+            // Home-screen tile itself, which should disappear entirely (not just
+            // error on tap) once an admin turns list visibility off.
+            'is_internal_election_candidate' => InternalElectionCandidate::where('member_id', $user->member_id)
+                ->whereHas('internalElection', fn($q) => $q->where('voter_list_visible', true))
+                ->exists()
+                || InternalElectionVoterViewer::where('member_id', $user->member_id)
+                ->whereHas('internalElection', fn($q) => $q->where('voter_list_visible', true))
+                ->exists(),
         ]);
     }
 
