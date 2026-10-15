@@ -4,6 +4,18 @@ All notable changes to the FPM-CMS (Laravel backend) are documented in this file
 
 ## Unreleased
 
+Committed and deployed to staging **and production** 2026-10-16:
+
+### Added
+
+- **Internal Election Votes Report** (`/admin/internal-election/{id}/votes-report`) — a full per-voter list across every district at once (Voter, Member ID, District, Town, Candidate, Voted At), with an "Export to Excel" button. District/town are resolved from `fpm_users`, not `app_users`. Deliberately not linked from any sidebar menu or the election's edit page — reached only via direct URL, same convention as the existing Vote Dispute Review page.
+
+### Fixed
+
+- **Internal Election voter-list viewer grants had no working entry point in the app.** `is_internal_election_candidate` (which gates the Home-screen district-voters tile) only checked `InternalElectionCandidate`, so a non-candidate viewer grant (shipped 2026-10-16) passed the backend auth check but had no visible way to reach it. Broadened the same flag to also check `InternalElectionVoterViewer` — fixes the gap with no app release needed, since the app only reads the existing field name.
+- `getMyDistrictVoters()` applied the `voter_list_visible` toggle filter *before* checking candidate/viewer status, so an actual candidate/viewer got the misleading "this page is for candidates only" message whenever an admin paused list visibility. Now checks candidate/viewer status unconditionally first, with a distinct "list not currently available" message when that's the real cause — and the Home tile itself now also respects the toggle, disappearing entirely instead of just erroring on tap.
+- Vote Dispute Review table no longer shows a Candidate column — that page is about verifying *who* voted, not *who they voted for*; the new Votes Report page covers the latter.
+
 Committed and deployed to staging **and production** 2026-09-29/30 (the first time this project's recent work reached production):
 
 ### Added
