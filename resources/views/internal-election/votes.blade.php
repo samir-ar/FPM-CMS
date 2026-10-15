@@ -36,7 +36,6 @@
                     <tr>
                         <th>Voter</th>
                         <th>Member ID</th>
-                        <th>Candidate</th>
                         <th>Voted At</th>
                         <th>Device ID</th>
                         <th>Selfie (captured at vote time)</th>
@@ -51,7 +50,6 @@
                         <tr class="{{ $isSuspicious ? 'danger' : '' }}">
                             <td>{{ $vote->user->name ?? '—' }}</td>
                             <td>{{ $vote->user->member_id ?? '—' }}</td>
-                            <td>{{ $vote->candidate->name ?? '—' }}</td>
                             <td>{{ $vote->voted_at ? \Carbon\Carbon::parse($vote->voted_at)->format('Y-m-d H:i:s') : '—' }}</td>
                             <td>
                                 {{ $vote->device_id ?? '—' }}
