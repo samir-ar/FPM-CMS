@@ -48,7 +48,13 @@ class HomeController extends Controller
             abort(404);
         }
 
-        $imageUrl = $news->source_image
+        // Some articles have source_image accidentally set to the app's own
+        // icon file (a leftover placeholder, not a real photo) — treat that
+        // the same as no image at all, rather than showing our own logo as
+        // if it were the article's content in a link preview.
+        $hasRealImage = $news->source_image && !str_contains($news->source_image, 'play-store-icon');
+
+        $imageUrl = $hasRealImage
             ? \Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/storage/images/news/' . $news->source_image)
             : null;
 
