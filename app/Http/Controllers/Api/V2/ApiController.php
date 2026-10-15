@@ -2290,6 +2290,18 @@ class ApiController extends Controller
             return $this->api_error_response('missing_parameters', 101, "user not found");
         }
 
+        // Checked without the voter_list_visible filter first, so we can
+        // tell "not a candidate/viewer at all" apart from "is one, but the
+        // admin has the list paused right now" and return the right message
+        // for each — otherwise an authorized candidate/viewer gets told
+        // "this page is for candidates only", which is just wrong.
+        $isCandidateOrViewer = InternalElectionCandidate::where('member_id', $user->member_id)->exists()
+            || InternalElectionVoterViewer::where('member_id', $user->member_id)->exists();
+
+        if (!$isCandidateOrViewer) {
+            return $this->api_error_response('unauthorized', 403, "هذه الصفحة مخصصة للمرشحين فقط");
+        }
+
         // Not restricted to published elections — a candidate can see and
         // start reaching out to their voters before the election goes live.
         // voter_list_visible is a separate on/off switch from is_active
@@ -2310,7 +2322,7 @@ class ApiController extends Controller
             ->get();
 
         if ($candidateRows->isEmpty() && $viewerRows->isEmpty()) {
-            return $this->api_error_response('unauthorized', 403, "هذه الصفحة مخصصة للمرشحين فقط");
+            return $this->api_error_response('list_not_visible', 403, "لائحة الناخبين غير متاحة حالياً");
         }
 
         $districtNames = $candidateRows
