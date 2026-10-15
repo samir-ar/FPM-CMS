@@ -17,6 +17,7 @@ use App\V2\FpmUser;
 use App\V2\AppUser;
 use App\Imports\InternalElectionAllowedVotersImport;
 use App\Exports\AllowedToVoteTemplateExport;
+use App\Exports\InternalElectionVotesExport;
 use Carbon\Carbon;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -449,6 +450,33 @@ class InternalElectionController extends Controller
 
         return view('internal-election.votes', compact('election', 'allStates', 'selectedStateId', 'votes', 'suspiciousDeviceIds'))
             ->with('pageTitle', 'Vote Dispute Review - ' . $election->title);
+    }
+
+    // Full per-voter report across every district at once — who voted for
+    // whom, when, and their district/town. Deliberately not linked from
+    // any sidebar menu or the election's edit page, reached only via
+    // direct URL, same convention as the Vote Dispute Review page above.
+    public function votesReport($id){
+        $election = InternalElection::find($id);
+        if(!$election){
+            return redirect(route('admin.internal-election.index'))->withErrors('Election not found');
+        }
+
+        // Same row-building the Excel export uses, so the page and the
+        // download always show exactly the same data.
+        $votes = (new InternalElectionVotesExport($election->id))->collection();
+
+        return view('internal-election.votes-report', compact('election', 'votes'))
+            ->with('pageTitle', 'Votes Report - ' . $election->title);
+    }
+
+    public function exportVotesReport($id){
+        $election = InternalElection::find($id);
+        if(!$election){
+            return redirect(route('admin.internal-election.index'))->withErrors('Election not found');
+        }
+
+        return Excel::download(new InternalElectionVotesExport($election->id), 'votes-report-' . $election->id . '.xlsx');
     }
 
     public function export($id){
