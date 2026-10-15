@@ -19,10 +19,10 @@
                     <tr>
                         <th>Voter</th>
                         <th>Member ID</th>
-                        <th>Voted At</th>
                         <th>District</th>
                         <th>Town</th>
                         <th>Candidate</th>
+                        <th>Voted At</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -30,10 +30,10 @@
                         <tr>
                             <td>{{ $vote->voter_name ?? '—' }}</td>
                             <td>{{ $vote->member_id ?? '—' }}</td>
-                            <td>{{ $vote->voted_at ? \Carbon\Carbon::parse($vote->voted_at)->format('Y-m-d H:i:s') : '—' }}</td>
                             <td>{{ $vote->district ?? '—' }}</td>
                             <td>{{ $vote->town ?? '—' }}</td>
                             <td>{{ $vote->candidate_name ?? '—' }}</td>
+                            <td>{{ $vote->voted_at ? \Carbon\Carbon::parse($vote->voted_at)->format('Y-m-d H:i:s') : '—' }}</td>
                         </tr>
                     @endforeach
                 </tbody>
