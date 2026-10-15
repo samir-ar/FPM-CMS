@@ -259,10 +259,26 @@ class InternalElectionController extends Controller
         // row out into several displayed rows whenever a member has more
         // than one app_users account (a known, separate duplicate-accounts
         // issue) — look names up separately instead, one per member_id.
-        $names = AppUser::whereIn('member_id', $listPermissions->pluck('member_id'))
+        // app_users only has a row for someone who has actually opened the
+        // app at least once, so a permitted voter who never has shows no
+        // name there even though they're a completely valid member — fall
+        // back to fpm_users (the full, TWH-synced membership list) for
+        // those.
+        $memberIds = $listPermissions->pluck('member_id');
+
+        $names = AppUser::whereIn('member_id', $memberIds)
             ->get(['member_id', 'name'])
             ->unique('member_id')
-            ->keyBy('member_id');
+            ->keyBy('member_id')
+            ->map(fn($u) => $u->name);
+
+        $missingIds = $memberIds->diff($names->keys());
+        if ($missingIds->isNotEmpty()) {
+            $fpmNames = \DB::table('fpm_users')
+                ->whereIn('MemberId', $missingIds)
+                ->pluck('UserFullName', 'MemberId');
+            $names = $names->union($fpmNames);
+        }
 
         $html = "<p class='text-muted'>" . $listPermissions->total() . " permitted voter(s) total.</p>";
         $html .= "<table class='table table-striped table-dark'>";
@@ -271,7 +287,7 @@ class InternalElectionController extends Controller
         foreach ($listPermissions as $permission) {
             $html .= "<tr>";
             $html .= "<td>" . $permission->member_id . "</td>";
-            $html .= "<td>" . ($names->get($permission->member_id)->name ?? '') . "</td>";
+            $html .= "<td>" . ($names->get($permission->member_id) ?? '') . "</td>";
             $html .= "</tr>";
         }
 
