@@ -20,6 +20,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Repositories\UserRepository;
 use App\Http\Repositories\V2\RegistrationRepository;
 use App\V2\AppUser;
+use App\V2\Setting;
 use App\Services\QrCodeGenerator;
 
 class RegistrationController extends Controller
@@ -41,6 +42,25 @@ class RegistrationController extends Controller
         if ($validator->fails())
         {
             return $this->api_error_response('missing_parameters', 101,implode(', ', $validator->messages()->all()));
+        }
+
+        // Enforced here (not just the once-per-launch splash check) because
+        // the app already sends build_number on this exact request - no new
+        // app release needed for this to take effect. Rejecting before the
+        // OTP is even sent also avoids wasting an SMS on a version we're
+        // about to turn away anyway. Respects the same Force Update
+        // checkboxes/version numbers as the general update-check feature -
+        // platform-agnostic here (no platform field sent at this step), so
+        // the higher of the two configured versions is used as the floor
+        // whenever either platform's Force Update flag is on.
+        $settings = Setting::first();
+        $forceUpdateOn = $settings->force_update_android || $settings->force_update_ios;
+        if ($forceUpdateOn) {
+            $minBuild = max((int) $settings->android_version, (int) $settings->ios_version);
+            $submittedBuild = (int) $request->input('build_number', 0);
+            if ($submittedBuild < $minBuild) {
+                return $this->api_error_response('app_update_required', 101, $settings->update_message ?? 'يرجى تحديث التطبيق للمتابعة');
+            }
         }
 
         //check if the user credentials are
