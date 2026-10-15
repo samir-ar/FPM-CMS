@@ -101,10 +101,10 @@
                 <input type="date" name="date_to" class="form-control" value="{{ $dateTo }}">
             </div>
             <button type="submit" class="btn btn-primary">Apply</button>
-            <a href="{{ route('admin.content-engagement.index') }}" class="btn btn-default">Clear</a>
+            <a href="{{ route('admin.content-engagement.index', ['date_from' => '', 'date_to' => '']) }}" class="btn btn-default">Clear (all time)</a>
         </form>
         <p class="text-muted" style="margin-top:8px; margin-bottom:0;">
-            Applies to the four Top-20 lists below only (not the charts above). Leave blank for all time.
+            Applies to the four Top-20 lists below only (not the charts above). Defaults to today; clear both fields and apply (or click "Clear") for all time.
             @if($hasDateFilter)
                 Note: with a date filter active, "shares" below come from the new per-user share log,
                 which only has data from {{ \Carbon\Carbon::parse($shareTrackingStartedAt)->format('M j, Y') }} onward.

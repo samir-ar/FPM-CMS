@@ -17,9 +17,17 @@ class ContentEngagementController extends Controller
         $today = Carbon::now(config('app.timezone'))->toDateString();
 
         // One optional date range, applied to all four Top-20 lists below —
-        // not the trend charts. Empty/absent means "all time" (default).
-        $dateFrom = request()->filled('date_from') ? request('date_from') : null;
-        $dateTo = request()->filled('date_to') ? request('date_to') : null;
+        // not the trend charts. A completely fresh page load (neither query
+        // param present at all) defaults to today; explicitly submitting
+        // the form with both fields blank (Clear button, or Apply with
+        // empty inputs) means "all time" instead.
+        if (!request()->has('date_from') && !request()->has('date_to')) {
+            $dateFrom = $today;
+            $dateTo = $today;
+        } else {
+            $dateFrom = request()->filled('date_from') ? request('date_from') : null;
+            $dateTo = request()->filled('date_to') ? request('date_to') : null;
+        }
         $hasDateFilter = $dateFrom || $dateTo;
 
         $totalLikes = DB::table('users_news')->count();
@@ -51,6 +59,12 @@ class ContentEngagementController extends Controller
                 ->orderByDesc('shares')
                 ->limit(20)
                 ->get();
+            // Raw DB::table rows bypass News's translatable-attribute magic
+            // getter, so ->title here is still the stored {"en":...,"ar":...}
+            // JSON string, not the resolved current-locale text.
+            $topShared->each(function ($row) {
+                $row->title = $this->resolveTranslatedTitle($row->title);
+            });
         } else {
             $topShared = News::orderByDesc('shares')
                 ->limit(20)
@@ -227,6 +241,20 @@ class ContentEngagementController extends Controller
         }
 
         return [$monthlyLabels, $series];
+    }
+
+    // Resolves a raw {"en":"...","ar":"..."} translatable-JSON string (as
+    // read straight off the DB via DB::table, bypassing News's translatable
+    // attribute accessor) to the current locale's text, the same way
+    // accessing ->title on a real News model would. Falls back to the raw
+    // string untouched if it isn't valid translatable JSON.
+    private function resolveTranslatedTitle(?string $raw): ?string
+    {
+        if (!$raw) return $raw;
+        $decoded = json_decode($raw, true);
+        if (!is_array($decoded)) return $raw;
+        $locale = \App::getLocale();
+        return $decoded[$locale] ?? $decoded['ar'] ?? $decoded['en'] ?? $raw;
     }
 
     // Per-article breakdown: exactly who liked it and when. Shares have no
