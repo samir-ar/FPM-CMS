@@ -46,7 +46,7 @@ class InternalElectionVotesExport implements FromCollection, WithHeadings, WithM
 
     public function headings(): array
     {
-        return ['Voter', 'Member ID', 'Candidate', 'Voted At', 'District', 'Town'];
+        return ['Voter', 'Member ID', 'Voted At', 'District', 'Town', 'Candidate'];
     }
 
     public function map($row): array
@@ -54,10 +54,10 @@ class InternalElectionVotesExport implements FromCollection, WithHeadings, WithM
         return [
             $row->voter_name,
             $row->member_id,
-            $row->candidate_name,
             $row->voted_at,
             $row->district,
             $row->town,
+            $row->candidate_name,
         ];
     }
 }
