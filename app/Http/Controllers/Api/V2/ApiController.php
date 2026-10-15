@@ -1965,6 +1965,24 @@ class ApiController extends Controller
         return InternalElection::where('is_active', true)->orderBy('id', 'desc')->get();
     }
 
+    // Internal Election access (voting + the candidate district-voters
+    // list) can be gated behind a minimum app build number, set in Admin ->
+    // App Versions -> "Internal Election Minimum Build Number". Android and
+    // iOS share one monotonically-increasing build-number sequence in this
+    // project, so a single configured number works for both platforms
+    // without needing to know which OS the request came from. Leave the
+    // setting blank for no restriction (the default). A client too old to
+    // send build_number at all is treated as "too old" once a minimum is
+    // configured, same as an explicitly-old build.
+    function meetsInternalElectionMinBuild()
+    {
+        $min = Setting::first()->internal_election_min_build ?? null;
+        if (!$min) return true;
+
+        $build = (int) request('build_number', 0);
+        return $build >= $min;
+    }
+
     // Returns one row per currently-published election, each annotated
     // with whether this specific voter can vote in it right now and why
     // not if not — the app shows this as a list to choose from.
@@ -1973,8 +1991,22 @@ class ApiController extends Controller
         $userInfo = request('loggedInUser');
         $user = request('user');
         $electionStateId = $this->resolveElectionStateId($userInfo);
+        $tooOld = !$this->meetsInternalElectionMinBuild();
 
-        $elections = $this->getActiveElections()->map(function ($election) use ($user, $electionStateId) {
+        $elections = $this->getActiveElections()->map(function ($election) use ($user, $electionStateId, $tooOld) {
+            if ($tooOld) {
+                return [
+                    'id' => $election->id,
+                    'title' => $election->title,
+                    'election_date' => $election->created_at ? $election->created_at->format('Y-m-d H:i') : null,
+                    'closes_at' => $election->closes_at ? Carbon::parse($election->closes_at)->toIso8601String() : null,
+                    'requires_selfie' => (bool) $election->requires_selfie,
+                    'can_i_vote' => false,
+                    'message' => 'يرجى تحديث التطبيق للمشاركة في الانتخابات الداخلية',
+                    '_hide' => false,
+                ];
+            }
+
             $result = $this->canIVote($user, $electionStateId, $election);
 
             $canVote = $result === 200;
@@ -2056,6 +2088,10 @@ class ApiController extends Controller
     //get Candidates of a specific internal election
     function getInternalElectionCandidates(Request $request)
     {
+        if (!$this->meetsInternalElectionMinBuild()) {
+            return $this->api_error_response('app_update_required', 101, 'يرجى تحديث التطبيق للمشاركة في الانتخابات الداخلية');
+        }
+
         $user = request('user');
         $userInfo = request('loggedInUser');
         $electionStateId = $this->resolveElectionStateId($userInfo);
@@ -2150,6 +2186,10 @@ class ApiController extends Controller
 
     function internalElectionVote(Request $request)
     {
+        if (!$this->meetsInternalElectionMinBuild()) {
+            return $this->api_error_response('app_update_required', 101, 'يرجى تحديث التطبيق للمشاركة في الانتخابات الداخلية');
+        }
+
         $userInfo = request('loggedInUser');
         $user = request('user');
         $electionStateId = $this->resolveElectionStateId($userInfo);
@@ -2236,6 +2276,10 @@ class ApiController extends Controller
     // see it.
     function getMyDistrictVoters(Request $request)
     {
+        if (!$this->meetsInternalElectionMinBuild()) {
+            return $this->api_error_response('app_update_required', 101, 'يرجى تحديث التطبيق لعرض لائحة الناخبين');
+        }
+
         $user = request('user');
 
         if (!$user || !$user->member_id) {

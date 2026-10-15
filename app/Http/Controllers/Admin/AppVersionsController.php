@@ -39,6 +39,7 @@ class AppVersionsController extends Controller
 
                         $this->drawHtml('checkbox', 'Android Force Update', 'force_update_android', $settings->force_update_android, null, '', 'col-md-6'),
                         $this->drawHtml('checkbox', 'IOS Force Update', 'force_update_ios', $settings->force_update_ios, null, '', 'col-md-6'),
+                        $this->drawHtml('small_text', 'Internal Election Minimum Build Number (leave blank for no restriction — same number applies to both Android and iOS, since they share one build-number sequence)', 'internal_election_min_build', $settings->internal_election_min_build, null, '', 'col-md-12'),
 
                     ]
                     ],[
@@ -80,8 +81,12 @@ class AppVersionsController extends Controller
         $settings->update_title = request('update_title');
         $settings->update_message = request('update_message');
         $settings->force_update_android = request('force_update_android')?true:false;
-        
+
         $settings->force_update_ios = request('force_update_ios')?true:false;
+
+        $settings->internal_election_min_build = request('internal_election_min_build') !== null && request('internal_election_min_build') !== ''
+            ? (int) request('internal_election_min_build')
+            : null;
 
         
         $settings->save();
