@@ -16,6 +16,38 @@ Committed and deployed to staging **and production** 2026-10-16:
 - `getMyDistrictVoters()` applied the `voter_list_visible` toggle filter *before* checking candidate/viewer status, so an actual candidate/viewer got the misleading "this page is for candidates only" message whenever an admin paused list visibility. Now checks candidate/viewer status unconditionally first, with a distinct "list not currently available" message when that's the real cause — and the Home tile itself now also respects the toggle, disappearing entirely instead of just erroring on tap.
 - Vote Dispute Review table no longer shows a Candidate column — that page is about verifying *who* voted, not *who they voted for*; the new Votes Report page covers the latter.
 
+Committed and deployed to staging **and production**, 2026-10-01 through 2026-10-16 (backfilled retroactively — see `project-next-steps` memory for the full day-by-day narrative, including the app-store release cycles this work shipped alongside):
+
+### Added
+
+- **Internal Election — full selfie-verification feature.** Per-election `requires_selfie` toggle; a live front-camera selfie is captured at vote time and uploaded directly to S3 via a presigned URL (new `POST internal-election-selfie-upload-url` endpoint), never through the app server. `internalElectionVote()` verifies the claimed file actually exists in S3 before accepting the vote, rejecting a made-up filename outright. New **Vote Dispute Review** admin page (`/admin/internal-election/{id}/votes`, district-filtered) shows each vote's captured selfie next to the voter's real on-file photo for manual review.
+- **Internal Election — device-ID fraud detection**: `device_id` captured on every vote, with a "reused device ID" highlight on the Vote Dispute Review page when the same device cast votes for more than one distinct member.
+- **Internal Election — non-candidate voter-list viewer grants**: a new `internal_election_voter_viewers` table + dedicated admin page (`/admin/internal-election/{id}/voter-viewers`) lets an admin grant a specific non-candidate (e.g. campaign staff) the same district-scoped voter-list access a candidate gets.
+- **Internal Election — independent `voter_list_visible` toggle** (default on), separate from an election's own published/`is_active` status, letting an admin pause the voter list (for candidates and granted viewers alike) without touching whether the election itself is published.
+- **Internal Election — two separate build-number enforcement gates**: a per-request minimum build number for all 4 voting-related endpoints (`can-i-vote`, `get-internal-election-candidates`, `internal-election-vote`, `my-district-voters`), and a login-time (OTP-request) check in `RegistrationController::sendVerfication()` comparing the submitted build against the configured minimum — the latter needed no app release to take effect, since the app was already sending the field for an unrelated purpose.
+- **Internal Election — رديف (alternate) badge + age-based tie-break** in the results report when vote counts are equal, plus a hidden-by-default birthdate column (toggle button) and the "Export" button renamed to "Results".
+- **Internal Election — bulk permitted-voters import rewritten** from per-row `firstOrCreate()` (~70,000 queries, caused a real 504 timeout on a ~35,100-row file) to a chunked bulk `upsert()` — same import now completes in ~1.5 seconds.
+- Public `/news/{id}` page + `.well-known/assetlinks.json`/`apple-app-site-association` routes — the web fallback for Android App Links / iOS Universal Links when a shared article link is opened outside the app.
+- Custom CMS dashboard combining Android (Play Developer Reporting + classic stats bucket) and iOS (App Store Connect Analytics) store analytics in one place (`AppStoreConnectService`, `GooglePlayStatsService`, `GooglePlayVitalsService`, `AppAnalyticsDashboardService`).
+- User Activity dashboard: all 4 stat tiles (DAU/WAU/MAU/YAU) are now clickable, opening a popup listing every member counted in that tile with cascading district→town filters.
+- CMS admin sidebar reorganized from ~30 flat items into 14 categories.
+- `refreshPermissions()` now also accepts an optional `player_id` to resync a device's OneSignal subscription ID after login, since the original one-time capture at login often ran before OneSignal had finished registering.
+
+### Fixed
+
+- `appVersions()` API endpoint was returning hardcoded dummy data instead of the real `Setting` values — the whole app-update-check feature was dead until fixed.
+- `PushNotificationTrait` called `str_random()`, a Laravel helper removed in the version this app now runs — any push notification for a post with an image attached hard-crashed.
+- Guest access to Events/News/Polls 500'd on production: `show_for_guest` existed locally as a hand-added column but was never captured in a real migration, so it never reached production.
+- `getBiographyDetails()` only matched a biography to one specific `persons` row — a person listed under multiple election categories showed no biography for the others. Now falls back to matching by translated Arabic name.
+- User Activity dashboard's "Last Activity" froze at a member's first visit of the day instead of updating (`insertOrIgnore()` → `upsert()`).
+- Morris.js trend charts (User Activity, then Content Engagement's "Daily Likes") rendered as a single squished point — fixed with `parseTime: false`.
+- `SetLanguage` middleware crashed (500) on any `v2/` API route hit directly from a real browser, since it passed a raw `Accept-Language` header straight to `App::setLocale()` — browsers send quality-value syntax (`en-US,en;q=0.9,...`) that Symfony's locale validator rejects outright. Fixed with `Request::getPreferredLanguage()`.
+- Content Engagement dashboard: the date filter was blank by default (meant "all time") instead of defaulting to today; "Top 20 Most Shared Articles" showed the raw translatable-JSON string instead of the resolved title whenever a date filter was active.
+- Some news articles had `source_image` accidentally set to the app's own Play Store icon file, making link previews show the app logo instead of no image.
+- Permitted-voters admin table showed blank names for anyone who had never opened the app (`app_users` lookup only, no fallback to `fpm_users`) — same pagination gap fixed at ~15,000 rows (now paginated, 25/page).
+- `internal_election_votes` had no unique constraint on `(user_id, internal_election_id)` — a real double-vote vulnerability, now constrained with graceful error handling.
+- `AdminsController::pageCheckboxes()` only rendered top-level pages, so saving any admin's permissions via the edit form silently wiped all their granular child-page grants; `AdminsController::destroy()` threw a foreign-key violation deleting an admin with existing page permissions; `FormTrait.php`'s checkbox handling broke on a falsy `page_id=0`.
+
 Committed and deployed to staging **and production** 2026-09-29/30 (the first time this project's recent work reached production):
 
 ### Added
