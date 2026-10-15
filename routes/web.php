@@ -445,6 +445,9 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::get('internal-election/{id}/votes', 'InternalElectionController@votes')->name('internal-election.votes');
     Route::get('internal-election-vote/reset', 'InternalElectionController@reset')->name('internal-election-votes.reset');
     Route::get('internal-election-import-allowed-voters-template', 'InternalElectionController@downloadAllowedVotersTemplate')->name('internal-election.import-allowed-voters-template');
+    Route::get('internal-election/{id}/voter-viewers', 'InternalElectionController@voterViewers')->name('internal-election.voter-viewers');
+    Route::post('internal-election/{id}/voter-viewers', 'InternalElectionController@addVoterViewer')->name('internal-election.voter-viewers.store');
+    Route::delete('internal-election/{id}/voter-viewers/{viewerId}', 'InternalElectionController@removeVoterViewer')->name('internal-election.voter-viewers.destroy');
 
 
     //Internal Election Candidates

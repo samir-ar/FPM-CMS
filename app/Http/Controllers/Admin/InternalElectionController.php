@@ -12,6 +12,8 @@ use App\V2\ElectionState;
 use App\V2\InternalElectionCandidate;
 use App\V2\InternalElectionVote;
 use App\V2\InternalElectionPermission;
+use App\V2\InternalElectionVoterViewer;
+use App\V2\FpmUser;
 use App\V2\AppUser;
 use App\Imports\InternalElectionAllowedVotersImport;
 use App\Exports\AllowedToVoteTemplateExport;
@@ -208,6 +210,7 @@ class InternalElectionController extends Controller
                     'class' => 'box-primary',
                     'box-header' => 'Permitted',
                     'form_fields' => [
+                        "<p><a href='" . route('admin.internal-election.voter-viewers', $id) . "' class='btn btn-default btn-sm'>Manage extra voter-list viewers (non-candidates)</a></p>",
                         $this->getPermittedTable($id),
                     ],
                 ],
@@ -330,6 +333,71 @@ class InternalElectionController extends Controller
         $election = InternalElection::find($id);
         $election->delete();
         return back()->with('message', 'Election Deleted Successfully');
+    }
+
+    // Lets a non-candidate (e.g. campaign/party staff) see one district's
+    // voters, same scope a candidate running in that district gets - own
+    // dedicated page rather than embedded in the main Edit form, since
+    // that form already submits as one whole page and can't contain its
+    // own nested add/remove forms.
+    public function voterViewers($id)
+    {
+        $election = InternalElection::find($id);
+        if (!$election) {
+            return redirect(route('admin.internal-election.index'))->withErrors('Election not found');
+        }
+
+        $viewers = InternalElectionVoterViewer::where('election_id', $id)
+            ->with('electionState')
+            ->orderBy('id')
+            ->get();
+
+        $memberIds = $viewers->pluck('member_id');
+        $appUserNames = AppUser::whereIn('member_id', $memberIds)->pluck('name', 'member_id');
+        $fpmNames = FpmUser::whereIn('MemberId', $memberIds)->pluck('UserFullName', 'MemberId');
+
+        $viewers->each(function ($v) use ($appUserNames, $fpmNames) {
+            $v->resolved_name = $appUserNames->get($v->member_id) ?? $fpmNames->get($v->member_id) ?? null;
+        });
+
+        $states = ElectionState::orderBy('name')->get();
+
+        return view('internal-election.voter-viewers', compact('election', 'viewers', 'states'))->with([
+            'layout' => 'layouts.cms',
+            'pageTitle' => 'Voter-List Viewers',
+        ]);
+    }
+
+    public function addVoterViewer($id, Request $request)
+    {
+        $this->validate($request, [
+            'member_id' => 'required',
+            'election_state_id' => 'required|exists:election_states,id',
+        ]);
+
+        $memberId = trim(request('member_id'));
+
+        $fpmUser = FpmUser::where('MemberId', $memberId)->first();
+        if (!$fpmUser) {
+            return back()->withErrors('No member found with FPM ID ' . $memberId);
+        }
+
+        InternalElectionVoterViewer::firstOrCreate([
+            'election_id' => $id,
+            'member_id' => $memberId,
+            'election_state_id' => request('election_state_id'),
+        ]);
+
+        return redirect(route('admin.internal-election.voter-viewers', $id))
+            ->with('message', $fpmUser->UserFullName . ' can now see that district\'s voters for this election');
+    }
+
+    public function removeVoterViewer($id, $viewerId)
+    {
+        InternalElectionVoterViewer::where('id', $viewerId)->where('election_id', $id)->delete();
+
+        return redirect(route('admin.internal-election.voter-viewers', $id))
+            ->with('message', 'Removed');
     }
 
 

@@ -50,6 +50,7 @@ use App\V2\CompetencyNomination;
 use App\V2\InternalElection;
 use App\V2\InternalElectionCandidate;
 use App\V2\InternalElectionPermission;
+use App\V2\InternalElectionVoterViewer;
 use App\V2\ElectionState;
 use Illuminate\Support\Str;
 
@@ -2292,7 +2293,14 @@ class ApiController extends Controller
             ->with('electionStates')
             ->get();
 
-        if ($candidateRows->isEmpty()) {
+        // Admin-granted access for a specific non-candidate (e.g. campaign
+        // staff) — same district-scoped visibility a candidate gets,
+        // without being a registered candidate themselves.
+        $viewerRows = InternalElectionVoterViewer::where('member_id', $user->member_id)
+            ->with('electionState')
+            ->get();
+
+        if ($candidateRows->isEmpty() && $viewerRows->isEmpty()) {
             return $this->api_error_response('unauthorized', 403, "هذه الصفحة مخصصة للمرشحين فقط");
         }
 
@@ -2300,12 +2308,18 @@ class ApiController extends Controller
             ->flatMap(function ($candidate) {
                 return $candidate->electionStates->pluck('name');
             })
+            ->merge($viewerRows->pluck('electionState.name'))
+            ->filter()
             ->unique()
             ->values();
 
-        // Allowed in at least one of this candidate's own elections — a
-        // voter permitted for a different, unrelated election shouldn't show up here.
-        $electionIds = $candidateRows->pluck('election_id')->unique()->values();
+        // Allowed in at least one of this candidate's own elections, or one
+        // they've been granted viewer access to — a voter permitted for a
+        // different, unrelated election shouldn't show up here.
+        $electionIds = $candidateRows->pluck('election_id')
+            ->merge($viewerRows->pluck('election_id'))
+            ->unique()
+            ->values();
         $allowedMemberIds = InternalElectionPermission::whereIn('election_id', $electionIds)
             ->pluck('member_id');
 
