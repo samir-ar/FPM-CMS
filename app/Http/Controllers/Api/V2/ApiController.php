@@ -131,7 +131,10 @@ class ApiController extends Controller
             // Not restricted to published elections on purpose — a candidate
             // should be able to see and start reaching out to their voters
             // before the election is officially published, not just once it goes live.
-            'is_internal_election_candidate' => InternalElectionCandidate::where('member_id', $user->member_id)->exists(),
+            // Also true for a granted (non-candidate) voter-list viewer, so the
+            // existing app-side flag/tile works for them with no app update needed.
+            'is_internal_election_candidate' => InternalElectionCandidate::where('member_id', $user->member_id)->exists()
+                || InternalElectionVoterViewer::where('member_id', $user->member_id)->exists(),
         ]);
     }
 
