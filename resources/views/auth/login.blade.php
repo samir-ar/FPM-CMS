@@ -72,8 +72,8 @@
 
                         <div class="support">
                             <h4>For Support</h4>
-                            Email: r.khoury@titantech.me<br>
-                            Phone Number: +961 3 303 520
+                            Email: samir.abourjeily@fpmlb.org<br>
+                            Phone Number: +961 71 601 604
                         </div>
                     </form>
                 </div>
