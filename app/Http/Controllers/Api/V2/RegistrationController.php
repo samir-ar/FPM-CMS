@@ -48,15 +48,27 @@ class RegistrationController extends Controller
         // the app already sends build_number on this exact request - no new
         // app release needed for this to take effect. Rejecting before the
         // OTP is even sent also avoids wasting an SMS on a version we're
-        // about to turn away anyway. Respects the same Force Update
-        // checkboxes/version numbers as the general update-check feature -
-        // platform-agnostic here (no platform field sent at this step), so
-        // the higher of the two configured versions is used as the floor
-        // whenever either platform's Force Update flag is on.
+        // about to turn away anyway. Respects the same per-platform Force
+        // Update checkboxes/version numbers as the general update-check
+        // feature - checked per the submitted `platform` when present
+        // (Android and iOS can then be force-updated independently, as the
+        // two separate checkboxes imply). Falls back to the old
+        // platform-agnostic max() of both versions for an already-installed
+        // app that predates the `platform` field, so it still gets caught
+        // by whichever flag is on rather than silently bypassing the gate.
         $settings = Setting::first();
-        $forceUpdateOn = $settings->force_update_android || $settings->force_update_ios;
-        if ($forceUpdateOn) {
+        $platform = $request->input('platform');
+        if ($platform === 'ios') {
+            $forceUpdateOn = (bool) $settings->force_update_ios;
+            $minBuild = (int) $settings->ios_version;
+        } elseif ($platform === 'android') {
+            $forceUpdateOn = (bool) $settings->force_update_android;
+            $minBuild = (int) $settings->android_version;
+        } else {
+            $forceUpdateOn = $settings->force_update_android || $settings->force_update_ios;
             $minBuild = max((int) $settings->android_version, (int) $settings->ios_version);
+        }
+        if ($forceUpdateOn) {
             $submittedBuild = (int) $request->input('build_number', 0);
             if ($submittedBuild < $minBuild) {
                 return $this->api_error_response('app_update_required', 101, $settings->update_message ?? 'يرجى تحديث التطبيق للمتابعة');
