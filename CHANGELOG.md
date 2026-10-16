@@ -10,6 +10,7 @@ Committed and deployed to staging **and production** 2026-10-16:
 
 - **Internal Election Votes Report** (`/admin/internal-election/{id}/votes-report`) — a full per-voter list across every district at once (Voter, Member ID, District, Town, Candidate, Voted At), with an "Export to Excel" button. District/town are resolved from `fpm_users`, not `app_users`. Deliberately not linked from any sidebar menu or the election's edit page — reached only via direct URL, same convention as the existing Vote Dispute Review page.
 - **Add/Edit Representative** now auto-fills Name(English) and Name(Arabic) from the member's real `fpm_users` name once a Member ID is entered (on blur) — same convention as the photo, which already resolves live from the member's real ID. `fpm_users` only stores one (Arabic) name, so both fields are pre-filled with it as a starting point; Name(English) is still overwritten manually.
+- `legislative-docs:import-batch {category_id} {source_dir} {mapping}` artisan command — bulk-imports a folder of PDFs into Legislative Docs from a JSON filename→{title, date} mapping, reusing the same upload convention as the admin form. Used to import 43 real "أسئلة للحكومة" PDFs in one run; kept as a reusable command for any future batch upload.
 
 ### Changed
 
