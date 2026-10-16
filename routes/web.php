@@ -263,6 +263,7 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
 
     //Representatives
     Route::get('representatives-normalize-order', 'RepresentativesController@normalizeOrder')->name('representatives.normalize-order');
+    Route::get('representatives-fpm-user-lookup/{memberId}', 'RepresentativesController@fpmUserLookup')->name('representatives.fpm-user-lookup');
     Route::resource('representatives', 'RepresentativesController');
     Route::get('representatives-category', 'RepresentativeCategoryController@index')->name('representatives.category.index');
     Route::get('representatives-category-create', 'RepresentativeCategoryController@create')->name('representatives.category.create');

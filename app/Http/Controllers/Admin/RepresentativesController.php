@@ -6,6 +6,7 @@ use DataTables;
 use App\V2\Person;
 use App\V2\DynamicRepresentative;
 use App\V2\RepresentativePosition;
+use App\V2\FpmUser;
 use App\Http\Traits\FormTrait;
 use App\Http\Traits\FileTrait;
 use Illuminate\Http\Request;
@@ -81,6 +82,46 @@ class RepresentativesController extends Controller
         ]);
     }
 
+    // Used by the create/edit forms' JS to pre-fill the name fields once a
+    // Member ID is entered — fpm_users only stores one (Arabic) name, so
+    // both Name(English) and Name(Arabic) are pre-filled with it as a
+    // starting point; the admin overwrites Name(English) manually.
+    public function fpmUserLookup($memberId)
+    {
+        $fpmUser = FpmUser::where('MemberId', trim($memberId))->first();
+
+        return response()->json([
+            'name' => $fpmUser->UserFullName ?? null,
+        ]);
+    }
+
+    private function memberIdNameLookupScript()
+    {
+        $url = route('admin.representatives.fpm-user-lookup', ['memberId' => '__ID__']);
+
+        return <<<HTML
+        <script type="text/javascript">
+        (function(){
+            var field = document.querySelector('input[name="member_id"]');
+            if (!field) return;
+            field.addEventListener('blur', function(){
+                var id = field.value.trim();
+                if (!id) return;
+                fetch('{$url}'.replace('__ID__', encodeURIComponent(id)))
+                    .then(function(r){ return r.json(); })
+                    .then(function(data){
+                        if (!data.name) return;
+                        var nameField = document.querySelector('input[name="name"]');
+                        var nameArField = document.querySelector('input[name="name_ar"]');
+                        if (nameField) nameField.value = data.name;
+                        if (nameArField) nameArField.value = data.name;
+                    });
+            });
+        })();
+        </script>
+        HTML;
+    }
+
     public function create(Request $request)
     {
         return view('components.form')->with([
@@ -108,7 +149,7 @@ class RepresentativesController extends Controller
                         // $this->drawHtml('small_text', 'Type', 'type', $request->old('type') , null, 'keep it empty', 'col-md-12'),
                         $this->drawHtml('select-box', 'Type', 'type', $request->old('type'), [NULL => 'Select Status','Founder' => 'Founder','President' => 'President','Representative' => 'Representative'], '', 'col-md-12'),
 
-
+                        $this->memberIdNameLookupScript(),
                     ],
                 ],
             ]
@@ -244,7 +285,7 @@ class RepresentativesController extends Controller
                         $this->drawHtml('number', 'Order', 'order', $person->order , null, 'غيّر هذا الرقم لنقل الشخص إلى موقع آخر — سيتم تلقائياً إزاحة البقية للحفاظ على ترتيب متسلسل', 'col-md-12'),
                         $this->drawHtml('select-box', 'Type', 'type', $person->type, [NULL => 'Select Status','Founder' => 'Founder','President' => 'President'], '', 'col-md-12'),
 
-
+                        $this->memberIdNameLookupScript(),
                     ],
                 ],
                 ]
