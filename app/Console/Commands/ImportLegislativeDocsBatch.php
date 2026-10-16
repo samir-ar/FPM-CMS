@@ -72,7 +72,11 @@ class ImportLegislativeDocsBatch extends Command
             $doc = new LegislativeDoc();
             $doc->category_id = $categoryId;
             $doc->subcategory_id = null;
-            $doc->title = $meta['title'];
+            // title is varchar(191) - truncate defensively rather than
+            // letting one long entry abort the whole batch partway through.
+            $doc->title = mb_strlen($meta['title']) > 191
+                ? mb_substr($meta['title'], 0, 190) . '…'
+                : $meta['title'];
             $doc->date = $meta['date'];
             $doc->file_name = $fileName;
             $doc->order = 0;
