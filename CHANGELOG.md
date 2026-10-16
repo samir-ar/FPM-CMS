@@ -9,12 +9,18 @@ Committed and deployed to staging **and production** 2026-10-16:
 ### Added
 
 - **Internal Election Votes Report** (`/admin/internal-election/{id}/votes-report`) — a full per-voter list across every district at once (Voter, Member ID, District, Town, Candidate, Voted At), with an "Export to Excel" button. District/town are resolved from `fpm_users`, not `app_users`. Deliberately not linked from any sidebar menu or the election's edit page — reached only via direct URL, same convention as the existing Vote Dispute Review page.
+- **Add/Edit Representative** now auto-fills Name(English) and Name(Arabic) from the member's real `fpm_users` name once a Member ID is entered (on blur) — same convention as the photo, which already resolves live from the member's real ID. `fpm_users` only stores one (Arabic) name, so both fields are pre-filled with it as a starting point; Name(English) is still overwritten manually.
+
+### Changed
+
+- Admin login page's "For Support" contact info updated.
 
 ### Fixed
 
 - **Internal Election voter-list viewer grants had no working entry point in the app.** `is_internal_election_candidate` (which gates the Home-screen district-voters tile) only checked `InternalElectionCandidate`, so a non-candidate viewer grant (shipped 2026-10-16) passed the backend auth check but had no visible way to reach it. Broadened the same flag to also check `InternalElectionVoterViewer` — fixes the gap with no app release needed, since the app only reads the existing field name.
 - `getMyDistrictVoters()` applied the `voter_list_visible` toggle filter *before* checking candidate/viewer status, so an actual candidate/viewer got the misleading "this page is for candidates only" message whenever an admin paused list visibility. Now checks candidate/viewer status unconditionally first, with a distinct "list not currently available" message when that's the real cause — and the Home tile itself now also respects the toggle, disappearing entirely instead of just erroring on tap.
 - Vote Dispute Review table no longer shows a Candidate column — that page is about verifying *who* voted, not *who they voted for*; the new Votes Report page covers the latter.
+- **Login-time Force Update gate wasn't actually per-platform.** `RegistrationController::sendVerfication()`'s build-number check used `max(android_version, ios_version)` whenever *either* platform's Force Update flag was on, so turning on Android's alone also wrongly blocked iOS logins, ignoring iOS's own unchecked box — a real bug a user hit directly. Now checks only the submitted platform's flag/version when the app sends one (see the fpm-flutter changelog for the matching app-side fix), falling back to the old `max()` behavior for already-installed apps that predate that field.
 
 Committed and deployed to staging **and production**, 2026-10-01 through 2026-10-16 (backfilled retroactively — see `project-next-steps` memory for the full day-by-day narrative, including the app-store release cycles this work shipped alongside):
 
