@@ -206,7 +206,7 @@ class InternalElectionController extends Controller
                     'box-header' => 'Permissions',
                     'form_fields' => [
                         $this->drawHtml('file', 'List of permitted voters', 'excel', '', null, '', 'col-md-12'),
-                        "<p>Uploading a new file replaces the current list below. The excel structure should be as following: | FPM ID | — <a href='" . route('admin.internal-election.import-allowed-voters-template') . "'>Download template</a>.</p>",
+                        "<p>Uploading a new file adds its members to the current list below — it does not remove anyone already permitted, even if they're missing from the new file. The excel structure should be as following: | FPM ID | — <a href='" . route('admin.internal-election.import-allowed-voters-template') . "'>Download template</a>.</p>",
                     ],
                 ],
                 [
