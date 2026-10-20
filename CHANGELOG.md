@@ -119,6 +119,15 @@ Uncommitted, built 2026-09-26 in a local working session — not yet on any bran
 
 - Internal Election report page: a `margin-right:50%; transform:translateX(50%)` centering hack that only produced correct math under LTR broke this page's `dir="rtl"` layout (sideways overflow + horizontal scrollbar) — replaced with plain `margin:auto` centering. A decorative flanking-line pair around the title, built with absolutely-positioned `::before`/`::after`, rendered far off-screen instead of hugging the title — replaced with a plain flexbox row. `text-align` was found to have zero effect on `<th>`/`<td>` cells in this RTL `table-layout:fixed` table (root cause not identified) — worked around by moving alignment onto an inner wrapper `<div>` per cell instead of the cell itself. The page's `asset()`-generated logo/CSS URLs pointed at the wrong origin when served via a manual `php -S` process instead of `php artisan serve` (`APP_URL` mismatch) — switched to root-relative paths.
 
+### Fixed
+
+- Archive images uploaded via the admin panel now actually reach S3 (`MediaController` switched from `copyFile()` to the S3-aware `moveFile()`, matching PDFs/videos) — previously they saved local-disk only while the mobile API already built S3 URLs for them unconditionally, so any image added since the last manual S3 sync showed broken in the app. Also fixed a bug in the same code: `store()` was saving the thumbnail's filename into `file_name` instead of the full image's own filename.
+- `FileTrait::removeFile()` now also attempts an S3 delete (previously local-unlink only) when a media item is removed.
+
+### Known issue (not yet resolved)
+
+- Even with this fix, newly-uploaded images may still return `403 Forbidden` from S3 — the bucket's "Block Public Access" setting appears to reject public-read on new objects regardless of ACL. This needs an AWS Console check (S3 → `fpm-web-files` → Permissions), which is outside what this fix can address in code.
+
 ## v1.0.0
 
 First production release after completing the Critical UI redesign, accessibility improvements, backend QR fixes, and membership application flow.

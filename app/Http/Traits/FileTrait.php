@@ -88,6 +88,13 @@ trait FileTrait
 			unlink($filePath);
 		}
 
+		// $file also needs deleting from S3 — new uploads (moveFile) live
+		// there now, and older ones may already have been synced up
+		// separately. Deleting a key that isn't on S3 is a harmless no-op.
+		if(env('FORCE_S3_STORAGE', config('app.env') != 'local')){
+			Storage::disk('s3')->delete(config('app.aws_bucket_project_name') . '/storage/' . $file);
+		}
+
 		return;
 	}
 

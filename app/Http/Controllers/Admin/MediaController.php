@@ -125,9 +125,12 @@ class MediaController extends Controller
         ]);
 
         if(request('images')){
-            $file = $this->copyFile(request('images'),"media");
-            $thumbnail = $this->copyFile(request('images'),"media/thumbnail");
-            Media::create(["file_name"=>$thumbnail,'name'=>request('name'),"album_id"=>$id, "thumbnail"=>$thumbnail, "type"=>request('type')]);
+            // moveFile() (not copyFile()) so archive images actually reach S3 —
+            // the mobile API already builds S3 URLs for these unconditionally,
+            // so a local-only copy here means a broken image in the app.
+            $file = $this->moveFile(request('images'),"media");
+            $thumbnail = $this->moveFile(request('images'),"media/thumbnail");
+            Media::create(["file_name"=>$file,'name'=>request('name'),"album_id"=>$id, "thumbnail"=>$thumbnail, "type"=>request('type')]);
 
             /*$images = request('images') ? json_decode(request('images')) : [];
 
@@ -235,14 +238,14 @@ class MediaController extends Controller
             if($media->file_name && File::exists($media->file_name)){
                 File::delete($media->file_name);
             }
-            $media->file_name = $this->copyFile(request('images'),"media");//$this->moveFile(request('images'),"media");
+            $media->file_name = $this->moveFile(request('images'),"media");
 
             //Update image stored inside the thumbnail
             if($media->thumbnail && File::exists($media->thumbnail)){
                 File::delete($media->thumbnail);
             }
 
-            $media->thumbnail = $this->copyFile(request('images'),"media/thumbnail");//$this->moveFile(request('images'),"media/thumbnail");
+            $media->thumbnail = $this->moveFile(request('images'),"media/thumbnail");
         }
 
         if($request->video){
