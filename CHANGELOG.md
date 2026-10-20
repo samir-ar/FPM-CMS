@@ -128,6 +128,10 @@ Uncommitted, built 2026-09-26 in a local working session — not yet on any bran
 
 - Even with this fix, newly-uploaded images may still return `403 Forbidden` from S3 — the bucket's "Block Public Access" setting appears to reject public-read on new objects regardless of ACL. This needs an AWS Console check (S3 → `fpm-web-files` → Permissions), which is outside what this fix can address in code.
 
+### Fixed
+
+- Adding check-in attendance for a member with a large `MemberId` (e.g. `90004300142`) threw a 500 error (`SQLSTATE[22003]: Numeric value out of range`) — `event_attendance.member_id` was created as `unsignedInteger` (max ~4.29 billion) instead of matching `fpm_users.MemberId`'s `bigint`. Widened the column to `bigint unsigned`.
+
 ## v1.0.0
 
 First production release after completing the Critical UI redesign, accessibility improvements, backend QR fixes, and membership application flow.
