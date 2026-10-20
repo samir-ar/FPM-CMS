@@ -140,6 +140,17 @@ Uncommitted, built 2026-09-26 in a local working session — not yet on any bran
   - Per-action grants on top of View for specific pages (currently Check-In Events): "Can add people to check-in" and "Can export to Excel" can each be independently granted without giving Full access to the whole page.
   - New "Profiles" admin screen (`Administrators → Profiles`) for creating/editing profiles and assigning them to admins.
   - The "Add Account" form (`Administrators → Add Account`, a second/older admin-creation form separate from "All Administrators → Add Admin") also gained the Profile dropdown — previously it had no way to set one at all, silently creating admins with no profile (fully blocked).
+- Check-in attendance list (per event) now shows District, Town, Mobile Number, and Position (`LastUnitPosition`) for each attendee, plus an "Export to Excel" button (`CheckinAttendanceExport`).
+- APP USERS list is now searchable/sortable by Member ID, not just id/name/phone number.
+
+### Changed
+
+- Check-in scan result's "position" subtitle now comes strictly from `fpm_users.LastUnitPosition` — dropped the previous fallback to `Role` when `LastUnitPosition` was empty (shows nothing in that case, per explicit request, instead of falling back).
+- Check-in attendance table is now locked to 10 rows per page with the "Show entries" length dropdown removed.
+
+### Fixed
+
+- Inactive (`غير نشط` / `is_active=0`) check-in events could still have their attendance page opened and people added through the admin panel — only the mobile app's own scan flow enforced this. Now blocked on the admin side too (viewing, searching, exporting, and adding attendance all check the event's active status first).
 
 ## v1.0.0
 

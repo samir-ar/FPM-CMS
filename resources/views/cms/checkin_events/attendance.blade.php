@@ -9,6 +9,8 @@
             serverSide: true,
             ajax: "{{ route('admin.checkin-events.attendance', $event->id) }}",
             order: [[0, 'desc']],
+            pageLength: 10,
+            lengthChange: false,
             columns: [
                 { data: 'id', name: 'id' },
                 { data: 'member_id', name: 'member_id' },
