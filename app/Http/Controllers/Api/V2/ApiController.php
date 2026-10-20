@@ -1127,7 +1127,10 @@ class ApiController extends Controller
             return $this->api_error_response('missing_parameters', 101, implode(', ', $validator->messages()->all()));
         }
 
-        $memberName = \DB::table('fpm_users')->where('MemberId', request('member_id'))->value('UserFullName');
+        $member = \DB::table('fpm_users')->where('MemberId', request('member_id'))
+            ->first(['UserFullName', 'LastUnitPosition']);
+        $memberName = $member->UserFullName ?? null;
+        $position = $member->LastUnitPosition ?: null;
 
         try {
             EventAttendance::create([
@@ -1141,6 +1144,7 @@ class ApiController extends Controller
                 return response()->json([
                     'already_checked_in' => true,
                     'member_name' => $memberName,
+                    'position' => $position,
                     'message' => $memberName . ' is already checked in to this event.',
                 ]);
             }
@@ -1150,6 +1154,7 @@ class ApiController extends Controller
         return response()->json([
             'already_checked_in' => false,
             'member_name' => $memberName,
+            'position' => $position,
             'message' => $memberName . ' checked in successfully.',
         ]);
     }

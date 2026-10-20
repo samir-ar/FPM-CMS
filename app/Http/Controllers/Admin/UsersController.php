@@ -104,7 +104,7 @@ class UsersController extends Controller
             'pageTitle'	=> 'APP USERS',
             'table_title' => '',
             'slug'		=> 'Project',
-            'headers'	=> ['id', 'Name', 'Phone Number', 'Verified', 'Registration Date', 'District', 'Town', 'Sect', 'Sect Number', 'Position', 'Activity Unit', 'Civil Registry Unit', 'Scan Check-In', 'Action'],
+            'headers'	=> ['id', 'Member ID', 'Name', 'Phone Number', 'Verified', 'Registration Date', 'District', 'Town', 'Sect', 'Sect Number', 'Position', 'Activity Unit', 'Civil Registry Unit', 'Scan Check-In', 'Action'],
             'action' => route('admin.users.index'),
             'custom_btn' => "<a href='" . route('admin.users.export') ."' class='btn btn-success'>Export Users</a> &nbsp <a href='" . route('admin.users.import.create') ."' class='btn btn-primary'>Import Users</a> &nbsp <a href='" . route('admin.users.installation-report') ."' class='btn btn-warning'>Installation Report</a>",
             'custom_btn1' => $filterBtn(null, 'All')
@@ -114,6 +114,7 @@ class UsersController extends Controller
 
             'columns' => json_encode([
                 ['data' => 'id', 'name' => 'id'],
+                ['data' => 'member_id', 'name' => 'member_id'],
                 ['data' =>  'name', 'name'=> 'name'],
                 ['data' => 'phone_number', 'name' => 'phone_number'],
                 ['data' => 'verified', 'name' => 'verified'],

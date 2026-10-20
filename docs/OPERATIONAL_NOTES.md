@@ -28,6 +28,7 @@ If you need a brand-new group that doesn't exist yet, it must be created in that
 
 - **SSL/cURL errors on outbound HTTPS calls** (`cURL error 60: SSL certificate problem: unable to get local issuer certificate`) mean the local PHP install has no CA bundle configured. Fix: set `curl.cainfo` and `openssl.cafile` in `php.ini` to a valid `cacert.pem` (one is already vendored under phpMyAdmin's Composer dependencies on this machine — no need to download a new one), then restart the PHP process serving requests.
 - **Always start the local dev server with `php artisan serve`** — never hand-roll `php -S host:port server.php` from the project root, even if copying the exact command line from a running process. `server.php`'s static-asset fallback (`file_exists(__DIR__.'/public'.$uri)`) only resolves correctly when the process is launched the way Artisan's `ServeCommand` does it internally. A manual invocation silently breaks all static asset serving (`public/css`, `bower_components`, etc. all 404), which presents as a fully unstyled admin panel — easy to mistake for a CSS bug when it's actually a server-launch problem.
+- **This machine's local MySQL defaults to the `MyISAM` storage engine, not InnoDB.** Any new migration that doesn't explicitly set `$table->engine = 'InnoDB';` gets created as MyISAM, which silently drops foreign-key enforcement (MyISAM ignores FK clauses entirely) until something InnoDB tries to reference it, at which point you get `SQLSTATE[HY000]: 1824 Failed to open the referenced table`. Always add the explicit engine line on new migrations here. Staging's MySQL defaults to InnoDB normally — this is a local-machine-only quirk.
 
 ## `app_users` has legacy duplicate rows per member — `fpm_users` is the real source of truth
 
@@ -60,3 +61,28 @@ Like `idx_member_id` above, this has no Laravel migration backing it yet, and th
 - Staging runs on its own VPS (hostname `vmi2866881`), not on the production RDS instance — its `.env` has `DB_HOST=127.0.0.1`, i.e. MySQL is co-located on the same box as the app.
 - Staging's DB user is `fpmadmin` (distinct from local dev's `root` and production's RDS master user).
 - Staging's phpMyAdmin (behind nginx) times out with a 504 on imports of even a few MB (a ~3MB / 40k-row multi-statement SQL import failed). For anything non-trivial, apply SQL directly via the `mysql` CLI over SSH on that box instead of phpMyAdmin's web import.
+
+## Admin permissions (as of the Profile system, 2026-09-18)
+
+Before this, the "which pages can an admin see" checkboxes (`admins_pages` pivot, `User::hasPage()`) were **cosmetic only** — every admin route required nothing stronger than `auth:admin`, so any admin could open any admin URL directly regardless of their checkboxes. This is now a real, enforced Profile system:
+
+- A **Profile** (`profiles` table) holds a None/View/Full level per top-level page (`profile_permissions`), plus optional per-action grants for a few pages (`extra_actions` JSON column — currently just Check-In Events' "add attendance"/"export").
+- `CheckPagePermission` middleware (`page-perm:<page_id>,<view|full>` or `page-perm:<page_id>,action:<name>`) actually blocks the request server-side if the admin's assigned Profile doesn't grant enough — not just a hidden sidebar link.
+- Every admin needs a Profile assigned (Administrators → edit admin → Profile dropdown) or they're **fully blocked** from every permission-checked route. This is deliberate (secure-by-default for new admins), not a bug.
+- Manage Profiles at **Administrators → Profiles**.
+- **There are two separate, unrelated "create an admin" forms** — `Administrators → All Administrators → Add Admin` (`AdminsController`) and `Administrators → Add Account` (`ProfileController::addUserForm`/`addUser`, an older/legacy entry point). Both now have the Profile dropdown, but if a third one ever turns up, check it too — nothing enforces there's only one place admins get created.
+
+## Check-in events — inactive events block their own attendance
+
+A check-in event's منشط/غير نشط (`is_active`) toggle isn't just cosmetic on the admin side either: an inactive event's attendance page can't be opened, searched, exported, or added to (`CheckinEventsController::blockIfInactive()`, checked in every one of those 4 actions) — regardless of the admin's Profile permission level. This mirrors a rule the mobile app's own QR-scan flow already enforced (`ApiController::checkInMember`'s validation already required `is_active=1`); the admin side was simply missing it until 2026-09-18.
+
+## Archive media storage — images vs. PDFs/videos
+
+`MediaController` uploads PDFs/videos via `FileTrait::moveFile()` (S3-aware, respects `FORCE_S3_STORAGE`), but historically uploaded **images** via `copyFile()` (local-disk only, never S3) — while the mobile API (`ApiController::getAllAlbums`/`getAlbum`) always builds S3 URLs for archive media regardless of type. Fixed 2026-09-18 to use `moveFile()` for images too.
+
+**Separate, still-open issue as of this writing**: even with that fix, a freshly-uploaded file can come back `403 Forbidden` from S3 — the bucket (`fpm-web-files`) appears to reject public-read on new objects regardless of what ACL is requested at upload time (older files still work, meaning they were made public a different way in the past, likely a manual AWS-console action at some point). This needs an AWS Console check (S3 → `fpm-web-files` → Permissions → Block Public Access) — it can't be fixed from the app's code.
+
+## Server-level limits worth knowing
+
+- **Staging's nginx had no `client_max_body_size` set** (defaults to ~1MB) and **PHP-FPM was capped at `upload_max_filesize=2M`/`post_max_size=8M`** — far too small for real photo uploads. Bumped to 25M/20M directly on the server. This is server config, not tracked in this repo — if staging ever gets rebuilt, redo this.
+- Local WAMP's own PHP is already generous (`upload_max_filesize`/`post_max_size` = 512M) — this limit was staging-specific.

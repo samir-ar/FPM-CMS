@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Hash;
 use App\Page;
 use App\User;
+use App\V2\Profile;
 use App\Http\Requests;
 use App\Http\Traits\FormTrait;
 use App\Http\Traits\FileTrait;
@@ -117,8 +118,6 @@ class AdminsController extends Controller
     {
         $admin = User::find($id);
 
-        $checkboxes = $this->pageCheckboxes($admin);
-
         return view('components.form')->with([
             'layout'         => 'layouts.cms',
             'pageTitle'		=> 'Update Admin',
@@ -135,14 +134,13 @@ class AdminsController extends Controller
                         $this->drawHtml('small_text', 'Name', 'name', $admin->name, null, null, 'col-md-12'),
                         $this->drawHtml('small_text', 'New Password', 'password', '' , null, '', 'col-md-12 '),
                         $this->drawHtml('small_text', 'Confirm New Password', 'password_confirmation', '', null, null, 'col-md-12'),
+                        // Not assigning one leaves this admin fully blocked
+                        // from every page-perm-protected route until a
+                        // profile is set — deliberate, secure-by-default.
+                        $this->drawHtml('select-box', 'Profile', 'profile_id', $admin->profile_id,
+                            ['' => '— No profile (no access) —'] + Profile::pluck('name', 'id')->all(),
+                            null, 'col-md-12'),
                     ],
-                ],
-                [
-                    'wrapper-class' => 'col-md-8',
-                    'class' => 'box-default',
-                    'box-header' => 'Permissions',
-                    'form_fields' => $checkboxes,
-
                 ],
             ]
         ]);
@@ -150,8 +148,6 @@ class AdminsController extends Controller
 
     public function update($id, Request $request)
     {
-
-
         $this->validate($request,[
             'name' => '',
             'email' => 'required',
@@ -165,19 +161,15 @@ class AdminsController extends Controller
 
         $admin->email = request('email');
         $admin->name = request('name');
+        $admin->profile_id = request('profile_id') ?: null;
 
         $admin->save();
-
-        if($pages = request('pages'))
-            $admin->pages()->sync($pages);
 
         return redirect()->route('admin.admins.index')->with('message', 'Administrator updated');
     }
 
     public function create(Request $request)
     {
-        $checkboxes = $this->pageCheckboxes();
-
         return view('components.form')->with([
             'layout'         => 'layouts.cms',
             'pageTitle'		=> 'Add Admin',
@@ -194,14 +186,10 @@ class AdminsController extends Controller
                         $this->drawHtml('small_text', 'Name', 'name', $request->old('name'), null, null, 'col-md-12'),
                         $this->drawHtml('small_text', 'New Password', 'password', '' , null, '', 'col-md-12 '),
                         $this->drawHtml('small_text', 'Confirm New Password', 'password_confirmation', '', null, null, 'col-md-12'),
+                        $this->drawHtml('select-box', 'Profile', 'profile_id', $request->old('profile_id'),
+                            ['' => '— No profile (no access) —'] + Profile::pluck('name', 'id')->all(),
+                            null, 'col-md-12'),
                     ],
-                ],
-                [
-                    'wrapper-class' => 'col-md-8',
-                    'class' => 'box-default',
-                    'box-header' => 'Permissions',
-                    'form_fields' => $checkboxes,
-
                 ],
             ]
         ]);
@@ -209,10 +197,6 @@ class AdminsController extends Controller
 
     public function store(Request $request)
     {
-        $pages = request('pages');
-        $pages = array_keys($pages);
-
-
         $this->validate($request,[
             'name' => '',
             'email' => 'required',
@@ -225,12 +209,8 @@ class AdminsController extends Controller
 
         $admin->email = request('email');
         $admin->name = request('name');
+        $admin->profile_id = request('profile_id') ?: null;
         $admin->save();
-
-
-        if($pages = request('pages')){
-            $admin->pages()->sync($pages);
-        }
 
         return redirect()->route('admin.admins.index')->with('message', 'Administrator Created');
     }

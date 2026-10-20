@@ -13,6 +13,10 @@
                 { data: 'id', name: 'id' },
                 { data: 'member_id', name: 'member_id' },
                 { data: 'member_name', name: 'member_name', searchable: false, sortable: false },
+                { data: 'mobile_number', name: 'mobile_number', searchable: false, sortable: false },
+                { data: 'district', name: 'district', searchable: false, sortable: false },
+                { data: 'town', name: 'town', searchable: false, sortable: false },
+                { data: 'last_unit_position', name: 'last_unit_position', searchable: false, sortable: false },
                 { data: 'checked_in_at', name: 'checked_in_at' },
                 { data: 'scanned_by_name', name: 'scanned_by_name', searchable: false, sortable: false },
             ],
@@ -87,7 +91,8 @@
 <div class="box box-default">
     <div class="box-header with-border">
         <h3 class="box-title">الحضور — {{ $event->name }}</h3>
-        <a href="{{ route('admin.checkin-events.index') }}" class="btn btn-default pull-right">عودة الى المناسبات</a>
+        <a href="{{ route('admin.checkin-events.index') }}" class="btn btn-default pull-right" style="margin-right:4px;">عودة الى المناسبات</a>
+        <a href="{{ route('admin.checkin-events.attendance.export', $event->id) }}" class="btn btn-success pull-right" style="margin-right:4px;">تصدير الى Excel</a>
     </div>
     <div class="box-body">
         <div id="inlineMessage" class="alert" style="display:none;"></div>
@@ -111,6 +116,10 @@
                     <th>#</th>
                     <th>رقم العضوية</th>
                     <th>الاسم</th>
+                    <th>رقم الهاتف</th>
+                    <th>المنطقة</th>
+                    <th>البلدة</th>
+                    <th>المركز</th>
                     <th>وقت الحضور</th>
                     <th>سجّله</th>
                 </tr>

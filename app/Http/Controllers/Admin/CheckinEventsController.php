@@ -4,13 +4,30 @@ namespace App\Http\Controllers\Admin;
 
 use Illuminate\Http\Request;
 use App\V2\CheckinEvent;
+use App\V2\FpmUser;
 use App\Http\Traits\FormTrait;
 use App\Http\Controllers\Controller;
+use App\Exports\CheckinAttendanceExport;
+use Maatwebsite\Excel\Facades\Excel;
 use DataTables;
 
 class CheckinEventsController extends Controller
 {
     use FormTrait;
+
+    // Memoized per member_id, same pattern as UsersController::fpmUserFor —
+    // district/town/mobile/position all come from one shared lookup per row
+    // instead of querying fpm_users separately for each column.
+    private array $fpmUserCache = [];
+
+    private function fpmUserFor($memberId): ?FpmUser
+    {
+        if (!array_key_exists($memberId, $this->fpmUserCache)) {
+            $this->fpmUserCache[$memberId] = FpmUser::where('MemberId', $memberId)->first();
+        }
+
+        return $this->fpmUserCache[$memberId];
+    }
 
     public function index(Request $request)
     {
@@ -180,6 +197,18 @@ class CheckinEventsController extends Controller
                 ->addColumn('member_name', function ($row) {
                     return \DB::table('fpm_users')->where('MemberId', $row->member_id)->value('UserFullName');
                 })
+                ->addColumn('mobile_number', function ($row) {
+                    return $this->fpmUserFor($row->member_id)?->MobileNumber;
+                })
+                ->addColumn('district', function ($row) {
+                    return $this->fpmUserFor($row->member_id)?->district;
+                })
+                ->addColumn('town', function ($row) {
+                    return $this->fpmUserFor($row->member_id)?->town;
+                })
+                ->addColumn('last_unit_position', function ($row) {
+                    return $this->fpmUserFor($row->member_id)?->LastUnitPosition;
+                })
                 ->addColumn('scanned_by_name', function ($row) {
                     if ($row->addedByAdmin) {
                         return optional($row->addedByAdmin)->name . ' (يدوياً)';
@@ -193,6 +222,13 @@ class CheckinEventsController extends Controller
             'layout' => 'layouts.cms',
             'event'  => $event,
         ]);
+    }
+
+    public function exportAttendance($id)
+    {
+        CheckinEvent::findOrFail($id);
+
+        return Excel::download(new CheckinAttendanceExport((int) $id), "attendance-event-{$id}.xlsx");
     }
 
     public function searchMembers(Request $request, $id)

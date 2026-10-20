@@ -132,6 +132,15 @@ Uncommitted, built 2026-09-26 in a local working session — not yet on any bran
 
 - Adding check-in attendance for a member with a large `MemberId` (e.g. `90004300142`) threw a 500 error (`SQLSTATE[22003]: Numeric value out of range`) — `event_attendance.member_id` was created as `unsignedInteger` (max ~4.29 billion) instead of matching `fpm_users.MemberId`'s `bigint`. Widened the column to `bigint unsigned`.
 
+### Added
+
+- **Admin Profiles & permissions system** — replaces the old per-admin page checkboxes (which only ever hid/showed sidebar links, never actually enforced anything) with a real, reusable Profile: a named set of None/View/Full permissions per page, assignable to many admins at once.
+  - Real server-side enforcement (`CheckPagePermission` middleware, `page-perm:<page_id>,<view|full>`) on all 39 top-level admin pages — a "View" profile is now actually blocked from create/edit/delete/toggle actions, not just hidden from the sidebar.
+  - Migration safety net: every existing admin was auto-assigned a "Super Admin" profile with Full access to every page, so nobody lost access when this shipped. New admins start with no profile (fully blocked) until deliberately assigned one.
+  - Per-action grants on top of View for specific pages (currently Check-In Events): "Can add people to check-in" and "Can export to Excel" can each be independently granted without giving Full access to the whole page.
+  - New "Profiles" admin screen (`Administrators → Profiles`) for creating/editing profiles and assigning them to admins.
+  - The "Add Account" form (`Administrators → Add Account`, a second/older admin-creation form separate from "All Administrators → Add Admin") also gained the Profile dropdown — previously it had no way to set one at all, silently creating admins with no profile (fully blocked).
+
 ## v1.0.0
 
 First production release after completing the Critical UI redesign, accessibility improvements, backend QR fixes, and membership application flow.

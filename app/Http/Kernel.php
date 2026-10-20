@@ -66,6 +66,7 @@ class Kernel extends HttpKernel
         'lang' => \App\Http\Middleware\SetLanguage::class,
         'fpm-auth' => \App\Http\Middleware\FpmCheckToken::class,
         'not-required-token' => \App\Http\Middleware\TokenNotRequired::class,
+        'page-perm' => \App\Http\Middleware\CheckPagePermission::class,
     ];
 
     /**

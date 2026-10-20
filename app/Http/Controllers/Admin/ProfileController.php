@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Hash;
 use Auth;
 use App\User;
+use App\V2\Profile;
 use App\Http\Requests;
 use App\Http\Controllers\Controller;
 
@@ -149,6 +150,9 @@ class ProfileController extends Controller
                         $this->drawHtml('small_text', 'Email', 'email', null , null, '', 'col-md-12 '),
                         $this->drawHtml('small_text', 'New Password', 'password', '' , null, '', 'col-md-12 '),
                         $this->drawHtml('small_text', 'Confirm New Password', 'password_confirmation', '', null, null, 'col-md-12'),
+                        $this->drawHtml('select-box', 'Profile', 'profile_id', null,
+                            ['' => '— No profile (no access) —'] + Profile::pluck('name', 'id')->all(),
+                            null, 'col-md-12'),
                     ],
                 ],
 
@@ -174,6 +178,7 @@ class ProfileController extends Controller
             $admin->name = $data['name'];
 
         $admin->password = Hash::make($data['password']);
+        $admin->profile_id = $data['profile_id'] ?? null;
 
         $admin->save();
 
