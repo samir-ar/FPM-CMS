@@ -99,7 +99,9 @@ class ProfilesController extends Controller
             ? \App\V2\ProfilePermission::where('profile_id', $profile->id)->pluck('extra_actions', 'page_id')->all()
             : [];
 
-        $pages = Page::whereNull('parent_id')->orderBy('name')->get();
+        $pages = Page::where(function ($q) {
+            $q->whereNull('parent_id')->orWhere('show_in_profile_form', true);
+        })->orderBy('name')->get();
         $pageFields = [];
         foreach ($pages as $page) {
             // Built as ONE combined col-md-4 cell (select + any extra-action

@@ -3,6 +3,24 @@
 
 //use App\Http\Controllers\Admin\TransactionController;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\DB;
+
+// Several `pages` rows were inserted independently on local/staging/production
+// (different history, different pre-existing row counts at insert time), so
+// their auto-increment ids genuinely differ per environment - confirmed for
+// Business Types/Community Posts/Directory Members/Legislative Doc Categories/
+// Profiles (2026-10-20). A hardcoded literal page-perm id is only safe for
+// pages whose id is known to match everywhere; for anything newer or ever
+// found to drift, resolve it by its stable `url` column instead.
+function pagePermByUrl(string $url, string $level): string
+{
+    static $cache = [];
+    if (!array_key_exists($url, $cache)) {
+        $cache[$url] = DB::table('pages')->where('url', $url)->value('id');
+    }
+    return 'page-perm:' . ($cache[$url] ?? 0) . ',' . $level;
+}
+
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -93,11 +111,11 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::resource('users', 'UsersController')->only(['index'])->middleware('page-perm:8,view');
     Route::resource('users', 'UsersController')->except(['index'])->middleware('page-perm:8,full');
     //Administrators — page 4
-    Route::resource('admins', 'AdminsController')->middleware('page-perm:4,full');
-    Route::resource('profiles', 'ProfilesController')->middleware('page-perm:4,full');
+    Route::resource('admins', 'AdminsController')->middleware(pagePermByUrl('admin.admins.index', 'full'));
+    Route::resource('profiles', 'ProfilesController')->middleware(pagePermByUrl('admin.profiles.index', 'full'));
 
     //Representatives Positions — child of Representatives, page 31
-    Route::resource('representative-positions', 'RepresentativePositionController')->middleware('page-perm:31,full');
+    Route::resource('representative-positions', 'RepresentativePositionController')->middleware(pagePermByUrl('admin.representative-positions.index', 'full'));
 
     //Store Analytics (iOS + Android) — page 92
     Route::get('store-analytics', 'StoreAnalyticsController@index')->name('store-analytics.index')->middleware('page-perm:92,view');
@@ -120,8 +138,10 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::get('legislative-docs/{id}/edit', 'LegislativeDocsController@edit')->name('legislative-docs.edit')->middleware('page-perm:69,full');
     Route::put('legislative-docs/{id}', 'LegislativeDocsController@update')->name('legislative-docs.update')->middleware('page-perm:69,full');
     Route::delete('legislative-docs/{id}', 'LegislativeDocsController@destroy')->name('legislative-docs.destroy')->middleware('page-perm:69,full');
-    Route::resource('legislative-doc-categories', 'LegislativeDocCategoriesController');
-    Route::resource('legislative-doc-subcategories', 'LegislativeDocSubcategoriesController');
+    Route::resource('legislative-doc-categories', 'LegislativeDocCategoriesController')->only(['index', 'show'])->middleware(pagePermByUrl('admin.legislative-doc-categories.index', 'view'));
+    Route::resource('legislative-doc-categories', 'LegislativeDocCategoriesController')->except(['index', 'show'])->middleware(pagePermByUrl('admin.legislative-doc-categories.index', 'full'));
+    Route::resource('legislative-doc-subcategories', 'LegislativeDocSubcategoriesController')->only(['index', 'show'])->middleware(pagePermByUrl('admin.legislative-doc-subcategories.index', 'view'));
+    Route::resource('legislative-doc-subcategories', 'LegislativeDocSubcategoriesController')->except(['index', 'show'])->middleware(pagePermByUrl('admin.legislative-doc-subcategories.index', 'full'));
 
     //National Plans (الخطط الوطنية المقدمة) — page 70
     Route::get('national-plans', 'NationalPlansController@index')->name('national-plans.index')->middleware('page-perm:70,view');
@@ -195,30 +215,30 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::post('competency-static', 'CompetencyStaticController@update')->name('competency-static.update')->middleware('page-perm:72,full');
 
     //Community — page 76 for all 3 sub-features (Business Types/Directory Members/Community Posts are its children)
-    Route::get('business-types', 'BusinessTypesController@index')->name('business-types.index')->middleware('page-perm:76,view');
-    Route::get('business-types/create', 'BusinessTypesController@create')->name('business-types.create')->middleware('page-perm:76,full');
-    Route::post('business-types', 'BusinessTypesController@store')->name('business-types.store')->middleware('page-perm:76,full');
-    Route::get('business-types/{id}/edit', 'BusinessTypesController@edit')->name('business-types.edit')->middleware('page-perm:76,full');
-    Route::put('business-types/{id}', 'BusinessTypesController@update')->name('business-types.update')->middleware('page-perm:76,full');
-    Route::delete('business-types/{id}', 'BusinessTypesController@destroy')->name('business-types.destroy')->middleware('page-perm:76,full');
+    Route::get('business-types', 'BusinessTypesController@index')->name('business-types.index')->middleware(pagePermByUrl('admin.business-types.index', 'view'));
+    Route::get('business-types/create', 'BusinessTypesController@create')->name('business-types.create')->middleware(pagePermByUrl('admin.business-types.index', 'full'));
+    Route::post('business-types', 'BusinessTypesController@store')->name('business-types.store')->middleware(pagePermByUrl('admin.business-types.index', 'full'));
+    Route::get('business-types/{id}/edit', 'BusinessTypesController@edit')->name('business-types.edit')->middleware(pagePermByUrl('admin.business-types.index', 'full'));
+    Route::put('business-types/{id}', 'BusinessTypesController@update')->name('business-types.update')->middleware(pagePermByUrl('admin.business-types.index', 'full'));
+    Route::delete('business-types/{id}', 'BusinessTypesController@destroy')->name('business-types.destroy')->middleware(pagePermByUrl('admin.business-types.index', 'full'));
 
-    Route::get('directory-members', 'DirectoryMembersController@index')->name('directory-members.index')->middleware('page-perm:76,view');
-    Route::get('directory-members/create', 'DirectoryMembersController@create')->name('directory-members.create')->middleware('page-perm:76,full');
-    Route::post('directory-members', 'DirectoryMembersController@store')->name('directory-members.store')->middleware('page-perm:76,full');
-    Route::get('directory-members/{id}/edit', 'DirectoryMembersController@edit')->name('directory-members.edit')->middleware('page-perm:76,full');
-    Route::put('directory-members/{id}', 'DirectoryMembersController@update')->name('directory-members.update')->middleware('page-perm:76,full');
-    Route::delete('directory-members/{id}', 'DirectoryMembersController@destroy')->name('directory-members.destroy')->middleware('page-perm:76,full');
-    Route::get('directory-members/{id}/toggle-active', 'DirectoryMembersController@toggleActive')->name('directory-members.toggle-active')->middleware('page-perm:76,full');
-    Route::get('directory-members-import', 'DirectoryMembersController@importForm')->name('directory-members.import-form')->middleware('page-perm:76,full');
-    Route::post('directory-members-import', 'DirectoryMembersController@importStore')->name('directory-members.import-store')->middleware('page-perm:76,full');
-    Route::get('directory-members-template', 'DirectoryMembersController@downloadTemplate')->name('directory-members.template')->middleware('page-perm:76,view');
+    Route::get('directory-members', 'DirectoryMembersController@index')->name('directory-members.index')->middleware(pagePermByUrl('admin.directory-members.index', 'view'));
+    Route::get('directory-members/create', 'DirectoryMembersController@create')->name('directory-members.create')->middleware(pagePermByUrl('admin.directory-members.index', 'full'));
+    Route::post('directory-members', 'DirectoryMembersController@store')->name('directory-members.store')->middleware(pagePermByUrl('admin.directory-members.index', 'full'));
+    Route::get('directory-members/{id}/edit', 'DirectoryMembersController@edit')->name('directory-members.edit')->middleware(pagePermByUrl('admin.directory-members.index', 'full'));
+    Route::put('directory-members/{id}', 'DirectoryMembersController@update')->name('directory-members.update')->middleware(pagePermByUrl('admin.directory-members.index', 'full'));
+    Route::delete('directory-members/{id}', 'DirectoryMembersController@destroy')->name('directory-members.destroy')->middleware(pagePermByUrl('admin.directory-members.index', 'full'));
+    Route::get('directory-members/{id}/toggle-active', 'DirectoryMembersController@toggleActive')->name('directory-members.toggle-active')->middleware(pagePermByUrl('admin.directory-members.index', 'full'));
+    Route::get('directory-members-import', 'DirectoryMembersController@importForm')->name('directory-members.import-form')->middleware(pagePermByUrl('admin.directory-members.index', 'full'));
+    Route::post('directory-members-import', 'DirectoryMembersController@importStore')->name('directory-members.import-store')->middleware(pagePermByUrl('admin.directory-members.index', 'full'));
+    Route::get('directory-members-template', 'DirectoryMembersController@downloadTemplate')->name('directory-members.template')->middleware(pagePermByUrl('admin.directory-members.index', 'view'));
 
-    Route::get('community-posts', 'CommunityPostsController@index')->name('community-posts.index')->middleware('page-perm:76,view');
-    Route::get('community-posts/{id}/edit', 'CommunityPostsController@edit')->name('community-posts.edit')->middleware('page-perm:76,full');
-    Route::put('community-posts/{id}', 'CommunityPostsController@update')->name('community-posts.update')->middleware('page-perm:76,full');
-    Route::get('community-posts/{id}/approve', 'CommunityPostsController@approve')->name('community-posts.approve')->middleware('page-perm:76,full');
-    Route::get('community-posts/{id}/reject', 'CommunityPostsController@reject')->name('community-posts.reject')->middleware('page-perm:76,full');
-    Route::delete('community-posts/{id}', 'CommunityPostsController@destroy')->name('community-posts.destroy')->middleware('page-perm:76,full');
+    Route::get('community-posts', 'CommunityPostsController@index')->name('community-posts.index')->middleware(pagePermByUrl('admin.community-posts.index', 'view'));
+    Route::get('community-posts/{id}/edit', 'CommunityPostsController@edit')->name('community-posts.edit')->middleware(pagePermByUrl('admin.community-posts.index', 'full'));
+    Route::put('community-posts/{id}', 'CommunityPostsController@update')->name('community-posts.update')->middleware(pagePermByUrl('admin.community-posts.index', 'full'));
+    Route::get('community-posts/{id}/approve', 'CommunityPostsController@approve')->name('community-posts.approve')->middleware(pagePermByUrl('admin.community-posts.index', 'full'));
+    Route::get('community-posts/{id}/reject', 'CommunityPostsController@reject')->name('community-posts.reject')->middleware(pagePermByUrl('admin.community-posts.index', 'full'));
+    Route::delete('community-posts/{id}', 'CommunityPostsController@destroy')->name('community-posts.destroy')->middleware(pagePermByUrl('admin.community-posts.index', 'full'));
 
     //Memos — page 19
     Route::resource('memos', 'MemosController')->only(['index', 'show'])->middleware('page-perm:19,view');
@@ -279,23 +299,23 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::get('volunteers/{id}/toggle-active', 'VolunteersController@toggleActive')->name('volunteers.toggle-active')->middleware('page-perm:27,full');
 
     //EventFiles — child of Events, page 22
-    Route::resource('eventImages', 'EventImagesController')->only(['index', 'show'])->middleware('page-perm:22,view');
-    Route::resource('eventImages', 'EventImagesController')->except(['index', 'show'])->middleware('page-perm:22,full');
-    Route::post('eventFilesDestroy', 'EventImagesController@multipleDelete')->name('eventImages.multipleDelete')->middleware('page-perm:22,full');
-    Route::post('eventUploadFile', 'EventImagesController@uploadFile')->name('event.upload_file')->middleware('page-perm:22,full');
-    Route::post('eventRemoveFile', 'EventImagesController@remove_File')->name('event.remove_file')->middleware('page-perm:22,full');
+    Route::resource('eventImages', 'EventImagesController')->only(['index', 'show'])->middleware(pagePermByUrl('admin.eventImages.index', 'view'));
+    Route::resource('eventImages', 'EventImagesController')->except(['index', 'show'])->middleware(pagePermByUrl('admin.eventImages.index', 'full'));
+    Route::post('eventFilesDestroy', 'EventImagesController@multipleDelete')->name('eventImages.multipleDelete')->middleware(pagePermByUrl('admin.eventImages.index', 'full'));
+    Route::post('eventUploadFile', 'EventImagesController@uploadFile')->name('event.upload_file')->middleware(pagePermByUrl('admin.eventImages.index', 'full'));
+    Route::post('eventRemoveFile', 'EventImagesController@remove_File')->name('event.remove_file')->middleware(pagePermByUrl('admin.eventImages.index', 'full'));
 
     //Representatives — page 31, covers all its children (category/positions/text) too
     Route::get('representatives-normalize-order', 'RepresentativesController@normalizeOrder')->name('representatives.normalize-order')->middleware('page-perm:31,full');
     Route::get('representatives-fpm-user-lookup/{memberId}', 'RepresentativesController@fpmUserLookup')->name('representatives.fpm-user-lookup')->middleware('page-perm:31,full');
     Route::resource('representatives', 'RepresentativesController')->only(['index', 'show'])->middleware('page-perm:31,view');
     Route::resource('representatives', 'RepresentativesController')->except(['index', 'show'])->middleware('page-perm:31,full');
-    Route::get('representatives-category', 'RepresentativeCategoryController@index')->name('representatives.category.index')->middleware('page-perm:31,view');
-    Route::get('representatives-category-create', 'RepresentativeCategoryController@create')->name('representatives.category.create')->middleware('page-perm:31,full');
-    Route::post('representatives-category-store', 'RepresentativeCategoryController@store')->name('representatives.category.store')->middleware('page-perm:31,full');
-    Route::delete('representatives-category-destroy/{id}', 'RepresentativeCategoryController@destroy')->name('representatives.category.destroy')->middleware('page-perm:31,full');
-    Route::get('representatives-category-edit/{id}', 'RepresentativeCategoryController@edit')->name('representatives.category.edit')->middleware('page-perm:31,full');
-    Route::put('representatives-category-update/{id}', 'RepresentativeCategoryController@update')->name('representatives.category.update')->middleware('page-perm:31,full');
+    Route::get('representatives-category', 'RepresentativeCategoryController@index')->name('representatives.category.index')->middleware(pagePermByUrl('admin.representatives.category.index', 'view'));
+    Route::get('representatives-category-create', 'RepresentativeCategoryController@create')->name('representatives.category.create')->middleware(pagePermByUrl('admin.representatives.category.index', 'full'));
+    Route::post('representatives-category-store', 'RepresentativeCategoryController@store')->name('representatives.category.store')->middleware(pagePermByUrl('admin.representatives.category.index', 'full'));
+    Route::delete('representatives-category-destroy/{id}', 'RepresentativeCategoryController@destroy')->name('representatives.category.destroy')->middleware(pagePermByUrl('admin.representatives.category.index', 'full'));
+    Route::get('representatives-category-edit/{id}', 'RepresentativeCategoryController@edit')->name('representatives.category.edit')->middleware(pagePermByUrl('admin.representatives.category.index', 'full'));
+    Route::put('representatives-category-update/{id}', 'RepresentativeCategoryController@update')->name('representatives.category.update')->middleware(pagePermByUrl('admin.representatives.category.index', 'full'));
 
     //content — Representative Text, child of Representatives, page 31
     Route::get('representatives-content', 'ContentController@representativesForm')->name('representatives.form')->middleware('page-perm:31,full');
