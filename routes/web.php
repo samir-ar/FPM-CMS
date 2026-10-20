@@ -12,13 +12,21 @@ use Illuminate\Support\Facades\DB;
 // Profiles (2026-10-20). A hardcoded literal page-perm id is only safe for
 // pages whose id is known to match everywhere; for anything newer or ever
 // found to drift, resolve it by its stable `url` column instead.
-function pagePermByUrl(string $url, string $level): string
-{
-    static $cache = [];
-    if (!array_key_exists($url, $cache)) {
-        $cache[$url] = DB::table('pages')->where('url', $url)->value('id');
+if (!function_exists('pagePermByUrl')) {
+    // Guarded: this file gets `require`d more than once within a single
+    // PHP process on at least one environment (confirmed on staging 2026-10-20,
+    // root cause not identified - likely a package or custom provider that
+    // reloads route files outside Laravel's normal RouteServiceProvider
+    // flow) - a bare function declaration here fatals with "Cannot redeclare"
+    // the second time through.
+    function pagePermByUrl(string $url, string $level): string
+    {
+        static $cache = [];
+        if (!array_key_exists($url, $cache)) {
+            $cache[$url] = DB::table('pages')->where('url', $url)->value('id');
+        }
+        return 'page-perm:' . ($cache[$url] ?? 0) . ',' . $level;
     }
-    return 'page-perm:' . ($cache[$url] ?? 0) . ',' . $level;
 }
 
 /*
@@ -95,8 +103,13 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::get('change-password', 'ProfileController@changePasswordForm')->name('change_password_form');
     Route::post('change-password', 'ProfileController@changePassword')->name('change_password');
     Route::post('reset-password', 'ProfileController@resetPassword')->name('reset_password');
-    Route::get('add-user', 'ProfileController@addUserForm')->name('add_user_form');
-    Route::post('add-user', 'ProfileController@addUser')->name('add_user');
+    // Creates a new admin account - a second, legacy entry point alongside
+    // Administrators -> Add Admin. Found completely unprotected 2026-10-20
+    // (no page-perm at all) while auditing the rest of the permission
+    // system - any logged-in admin could reach this regardless of their
+    // Profile. Gated under the same permission as managing administrators.
+    Route::get('add-user', 'ProfileController@addUserForm')->name('add_user_form')->middleware(pagePermByUrl('admin.admins.index', 'full'));
+    Route::post('add-user', 'ProfileController@addUser')->name('add_user')->middleware(pagePermByUrl('admin.admins.index', 'full'));
 
     //App users
     // page 8 (APP USERS). Pilot for the new Profile permission system.
