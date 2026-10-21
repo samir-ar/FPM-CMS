@@ -46,12 +46,26 @@ class InternalElectionCandidatesController extends Controller
                 if (!$fpmUser) {
                     return '';
                 }
-                $position = $fpmUser->LastUnitPosition;
-                $unit = $fpmUser->LastPositionUnitName;
-                if ($position && $unit) {
-                    return $position . ' (' . $unit . ')';
+
+                // Both fields hold comma-separated lists that line up
+                // index-for-index (position[i] belongs to unit[i]) - pair
+                // them instead of showing "all positions (all units)" as
+                // one undifferentiated block.
+                $positions = array_values(array_filter(array_map('trim', explode(',', $fpmUser->LastUnitPosition ?? ''))));
+                $units = array_values(array_filter(array_map('trim', explode(',', $fpmUser->LastPositionUnitName ?? ''))));
+
+                $pairs = [];
+                for ($i = 0; $i < max(count($positions), count($units)); $i++) {
+                    $pos = $positions[$i] ?? '';
+                    $unit = $units[$i] ?? '';
+                    if ($pos && $unit) {
+                        $pairs[] = $pos . ' (' . $unit . ')';
+                    } elseif ($pos || $unit) {
+                        $pairs[] = $pos ?: $unit;
+                    }
                 }
-                return $position ?: ($unit ?: '');
+
+                return implode(', ', $pairs);
             })
 
             ->addColumn('order', function($row){
