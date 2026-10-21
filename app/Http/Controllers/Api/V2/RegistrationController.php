@@ -118,6 +118,18 @@ class RegistrationController extends Controller
                 $qr_code = $user->qr_code; // keep existing if generation fails
             }
             $user->member_id = $data['member_id'];
+            // Found 2026-10-21: this block already claims to "always update
+            // user info to what's retrieved from FPM", but never actually
+            // touched phone_number - so once a member's real number changed
+            // in fpm_users, app_users.phone_number stayed frozen at
+            // whatever it was on first login forever after, even though the
+            // login itself correctly re-validates against fpm_users.MobileNumber
+            // every time. Since the OTP SMS is sent to app_users.phone_number
+            // (see RegistrationRepository::sendVerificationPin -> sendSMS),
+            // this silently sent every OTP to the member's old, dead number.
+            // ltrim(...,'+') matches UserRepository::normalizePhone()'s own
+            // storage convention (used by addUser() for a brand new row).
+            $user->phone_number = ltrim($data['phone_number'], '+');
             $user->token = $data['token'];
             $user->image = base64_encode($data['image']);
             $user->name = $data['name'];
