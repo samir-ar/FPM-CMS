@@ -151,10 +151,10 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::get('legislative-docs/{id}/edit', 'LegislativeDocsController@edit')->name('legislative-docs.edit')->middleware('page-perm:69,full');
     Route::put('legislative-docs/{id}', 'LegislativeDocsController@update')->name('legislative-docs.update')->middleware('page-perm:69,full');
     Route::delete('legislative-docs/{id}', 'LegislativeDocsController@destroy')->name('legislative-docs.destroy')->middleware('page-perm:69,full');
-    Route::resource('legislative-doc-categories', 'LegislativeDocCategoriesController')->only(['index', 'show'])->middleware(pagePermByUrl('admin.legislative-doc-categories.index', 'view'));
     Route::resource('legislative-doc-categories', 'LegislativeDocCategoriesController')->except(['index', 'show'])->middleware(pagePermByUrl('admin.legislative-doc-categories.index', 'full'));
-    Route::resource('legislative-doc-subcategories', 'LegislativeDocSubcategoriesController')->only(['index', 'show'])->middleware(pagePermByUrl('admin.legislative-doc-subcategories.index', 'view'));
+    Route::resource('legislative-doc-categories', 'LegislativeDocCategoriesController')->only(['index', 'show'])->middleware(pagePermByUrl('admin.legislative-doc-categories.index', 'view'));
     Route::resource('legislative-doc-subcategories', 'LegislativeDocSubcategoriesController')->except(['index', 'show'])->middleware(pagePermByUrl('admin.legislative-doc-subcategories.index', 'full'));
+    Route::resource('legislative-doc-subcategories', 'LegislativeDocSubcategoriesController')->only(['index', 'show'])->middleware(pagePermByUrl('admin.legislative-doc-subcategories.index', 'view'));
 
     //National Plans (الخطط الوطنية المقدمة) — page 70
     Route::get('national-plans', 'NationalPlansController@index')->name('national-plans.index')->middleware('page-perm:70,view');
@@ -254,12 +254,12 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::delete('community-posts/{id}', 'CommunityPostsController@destroy')->name('community-posts.destroy')->middleware(pagePermByUrl('admin.community-posts.index', 'full'));
 
     //Memos — page 19
-    Route::resource('memos', 'MemosController')->only(['index', 'show'])->middleware('page-perm:19,view');
     Route::resource('memos', 'MemosController')->except(['index', 'show'])->middleware('page-perm:19,full');
+    Route::resource('memos', 'MemosController')->only(['index', 'show'])->middleware('page-perm:19,view');
 
     //Laws — page 60
-    Route::resource('laws', 'LawsController')->only(['index', 'show'])->middleware('page-perm:60,view');
     Route::resource('laws', 'LawsController')->except(['index', 'show'])->middleware('page-perm:60,full');
+    Route::resource('laws', 'LawsController')->only(['index', 'show'])->middleware('page-perm:60,view');
 
     //User Activity report — page 90
     Route::get('user-activity', 'UserActivityController@index')->name('user-activity.index')->middleware('page-perm:90,view');
@@ -270,50 +270,50 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::get('content-engagement/{id}', 'ContentEngagementController@show')->name('content-engagement.show')->middleware('page-perm:89,view');
 
     //Social Links — page 80
-    Route::resource('social-links', 'SocialLinksController')->only(['index', 'show'])->middleware('page-perm:80,view');
     Route::resource('social-links', 'SocialLinksController')->except(['index', 'show'])->middleware('page-perm:80,full');
+    Route::resource('social-links', 'SocialLinksController')->only(['index', 'show'])->middleware('page-perm:80,view');
     Route::get('social-links/{id}/toggle-active', 'SocialLinksController@toggleActive')->name('social-links.toggle-active')->middleware('page-perm:80,full');
 
     //Internal Process — page 63
-    Route::resource('internal-processes','InternalProcessController')->only(['index', 'show'])->middleware('page-perm:63,view');
     Route::resource('internal-processes','InternalProcessController')->except(['index', 'show'])->middleware('page-perm:63,full');
+    Route::resource('internal-processes','InternalProcessController')->only(['index', 'show'])->middleware('page-perm:63,view');
 
     //Achievements — page 61
-    Route::resource('achievements', 'AchievementsController')->only(['index', 'show'])->middleware('page-perm:61,view');
     Route::resource('achievements', 'AchievementsController')->except(['index', 'show'])->middleware('page-perm:61,full');
+    Route::resource('achievements', 'AchievementsController')->only(['index', 'show'])->middleware('page-perm:61,view');
 
     //Biographies — page 62
-    Route::resource('biography', 'BiographiesController')->only(['index', 'show'])->middleware('page-perm:62,view');
     Route::resource('biography', 'BiographiesController')->except(['index', 'show'])->middleware('page-perm:62,full');
+    Route::resource('biography', 'BiographiesController')->only(['index', 'show'])->middleware('page-perm:62,view');
 
     //news — page 28
-    Route::resource('news', 'NewsController')->only(['index', 'show'])->middleware('page-perm:28,view');
     Route::resource('news', 'NewsController')->except(['index', 'show'])->middleware('page-perm:28,full');
+    Route::resource('news', 'NewsController')->only(['index', 'show'])->middleware('page-perm:28,view');
 
     //polls — page 16
-    Route::resource('polls', 'PollsController')->only(['index', 'show'])->middleware('page-perm:16,view');
     Route::resource('polls', 'PollsController')->except(['index', 'show'])->middleware('page-perm:16,full');
+    Route::resource('polls', 'PollsController')->only(['index', 'show'])->middleware('page-perm:16,view');
     Route::get('polls/{id}/toggle-active', 'PollsController@toggleActive')->name('polls.toggle-active')->middleware('page-perm:16,full');
     Route::get('polls/{id}/toggle-guest-access', 'PollsController@toggleGuestAccess')->name('polls.toggle-guest-access')->middleware('page-perm:16,full');
 
     //events — page 22
-    Route::resource('events', 'EventsController')->only(['index', 'show'])->middleware('page-perm:22,view');
     Route::resource('events', 'EventsController')->except(['index', 'show'])->middleware('page-perm:22,full');
+    Route::resource('events', 'EventsController')->only(['index', 'show'])->middleware('page-perm:22,view');
 
     //Live Stream — page 26
-    Route::resource('liveStream', 'LiveStreamController')->only(['index', 'show'])->middleware('page-perm:26,view');
     Route::resource('liveStream', 'LiveStreamController')->except(['index', 'show'])->middleware('page-perm:26,full');
+    Route::resource('liveStream', 'LiveStreamController')->only(['index', 'show'])->middleware('page-perm:26,view');
 
     //volunteers — page 27
-    Route::resource('volunteers', 'VolunteersController')->only(['index', 'show'])->middleware('page-perm:27,view');
     Route::resource('volunteers', 'VolunteersController')->except(['index', 'show'])->middleware('page-perm:27,full');
+    Route::resource('volunteers', 'VolunteersController')->only(['index', 'show'])->middleware('page-perm:27,view');
     Route::get('volunteers/{id}/send-notification', 'VolunteersController@sendNotificationForm')->name('volunteers.send-notification.form')->middleware('page-perm:27,full');
     Route::post('volunteers/{id}/send-notification', 'VolunteersController@sendNotification')->name('volunteers.send-notification')->middleware('page-perm:27,full');
     Route::get('volunteers/{id}/toggle-active', 'VolunteersController@toggleActive')->name('volunteers.toggle-active')->middleware('page-perm:27,full');
 
     //EventFiles — child of Events, page 22
-    Route::resource('eventImages', 'EventImagesController')->only(['index', 'show'])->middleware(pagePermByUrl('admin.eventImages.index', 'view'));
     Route::resource('eventImages', 'EventImagesController')->except(['index', 'show'])->middleware(pagePermByUrl('admin.eventImages.index', 'full'));
+    Route::resource('eventImages', 'EventImagesController')->only(['index', 'show'])->middleware(pagePermByUrl('admin.eventImages.index', 'view'));
     Route::post('eventFilesDestroy', 'EventImagesController@multipleDelete')->name('eventImages.multipleDelete')->middleware(pagePermByUrl('admin.eventImages.index', 'full'));
     Route::post('eventUploadFile', 'EventImagesController@uploadFile')->name('event.upload_file')->middleware(pagePermByUrl('admin.eventImages.index', 'full'));
     Route::post('eventRemoveFile', 'EventImagesController@remove_File')->name('event.remove_file')->middleware(pagePermByUrl('admin.eventImages.index', 'full'));
@@ -321,8 +321,8 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     //Representatives — page 31, covers all its children (category/positions/text) too
     Route::get('representatives-normalize-order', 'RepresentativesController@normalizeOrder')->name('representatives.normalize-order')->middleware('page-perm:31,full');
     Route::get('representatives-fpm-user-lookup/{memberId}', 'RepresentativesController@fpmUserLookup')->name('representatives.fpm-user-lookup')->middleware('page-perm:31,full');
-    Route::resource('representatives', 'RepresentativesController')->only(['index', 'show'])->middleware('page-perm:31,view');
     Route::resource('representatives', 'RepresentativesController')->except(['index', 'show'])->middleware('page-perm:31,full');
+    Route::resource('representatives', 'RepresentativesController')->only(['index', 'show'])->middleware('page-perm:31,view');
     Route::get('representatives-category', 'RepresentativeCategoryController@index')->name('representatives.category.index')->middleware(pagePermByUrl('admin.representatives.category.index', 'view'));
     Route::get('representatives-category-create', 'RepresentativeCategoryController@create')->name('representatives.category.create')->middleware(pagePermByUrl('admin.representatives.category.index', 'full'));
     Route::post('representatives-category-store', 'RepresentativeCategoryController@store')->name('representatives.category.store')->middleware(pagePermByUrl('admin.representatives.category.index', 'full'));
@@ -340,24 +340,24 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
 
 
     //links — page 36
-    Route::resource('links', 'LinksController')->only(['index', 'show'])->middleware('page-perm:36,view');
     Route::resource('links', 'LinksController')->except(['index', 'show'])->middleware('page-perm:36,full');
+    Route::resource('links', 'LinksController')->only(['index', 'show'])->middleware('page-perm:36,view');
 
     //webviews — page 40
-    Route::resource('webviews', 'WebviewsController')->only(['index', 'show'])->middleware('page-perm:40,view');
     Route::resource('webviews', 'WebviewsController')->except(['index', 'show'])->middleware('page-perm:40,full');
+    Route::resource('webviews', 'WebviewsController')->only(['index', 'show'])->middleware('page-perm:40,view');
 
     //placeholder — page 42
-    Route::resource('placeholders', 'PlaceholdersController')->only(['index', 'show'])->middleware('page-perm:42,view');
     Route::resource('placeholders', 'PlaceholdersController')->except(['index', 'show'])->middleware('page-perm:42,full');
+    Route::resource('placeholders', 'PlaceholdersController')->only(['index', 'show'])->middleware('page-perm:42,view');
 
     //Talk to Us — page 9
-    Route::resource('talkToUs', 'TalkToUsController')->only(['index', 'show'])->middleware('page-perm:9,view');
     Route::resource('talkToUs', 'TalkToUsController')->except(['index', 'show'])->middleware('page-perm:9,full');
+    Route::resource('talkToUs', 'TalkToUsController')->only(['index', 'show'])->middleware('page-perm:9,view');
 
     //groups — page 7
-    Route::resource('groups', 'GroupsController')->only(['index', 'show'])->middleware('page-perm:7,view');
     Route::resource('groups', 'GroupsController')->except(['index', 'show'])->middleware('page-perm:7,full');
+    Route::resource('groups', 'GroupsController')->only(['index', 'show'])->middleware('page-perm:7,view');
 
     //UserPolls — no corresponding sidebar page exists; not tagged
     Route::resource('userPolls', 'UserPollsController');
@@ -367,12 +367,12 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
 
 
     //Transactions — page 1
-    Route::resource('transactions', 'TransactionController')->only(['index', 'show'])->middleware('page-perm:1,view');
     Route::resource('transactions', 'TransactionController')->except(['index', 'show'])->middleware('page-perm:1,full');
+    Route::resource('transactions', 'TransactionController')->only(['index', 'show'])->middleware('page-perm:1,view');
 
     //Bills Transaction — page 1 (child "Monthly Bills")
-    Route::resource('bills', 'BillsTransactionsController')->only(['index', 'show'])->middleware('page-perm:1,view');
     Route::resource('bills', 'BillsTransactionsController')->except(['index', 'show'])->middleware('page-perm:1,full');
+    Route::resource('bills', 'BillsTransactionsController')->only(['index', 'show'])->middleware('page-perm:1,view');
 
     /////Jihad Noureddine////////
 
@@ -475,14 +475,14 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::post("consulting-committee-update-application-state/{id}", "ConsultingCommitteeController@updateState")->name("consulting-committee-update-application-state")->middleware('page-perm:50,full');
 
     //District Body هيئة قضاء
-    Route::resource('district-body', 'DistrictBodyController')->only(['index', 'show'])->middleware('page-perm:50,view');
     Route::resource('district-body', 'DistrictBodyController')->except(['index', 'show'])->middleware('page-perm:50,full');
+    Route::resource('district-body', 'DistrictBodyController')->only(['index', 'show'])->middleware('page-perm:50,view');
     Route::delete('district-body-delete-date/{id}/{phaseNumber}', 'DistrictBodyController@deleteDate')->middleware('page-perm:50,full');
     Route::post('district-body-edit-date/{id}/{phaseNumber}', 'DistrictBodyController@editDate')->middleware('page-perm:50,full');
 
     //Local Body Controller هيئة محلية
-    Route::resource('local-body', 'LocalBodyController')->only(['index', 'show'])->middleware('page-perm:50,view');
     Route::resource('local-body', 'LocalBodyController')->except(['index', 'show'])->middleware('page-perm:50,full');
+    Route::resource('local-body', 'LocalBodyController')->only(['index', 'show'])->middleware('page-perm:50,view');
     Route::delete('local-body-delete-date/{id}/{phaseNumber}', 'LocalBodyController@deleteDate')->middleware('page-perm:50,full');
     Route::post('local-body-edit-date/{id}/{phaseNumber}', 'LocalBodyController@editDate')->middleware('page-perm:50,full');
 
@@ -491,22 +491,22 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
 
 
     //Central Committee Coordinator
-    Route::resource('central-committee-coordinator', 'CentralCommitteeCoordinatorController')->only(['index', 'show'])->middleware('page-perm:50,view');
     Route::resource('central-committee-coordinator', 'CentralCommitteeCoordinatorController')->except(['index', 'show'])->middleware('page-perm:50,full');
+    Route::resource('central-committee-coordinator', 'CentralCommitteeCoordinatorController')->only(['index', 'show'])->middleware('page-perm:50,view');
     Route::delete('central-committee-coordinator-delete-date/{id}/{phaseNumber}', 'CentralCommitteeCoordinatorController@deleteDate')->middleware('page-perm:50,full');
     Route::post('central-committee-coordinator-edit-date/{id}/{phaseNumber}', 'CentralCommitteeCoordinatorController@editDate')->middleware('page-perm:50,full');
 
 
     //Central Committee Memeber
-    Route::resource('central-committee', 'CentralCommitteeController')->only(['index', 'show'])->middleware('page-perm:50,view');
     Route::resource('central-committee', 'CentralCommitteeController')->except(['index', 'show'])->middleware('page-perm:50,full');
+    Route::resource('central-committee', 'CentralCommitteeController')->only(['index', 'show'])->middleware('page-perm:50,view');
     Route::delete('central-committee-delete-date/{id}/{phaseNumber}', 'CentralCommitteeController@deleteDate')->middleware('page-perm:50,full');
     Route::post('central-committee-edit-date/{id}/{phaseNumber}', 'CentralCommitteeController@editDate')->middleware('page-perm:50,full');
 
 
     //Consulting Committee لجنة إستشارية
-    Route::resource('consulting-committee', 'ConsultingCommitteeController')->only(['index', 'show'])->middleware('page-perm:50,view');
     Route::resource('consulting-committee', 'ConsultingCommitteeController')->except(['index', 'show'])->middleware('page-perm:50,full');
+    Route::resource('consulting-committee', 'ConsultingCommitteeController')->only(['index', 'show'])->middleware('page-perm:50,view');
     Route::delete('consulting-committee-delete-date/{id}/{phaseNumber}', 'ConsultingCommitteeController@deleteDate')->middleware('page-perm:50,full');
     Route::post('consulting-committee-edit-date/{id}/{phaseNumber}', 'ConsultingCommitteeController@editDate')->middleware('page-perm:50,full');
 
@@ -517,8 +517,8 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
 
 
     //Internal Election — page 57, covers its Candidates sub-feature too
-    Route::resource('internal-election', 'InternalElectionController')->only(['index', 'show'])->middleware('page-perm:57,view');
     Route::resource('internal-election', 'InternalElectionController')->except(['index', 'show'])->middleware('page-perm:57,full');
+    Route::resource('internal-election', 'InternalElectionController')->only(['index', 'show'])->middleware('page-perm:57,view');
     Route::post('internal-election/publish/{id}', 'InternalElectionController@publish')->middleware('page-perm:57,full');
     Route::post('internal-election/update-closes-at/{id}', 'InternalElectionController@updateClosesAt')->name('internal-election.update-closes-at')->middleware('page-perm:57,full');
     Route::get('internal-election/export/{id}', 'InternalElectionController@export')->name('internal-election.export')->middleware('page-perm:57,view');
@@ -547,12 +547,12 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::get('national-council-poll/{id}/clear', 'NationalCouncilPollController@clear')->name('national-council-poll.clear')->middleware('page-perm:58,full');
     Route::get('national-council-poll/{id}/results', 'NationalCouncilPollController@results')->name('national-council-poll.results')->middleware('page-perm:58,view');
     Route::get('national-council-poll-voters-template', 'NationalCouncilPollController@downloadVotersTemplate')->name('national-council-poll.voters-template')->middleware('page-perm:58,view');
-    Route::resource('national-council-poll', 'NationalCouncilPollController')->only(['index', 'show'])->middleware('page-perm:58,view');
     Route::resource('national-council-poll', 'NationalCouncilPollController')->except(['index', 'show'])->middleware('page-perm:58,full');
+    Route::resource('national-council-poll', 'NationalCouncilPollController')->only(['index', 'show'])->middleware('page-perm:58,view');
 
     //National Council Poll Questions
-    Route::resource('national-council-poll.questions', 'NationalCouncilPollQuestionsController')->only(['index', 'show'])->middleware('page-perm:58,view');
     Route::resource('national-council-poll.questions', 'NationalCouncilPollQuestionsController')->except(['index', 'show'])->middleware('page-perm:58,full');
+    Route::resource('national-council-poll.questions', 'NationalCouncilPollQuestionsController')->only(['index', 'show'])->middleware('page-perm:58,view');
 });
 
 
