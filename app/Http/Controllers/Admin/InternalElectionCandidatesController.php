@@ -38,6 +38,13 @@ class InternalElectionCandidatesController extends Controller
                 return $row->electionStates->pluck('name')->implode(', ');
             })
 
+            ->addColumn('position', function($row){
+                if (!$row->member_id) {
+                    return '';
+                }
+                return FpmUser::where('MemberId', $row->member_id)->value('LastUnitPosition') ?: '';
+            })
+
             ->addColumn('order', function($row){
                 return "<input type='number' min='1' class='form-control candidate-order-input' style='width:80px' value='".($row->display_order ?? '')."' data-id='{$row->id}'>";
             })
@@ -66,13 +73,14 @@ class InternalElectionCandidatesController extends Controller
             'slug'		=> 'Archives',
             'generateInternalElectionReport' => true,
             'custom_btn' => "<a href='" . route('admin.internal-election-candidates.create', ['election_id' => $id]) ."' class='btn btn-primary'>Add candidate</a>",
-            'headers'	=> ['id','Name','Image', 'State', 'Order','Action'],
+            'headers'	=> ['id','Name','Image', 'State', 'Position', 'Order','Action'],
             'action' => route('admin.internal-election.index'),
             'columns' => json_encode([
                 ['data' => 'id', 'name' => 'id'],
                 ['data' =>  'name', 'name'=> 'name'],
                 ['data' => 'image', 'name'=> 'image', 'searchable' => false, 'sortable' => false],
                 ['data' => 'state', 'name'=> 'state'],
+                ['data' => 'position', 'name'=> 'position', 'searchable' => false, 'sortable' => false],
                 ['data' => 'order', 'name'=> 'order', 'searchable' => false, 'sortable' => false],
                 ['data' => 'action', 'name' => 'action', 'searchable' => false, 'sortable' => false],
             ]),
