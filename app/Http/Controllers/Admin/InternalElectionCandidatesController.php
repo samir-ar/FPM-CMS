@@ -42,7 +42,16 @@ class InternalElectionCandidatesController extends Controller
                 if (!$row->member_id) {
                     return '';
                 }
-                return FpmUser::where('MemberId', $row->member_id)->value('LastUnitPosition') ?: '';
+                $fpmUser = FpmUser::where('MemberId', $row->member_id)->first(['LastUnitPosition', 'LastPositionUnitName']);
+                if (!$fpmUser) {
+                    return '';
+                }
+                $position = $fpmUser->LastUnitPosition;
+                $unit = $fpmUser->LastPositionUnitName;
+                if ($position && $unit) {
+                    return $position . ' (' . $unit . ')';
+                }
+                return $position ?: ($unit ?: '');
             })
 
             ->addColumn('order', function($row){
