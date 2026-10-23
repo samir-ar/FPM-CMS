@@ -204,7 +204,7 @@ class InternalElectionCandidatesController extends Controller
             $memberDistrict = FpmUser::where('MemberId', request('member_id'))->value('district');
             $selectedStateNames = ElectionState::whereIn('id', request('state_ids'))->pluck('name')->toArray();
 
-            if(!$memberDistrict || !in_array($memberDistrict, $selectedStateNames)){
+            if(!$this->districtMatchesAnyState($memberDistrict, $selectedStateNames)){
                 return redirect()->back()->withErrors(['msg' => 'This member\'s district ('.($memberDistrict ?: 'unknown').') does not match the selected Election State(s)']);
             }
         }
@@ -236,6 +236,34 @@ class InternalElectionCandidatesController extends Controller
             return redirect()->route('admin.internal-election-candidates.index',$election->id)->with('message', 'Candidate has been added successfully');
         }
 
+        // fpm_users.district is free-text and doesn't always match
+        // election_states.name exactly (double spaces, hamza spelling like
+        // بيروت الاولى vs بيروت  الأولى, or combined values like
+        // المنية-الضنية / بعلبك - الهرمل covering more than one state) —
+        // normalize whitespace/hamza and match by "contains" instead of
+        // exact equality so these real-world variants still match. Shared
+        // by the search endpoint and the store() validation so they can
+        // never disagree about whether a member belongs to a state.
+        private function normalizeDistrictName(string $s): string
+        {
+            $s = trim(preg_replace('/\s+/u', ' ', $s));
+            return str_replace(['أ', 'إ', 'آ'], 'ا', $s);
+        }
+
+        private function districtMatchesAnyState(?string $memberDistrict, array $stateNames): bool
+        {
+            if (!$memberDistrict) {
+                return false;
+            }
+            $normalizedDistrict = $this->normalizeDistrictName($memberDistrict);
+            foreach ($stateNames as $name) {
+                if (str_contains($normalizedDistrict, $this->normalizeDistrictName($name))) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         public function searchFpmUsers(Request $request) {
             $q = trim((string) $request->get('q', ''));
 
@@ -255,17 +283,7 @@ class InternalElectionCandidatesController extends Controller
                 return response()->json([]);
             }
 
-            // fpm_users.district is free-text and doesn't always match
-            // election_states.name exactly (double spaces, hamza spelling
-            // like بيروت الاولى vs بيروت  الأولى, or combined values like
-            // المنية-الضنية / بعلبك - الهرمل covering more than one state) —
-            // normalize whitespace/hamza and match by "contains" instead of
-            // exact equality so these real-world variants still match.
-            $normalize = function ($s) {
-                $s = trim(preg_replace('/\s+/u', ' ', $s));
-                return str_replace(['أ', 'إ', 'آ'], 'ا', $s);
-            };
-            $normalizedStateNames = array_map($normalize, $stateNames);
+            $normalizedStateNames = array_map(fn($n) => $this->normalizeDistrictName($n), $stateNames);
 
             $results = FpmUser::where(function($query) use ($q){
                     $query->where('MemberId', 'like', "%{$q}%")
