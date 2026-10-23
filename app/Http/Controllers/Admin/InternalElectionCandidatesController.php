@@ -138,10 +138,12 @@ class InternalElectionCandidatesController extends Controller
         }
 
 
+        $totalCandidates = InternalElection::where('id', $id)->first()->candidates()->count();
+
         return view('components.table_ajax')->with([
             'layout'    => 'layouts.cms',
             'pageTitle'	=> 'Internal Election'.((request()->query('type'))?" - ".ucfirst(request()->query('type')):""),
-            'table_title' => '',
+            'table_title' => 'Total Candidates: '.$totalCandidates,
             'scripts' => ['/js/internal-election.js'],
             'slug'		=> 'Archives',
             'generateInternalElectionReport' => true,
