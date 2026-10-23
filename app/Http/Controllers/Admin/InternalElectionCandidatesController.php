@@ -255,12 +255,31 @@ class InternalElectionCandidatesController extends Controller
                 return response()->json([]);
             }
 
+            // fpm_users.district is free-text and doesn't always match
+            // election_states.name exactly (double spaces, hamza spelling
+            // like بيروت الاولى vs بيروت  الأولى, or combined values like
+            // المنية-الضنية / بعلبك - الهرمل covering more than one state) —
+            // normalize whitespace/hamza and match by "contains" instead of
+            // exact equality so these real-world variants still match.
+            $normalize = function ($s) {
+                $s = trim(preg_replace('/\s+/u', ' ', $s));
+                return str_replace(['أ', 'إ', 'آ'], 'ا', $s);
+            };
+            $normalizedStateNames = array_map($normalize, $stateNames);
+
             $results = FpmUser::where(function($query) use ($q){
                     $query->where('MemberId', 'like', "%{$q}%")
                         ->orWhere('MobileNumber', 'like', "%{$q}%")
                         ->orWhere('UserFullName', 'like', "%{$q}%");
                 })
-                ->whereIn('district', $stateNames)
+                ->where(function ($query) use ($normalizedStateNames) {
+                    foreach ($normalizedStateNames as $name) {
+                        $query->orWhereRaw(
+                            "REPLACE(REPLACE(REPLACE(TRIM(district), 'أ', 'ا'), 'إ', 'ا'), 'آ', 'ا') like ?",
+                            ['%' . $name . '%']
+                        );
+                    }
+                })
                 ->limit(15)
                 ->get(['MemberId', 'UserFullName', 'MobileNumber']);
 
