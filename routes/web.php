@@ -530,6 +530,8 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::get('internal-election/{id}/voter-viewers', 'InternalElectionController@voterViewers')->name('internal-election.voter-viewers')->middleware('page-perm:57,view');
     Route::post('internal-election/{id}/voter-viewers', 'InternalElectionController@addVoterViewer')->name('internal-election.voter-viewers.store')->middleware('page-perm:57,full');
     Route::delete('internal-election/{id}/voter-viewers/{viewerId}', 'InternalElectionController@removeVoterViewer')->name('internal-election.voter-viewers.destroy')->middleware('page-perm:57,full');
+    Route::get('internal-election-states-order', 'InternalElectionController@statesOrder')->name('internal-election.states-order')->middleware('page-perm:57,full');
+    Route::post('internal-election-states-order', 'InternalElectionController@updateStatesOrder')->name('internal-election.states-order.update')->middleware('page-perm:57,full');
 
 
     //Internal Election Candidates

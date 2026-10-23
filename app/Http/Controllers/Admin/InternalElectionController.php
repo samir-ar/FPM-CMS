@@ -405,6 +405,33 @@ class InternalElectionController extends Controller
             ->with('message', 'Removed');
     }
 
+    // Lets an admin set a custom display order for districts (not scoped
+    // to one election - a district's position is the same everywhere it's
+    // used), consumed by the candidates list's "group by district, then by
+    // age" view. Not tied to a specific $id since it's a global setting.
+    public function statesOrder()
+    {
+        $states = ElectionState::orderByRaw('display_order IS NULL, display_order asc')
+            ->orderBy('name')
+            ->get();
+
+        return view('internal-election.states-order', compact('states'));
+    }
+
+    public function updateStatesOrder(Request $request)
+    {
+        $orders = (array) $request->input('order', []);
+
+        foreach ($orders as $stateId => $order) {
+            ElectionState::where('id', $stateId)->update([
+                'display_order' => ($order === '' || $order === null) ? null : (int) $order,
+            ]);
+        }
+
+        return redirect(route('admin.internal-election.states-order'))
+            ->with('message', 'District order updated');
+    }
+
 
     // Per-voter dispute review — not a tally, individual rows with the
     // selfie captured at vote time next to the voter's real on-file photo.

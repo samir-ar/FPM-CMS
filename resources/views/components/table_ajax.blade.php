@@ -105,7 +105,16 @@
                 @endif
 
                 columns: JSON.parse(columns),
-                order: [[ 0, "desc" ]],
+                @if(isset($disableOrdering) && $disableOrdering)
+                    ordering: false,
+                @else
+                    order: [[ 0, "desc" ]],
+                @endif
+                @if(isset($rowGroupDataSrc))
+                    rowGroup: {
+                        dataSrc: '{{ $rowGroupDataSrc }}',
+                    },
+                @endif
             });
         });
 

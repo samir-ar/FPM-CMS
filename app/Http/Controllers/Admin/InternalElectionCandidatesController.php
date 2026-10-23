@@ -24,7 +24,49 @@ class InternalElectionCandidatesController extends Controller
         if($request->ajax()) {
             $data =  InternalElection::where('id',$id)->first()->candidates()->with('electionStates')->get();
 
+            // Group by state (district), then by age within each state -
+            // see the RowGroup setup in table_ajax.blade.php, which expects
+            // rows to already arrive in the final grouped order (it doesn't
+            // sort, it just inserts a header whenever the grouping column's
+            // value changes between consecutive rows).
+            $birthDates = \DB::table('fpm_users')
+                ->whereIn('MemberId', $data->pluck('member_id')->filter())
+                ->pluck('BirthDate', 'MemberId');
 
+            // Every district's effective rank, as a small sequential integer
+            // (0, 1, 2, ...) rather than the raw display_order - districts
+            // with no display_order set yet (the common starting case) would
+            // otherwise all collapse to the same fallback value and never
+            // actually separate into their own groups. Ordered districts
+            // come first (by display_order), unordered ones after
+            // (alphabetically), matching states-order.blade.php's own list.
+            $stateRanks = ElectionState::orderByRaw('display_order IS NULL, display_order asc')
+                ->orderBy('name')
+                ->pluck('id')
+                ->flip(); // id => rank (0-based position in that order)
+
+            // A candidate can technically belong to more than one district
+            // (the pivot allows it, e.g. small adjacent districts merged
+            // into one seat) - group by whichever one ranks lowest, so
+            // grouping is always deterministic even then.
+            $primaryState = function ($candidate) use ($stateRanks) {
+                return $candidate->electionStates
+                    ->sortBy(fn($s) => $stateRanks->get($s->id, PHP_INT_MAX))
+                    ->first();
+            };
+
+            $data = $data->map(function ($candidate) use ($birthDates, $primaryState, $stateRanks) {
+                $birth = $birthDates->get($candidate->member_id);
+                $candidate->computed_age = $birth ? \Carbon\Carbon::parse($birth)->age : null;
+                $state = $primaryState($candidate);
+                $candidate->computed_state_name = $state->name ?? 'بدون دائرة';
+                $rank = $state ? $stateRanks->get($state->id, PHP_INT_MAX) : PHP_INT_MAX;
+                // Candidates with no age on file (manually-entered, no FPM
+                // record) sort last within their district group, per the
+                // confirmed call - 9999 is comfortably above any real age.
+                $candidate->computed_sort_key = ($rank * 10000) + ($candidate->computed_age ?? 9999);
+                return $candidate;
+            })->sortBy('computed_sort_key')->values();
 
             return DataTables::of($data)
 
@@ -36,6 +78,14 @@ class InternalElectionCandidatesController extends Controller
 
             ->addColumn('state', function($row){
                 return $row->electionStates->pluck('name')->implode(', ');
+            })
+
+            ->addColumn('age', function($row){
+                return $row->computed_age ?? '';
+            })
+
+            ->addColumn('state_group', function($row){
+                return $row->computed_state_name;
             })
 
             ->addColumn('position', function($row){
@@ -96,16 +146,25 @@ class InternalElectionCandidatesController extends Controller
             'slug'		=> 'Archives',
             'generateInternalElectionReport' => true,
             'custom_btn' => "<a href='" . route('admin.internal-election-candidates.create', ['election_id' => $id]) ."' class='btn btn-primary'>Add candidate</a>",
-            'headers'	=> ['id','Name','Image', 'State', 'Position', 'Order','Action'],
+            'custom_btn1' => "<a href='" . route('admin.internal-election.states-order') . "' class='btn btn-default'>Order Districts</a>",
+            'headers'	=> ['id','Name','Image', 'State', 'Position', 'Age', 'Order','Action', ''],
             'action' => route('admin.internal-election.index'),
+            // Grouped by district then age server-side (see the controller
+            // above) - ordering is disabled client-side so an admin
+            // clicking a header can't scramble the grouped order; 'state_group'
+            // is hidden and exists purely as RowGroup's grouping key.
+            'disableOrdering' => true,
+            'rowGroupDataSrc' => 'state_group',
             'columns' => json_encode([
                 ['data' => 'id', 'name' => 'id'],
                 ['data' =>  'name', 'name'=> 'name'],
                 ['data' => 'image', 'name'=> 'image', 'searchable' => false, 'sortable' => false],
                 ['data' => 'state', 'name'=> 'state'],
                 ['data' => 'position', 'name'=> 'position', 'searchable' => false, 'sortable' => false],
+                ['data' => 'age', 'name'=> 'age', 'searchable' => false, 'sortable' => false],
                 ['data' => 'order', 'name'=> 'order', 'searchable' => false, 'sortable' => false],
                 ['data' => 'action', 'name' => 'action', 'searchable' => false, 'sortable' => false],
+                ['data' => 'state_group', 'name'=> 'state_group', 'visible' => false, 'searchable' => false, 'sortable' => false],
             ]),
         ]);
     }

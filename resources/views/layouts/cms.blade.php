@@ -33,6 +33,7 @@
     <link rel="stylesheet" href="{{url('plugins/bootstrap-wysihtml5/bootstrap3-wysihtml5.min.css')}}">
 
     <link rel="stylesheet" href="{{url('bower_components/datatables.net-bs/css/dataTables.bootstrap.min.css')}}">
+    <link rel="stylesheet" href="{{url('bower_components/datatables.net-rowgroup/css/rowGroup.dataTables.min.css')}}">
 
     <link rel="stylesheet" href="{{url('bower_components/jquery-upload-image/style.css')}}">
 
@@ -325,6 +326,7 @@
 
 <script src="{{url('bower_components/datatables.net/js/jquery.dataTables.min.js')}}"></script>
 <script src="{{url('bower_components/datatables.net-bs/js/dataTables.bootstrap.min.js')}}"></script>
+<script src="{{url('bower_components/datatables.net-rowgroup/js/dataTables.rowGroup.min.js')}}"></script>
 
 <script src="{{url('bower_components/jquery-upload-image/script.js')}}"></script>
 <script src="{{url('js/image_ajax_deleter.js')}}"></script>
