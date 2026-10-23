@@ -113,6 +113,9 @@
                 @if(isset($rowGroupDataSrc))
                     rowGroup: {
                         dataSrc: '{{ $rowGroupDataSrc }}',
+                        startRender: function (rows, group) {
+                            return group + ' (' + rows.count() + ')';
+                        },
                     },
                 @endif
             });
