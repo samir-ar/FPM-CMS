@@ -2401,8 +2401,15 @@ class ApiController extends Controller
         $compoundPrefixes = ['ابي', 'أبي', 'ابو', 'أبو', 'بو'];
         $familyStart = count($parts) - 1;
 
-        if ($familyStart > 0 && in_array($parts[$familyStart - 1], $compoundPrefixes)) {
-            $familyStart--;
+        if ($familyStart > 0) {
+            // "الله" never stands alone as a Lebanese family name - it's
+            // always the second half of a compound surname (عطا الله, نصر
+            // الله, فضل الله, جار الله, ...), whatever the first half is,
+            // so always keep the word before it rather than only matching
+            // a fixed prefix list.
+            if ($parts[$familyStart] === 'الله' || in_array($parts[$familyStart - 1], $compoundPrefixes)) {
+                $familyStart--;
+            }
         }
 
         return $parts[0] . ' ' . implode(' ', array_slice($parts, $familyStart));
