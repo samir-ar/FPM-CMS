@@ -64,7 +64,7 @@ class InternalElectionProgressByTownExport implements FromCollection, WithHeadin
                 'remaining' => $s['permitted'] - $s['voted'],
                 'turnout' => $s['permitted'] > 0 ? round($s['voted'] / $s['permitted'] * 100, 1) : 0,
             ];
-        })->sortBy(fn($r) => [$r->district, $r->turnout])->values();
+        })->sortBy(fn($r) => [$r->district, -$r->turnout])->values();
     }
 
     public function headings(): array

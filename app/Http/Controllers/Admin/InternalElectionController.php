@@ -562,7 +562,7 @@ class InternalElectionController extends Controller
                 'remaining' => $stats['permitted'] - $stats['voted'],
                 'turnout' => $stats['permitted'] > 0 ? round($stats['voted'] / $stats['permitted'] * 100, 1) : 0,
             ];
-        })->sortBy('turnout')->values(); // lowest turnout first - needs the most attention
+        })->sortByDesc('turnout')->values(); // highest turnout first
 
         // Live pace: votes cast per hour, for the trend chart.
         $hourly = InternalElectionVote::where('internal_election_id', $id)
@@ -632,7 +632,7 @@ class InternalElectionController extends Controller
                 'remaining' => $stats['permitted'] - $stats['voted'],
                 'turnout' => $stats['permitted'] > 0 ? round($stats['voted'] / $stats['permitted'] * 100, 1) : 0,
             ];
-        })->sortBy('turnout')->values();
+        })->sortByDesc('turnout')->values();
 
         return response()->json(['district' => $district, 'towns' => $townRows]);
     }

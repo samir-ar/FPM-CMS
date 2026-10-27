@@ -95,7 +95,7 @@
                                 <i class="fa fa-file-excel-o"></i> Export Towns
                             </a>
                         </div>
-                        <p class="text-muted" style="margin: 5px 0 0;">Sorted lowest turnout first — these districts likely need a reminder push.</p>
+                        <p class="text-muted" style="margin: 5px 0 0;">Sorted highest turnout first.</p>
                     </div>
                     <div class="box-body">
                         @if($districtRows->isEmpty())

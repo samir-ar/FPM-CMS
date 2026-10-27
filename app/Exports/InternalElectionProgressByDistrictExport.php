@@ -59,7 +59,7 @@ class InternalElectionProgressByDistrictExport implements FromCollection, WithHe
                 'remaining' => $stats['permitted'] - $stats['voted'],
                 'turnout' => $stats['permitted'] > 0 ? round($stats['voted'] / $stats['permitted'] * 100, 1) : 0,
             ];
-        })->sortBy('turnout')->values();
+        })->sortByDesc('turnout')->values();
     }
 
     public function headings(): array
