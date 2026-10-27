@@ -8,49 +8,53 @@
 </div>
 
 <div class="row">
-    <div class="col-md-3 col-sm-6">
-        <div class="small-box bg-aqua" style="cursor:pointer" onclick="openActivityModal('today', 'Active Today')">
-            <div class="inner">
-                <h3>{{ number_format($dau) }}</h3>
-                <p>Active Today</p>
+    <div class="col-xs-12">
+        <div style="display:flex; flex-wrap:nowrap; gap:10px;">
+            <div style="flex:1 1 0; min-width:0;">
+                <div class="small-box bg-aqua" style="cursor:pointer" onclick="openActivityModal('today', 'Active Today')">
+                    <div class="inner">
+                        <h3>{{ number_format($dau) }}</h3>
+                        <p>Active Today</p>
+                    </div>
+                    <div class="icon"><i class="fa fa-bolt"></i></div>
+                </div>
             </div>
-            <div class="icon"><i class="fa fa-bolt"></i></div>
-        </div>
-    </div>
-    <div class="col-md-3 col-sm-6">
-        <div class="small-box bg-green" style="cursor:pointer" onclick="openActivityModal('week', 'Active This Week')">
-            <div class="inner">
-                <h3>{{ number_format($wau) }}</h3>
-                <p>Active This Week</p>
+            <div style="flex:1 1 0; min-width:0;">
+                <div class="small-box bg-green" style="cursor:pointer" onclick="openActivityModal('week', 'Active This Week')">
+                    <div class="inner">
+                        <h3>{{ number_format($wau) }}</h3>
+                        <p>Active This Week</p>
+                    </div>
+                    <div class="icon"><i class="fa fa-calendar-check-o"></i></div>
+                </div>
             </div>
-            <div class="icon"><i class="fa fa-calendar-check-o"></i></div>
-        </div>
-    </div>
-    <div class="col-md-3 col-sm-6">
-        <div class="small-box bg-yellow" style="cursor:pointer" onclick="openActivityModal('month', 'Active This Month')">
-            <div class="inner">
-                <h3>{{ number_format($mau) }}</h3>
-                <p>Active This Month</p>
+            <div style="flex:1 1 0; min-width:0;">
+                <div class="small-box bg-yellow" style="cursor:pointer" onclick="openActivityModal('month', 'Active This Month')">
+                    <div class="inner">
+                        <h3>{{ number_format($mau) }}</h3>
+                        <p>Active This Month</p>
+                    </div>
+                    <div class="icon"><i class="fa fa-calendar"></i></div>
+                </div>
             </div>
-            <div class="icon"><i class="fa fa-calendar"></i></div>
-        </div>
-    </div>
-    <div class="col-md-3 col-sm-6">
-        <div class="small-box bg-red" style="cursor:pointer" onclick="openActivityModal('year', 'Active This Year')">
-            <div class="inner">
-                <h3>{{ number_format($yau) }}</h3>
-                <p>Active This Year</p>
+            <div style="flex:1 1 0; min-width:0;">
+                <div class="small-box bg-red" style="cursor:pointer" onclick="openActivityModal('year', 'Active This Year')">
+                    <div class="inner">
+                        <h3>{{ number_format($yau) }}</h3>
+                        <p>Active This Year</p>
+                    </div>
+                    <div class="icon"><i class="fa fa-calendar-o"></i></div>
+                </div>
             </div>
-            <div class="icon"><i class="fa fa-calendar-o"></i></div>
-        </div>
-    </div>
-    <div class="col-md-3 col-sm-6">
-        <div class="small-box bg-purple" style="cursor:pointer" onclick="openActivityModal('decade', 'Active (Last 10 Years)')">
-            <div class="inner">
-                <h3>{{ number_format($tenYearActive) }}</h3>
-                <p>Active (Last 10 Years)</p>
+            <div style="flex:1 1 0; min-width:0;">
+                <div class="small-box bg-purple" style="cursor:pointer" onclick="openActivityModal('decade', 'Active (Last 10 Years)')">
+                    <div class="inner">
+                        <h3>{{ number_format($tenYearActive) }}</h3>
+                        <p>Active (Last 10 Years)</p>
+                    </div>
+                    <div class="icon"><i class="fa fa-history"></i></div>
+                </div>
             </div>
-            <div class="icon"><i class="fa fa-history"></i></div>
         </div>
     </div>
 </div>
