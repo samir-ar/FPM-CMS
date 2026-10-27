@@ -51,6 +51,7 @@ use App\V2\InternalElection;
 use App\V2\InternalElectionCandidate;
 use App\V2\InternalElectionPermission;
 use App\V2\InternalElectionVoterViewer;
+use App\V2\InternalElectionDistrictVotingSetting;
 use App\V2\ElectionState;
 use Illuminate\Support\Str;
 
@@ -2034,6 +2035,8 @@ class ApiController extends Controller
                 $message = 'لقد قمت بالتصويت';
             } elseif ($result === false) {
                 $message = 'أقفل باب التصويت';
+            } elseif ($result === 405) {
+                $message = 'تم تحديد نتيجة دائرتك مسبقاً';
             }
 
             return [
@@ -2080,6 +2083,18 @@ class ApiController extends Controller
 
         if (!$isAllowed) {
             return 403;
+        }
+
+        // Per-district voting toggle, set by admin staff for districts
+        // whose outcome is already agreed/uncontested (1-3 candidates with
+        // no real contest, or an agreed رديف among exactly 4) - no row
+        // means voting is on (the default, normal contested-race case).
+        $votingEnabled = InternalElectionDistrictVotingSetting::where('election_id', $election->id)
+            ->where('election_state_id', $electionStateId)
+            ->value('voting_enabled');
+
+        if ($votingEnabled === false) {
+            return 405;
         }
 
         //Check if there are condidates
@@ -2133,7 +2148,7 @@ class ApiController extends Controller
             return $this->api_error_response('missing_parameters', 101, "ما مِن إنتخابات في الوقت الراهن");
         }
 
-        if (!$canIVote || $canIVote === 401 || $canIVote === 500 || $canIVote === 403) {
+        if (!$canIVote || $canIVote === 401 || $canIVote === 500 || $canIVote === 403 || $canIVote === 405) {
             return $this->api_error_response('missing_parameters', 101, "لقد قمت بالتصويت أو أن صناديق الإقتراع قد أقفلت");
         }
 

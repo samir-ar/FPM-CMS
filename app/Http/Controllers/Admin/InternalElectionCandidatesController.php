@@ -149,6 +149,7 @@ class InternalElectionCandidatesController extends Controller
             'generateInternalElectionReport' => true,
             'custom_btn' => "<a href='" . route('admin.internal-election-candidates.create', ['election_id' => $id]) ."' class='btn btn-primary'>Add candidate</a>",
             'custom_btn1' => "<a href='" . route('admin.internal-election.states-order') . "' class='btn btn-default'>Order Districts</a>",
+            'custom_btn2' => "<a href='" . route('admin.internal-election.district-voting-settings', $id) . "' class='btn btn-default'>Voting Settings</a>",
             'headers'	=> ['id','Name','Image', 'State', 'Position', 'Age', 'Order','Action', ''],
             'action' => route('admin.internal-election.index'),
             // Grouped by district then age server-side (see the controller

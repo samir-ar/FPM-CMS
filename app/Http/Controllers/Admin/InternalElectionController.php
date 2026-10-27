@@ -13,6 +13,7 @@ use App\V2\InternalElectionCandidate;
 use App\V2\InternalElectionVote;
 use App\V2\InternalElectionPermission;
 use App\V2\InternalElectionVoterViewer;
+use App\V2\InternalElectionDistrictVotingSetting;
 use App\V2\FpmUser;
 use App\V2\AppUser;
 use App\Imports\InternalElectionAllowedVotersImport;
@@ -655,6 +656,72 @@ class InternalElectionController extends Controller
         return Excel::download(new InternalElectionProgressByTownExport($election->id), 'progress-by-town-' . $election->id . '.xlsx');
     }
 
+    public function districtVotingSettings($id){
+        $election = InternalElection::find($id);
+        if(!$election){
+            return redirect(route('admin.internal-election.index'))->withErrors('Election not found');
+        }
+
+        $stateIds = \DB::table('internal_election_candidate_states')
+            ->join('internal_election_candidates', 'internal_election_candidates.id', '=', 'internal_election_candidate_states.candidate_id')
+            ->where('internal_election_candidates.election_id', $election->id)
+            ->distinct()
+            ->pluck('internal_election_candidate_states.election_state_id');
+
+        $states = ElectionState::whereIn('id', $stateIds)->orderBy('name')->get();
+
+        $settingsByStateId = InternalElectionDistrictVotingSetting::where('election_id', $election->id)
+            ->pluck('voting_enabled', 'election_state_id');
+
+        // Candidate count per district, shown alongside the toggle so the
+        // admin can see at a glance why a district might not need a real
+        // vote (1-3 uncontested candidates, or an agreed رديف among 4).
+        $candidateCounts = \DB::table('internal_election_candidate_states')
+            ->join('internal_election_candidates', 'internal_election_candidates.id', '=', 'internal_election_candidate_states.candidate_id')
+            ->where('internal_election_candidates.election_id', $election->id)
+            ->whereIn('internal_election_candidate_states.election_state_id', $stateIds)
+            ->select('internal_election_candidate_states.election_state_id', \DB::raw('COUNT(*) as candidate_count'))
+            ->groupBy('internal_election_candidate_states.election_state_id')
+            ->pluck('candidate_count', 'election_state_id');
+
+        return view('internal-election.district-voting-settings', [
+            'election' => $election,
+            'states' => $states,
+            'settingsByStateId' => $settingsByStateId,
+            'candidateCounts' => $candidateCounts,
+        ])->with('pageTitle', 'District Voting Settings - ' . $election->title);
+    }
+
+    public function updateDistrictVotingSettings(Request $request, $id){
+        $election = InternalElection::find($id);
+        if(!$election){
+            return redirect(route('admin.internal-election.index'))->withErrors('Election not found');
+        }
+
+        // Checkbox convention: only checked (enabled) districts are
+        // submitted, so any district id not present here is being turned
+        // off. Both branches write an explicit row - absence of a row
+        // defaulting to "on" only applies to districts that have never
+        // been touched by this form at all.
+        $enabledStateIds = array_map('intval', (array) $request->input('enabled_states', []));
+
+        $allStateIds = \DB::table('internal_election_candidate_states')
+            ->join('internal_election_candidates', 'internal_election_candidates.id', '=', 'internal_election_candidate_states.candidate_id')
+            ->where('internal_election_candidates.election_id', $election->id)
+            ->distinct()
+            ->pluck('internal_election_candidate_states.election_state_id');
+
+        foreach ($allStateIds as $stateId) {
+            InternalElectionDistrictVotingSetting::updateOrCreate(
+                ['election_id' => $election->id, 'election_state_id' => $stateId],
+                ['voting_enabled' => in_array($stateId, $enabledStateIds)]
+            );
+        }
+
+        return redirect(route('admin.internal-election.district-voting-settings', $election->id))
+            ->with('message', 'District voting settings updated');
+    }
+
     public function export($id){
         $election = InternalElection::find($id);
         if(!$election){
@@ -684,10 +751,22 @@ class InternalElectionController extends Controller
 
         $states = $allStates->whereIn('id', $selectedStateIds)->values();
 
+        // Per-district voting toggle - absence of a row means voting is on
+        // (the default). Off districts are already-agreed/uncontested, so
+        // the report ranks by the admin's own display_order instead of
+        // vote count, and the winner/رديف badges apply regardless of
+        // whether any votes were actually cast (there usually won't be any).
+        $votingDisabledStateIds = InternalElectionDistrictVotingSetting::where('election_id', $election->id)
+            ->where('voting_enabled', false)
+            ->pluck('election_state_id')
+            ->flip();
+
         // Every candidate per state, including those with zero votes, so
         // the report is a complete tally rather than only listing whoever
         // received at least one vote.
-        $results = $states->map(function($state) use ($election){
+        $results = $states->map(function($state) use ($election, $votingDisabledStateIds){
+            $votingDisabled = $votingDisabledStateIds->has($state->id);
+
             $candidates = $election->candidates()
                 ->whereHas('electionStates', function($q) use ($state){
                     $q->where('election_states.id', $state->id);
@@ -703,14 +782,29 @@ class InternalElectionController extends Controller
                 ->whereIn('MemberId', $candidates->pluck('member_id')->filter())
                 ->pluck('BirthDate', 'MemberId');
 
-            $candidates = $candidates->sort(function($a, $b) use ($birthDates) {
-                if ($a->votes_count !== $b->votes_count) {
-                    return $b->votes_count <=> $a->votes_count;
-                }
-                $aBirth = $birthDates->get($a->member_id);
-                $bBirth = $birthDates->get($b->member_id);
-                return ($aBirth && $bBirth) ? $aBirth <=> $bBirth : 0;
-            })->values();
+            if ($votingDisabled) {
+                // Already-agreed district - rank by the admin's manually
+                // set display_order (candidates without one sort last,
+                // alphabetically by family name among themselves), not by
+                // vote count (there typically are none).
+                $candidates = $candidates->sort(function($a, $b) {
+                    $aOrder = $a->display_order !== null ? $a->display_order : PHP_INT_MAX;
+                    $bOrder = $b->display_order !== null ? $b->display_order : PHP_INT_MAX;
+                    if ($aOrder !== $bOrder) {
+                        return $aOrder <=> $bOrder;
+                    }
+                    return strcmp($a->family_name ?? '', $b->family_name ?? '');
+                })->values();
+            } else {
+                $candidates = $candidates->sort(function($a, $b) use ($birthDates) {
+                    if ($a->votes_count !== $b->votes_count) {
+                        return $b->votes_count <=> $a->votes_count;
+                    }
+                    $aBirth = $birthDates->get($a->member_id);
+                    $bBirth = $birthDates->get($b->member_id);
+                    return ($aBirth && $bBirth) ? $aBirth <=> $bBirth : 0;
+                })->values();
+            }
 
             // Exposed on each candidate so the report can show it on demand
             // (e.g. to explain a tie-break outcome) without a separate lookup.
@@ -722,6 +816,7 @@ class InternalElectionController extends Controller
                 'state' => $state,
                 'candidates' => $candidates,
                 'voters' => $candidates->sum('votes_count'),
+                'voting_disabled' => $votingDisabled,
             ];
         });
 

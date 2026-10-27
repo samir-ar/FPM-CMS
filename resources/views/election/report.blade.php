@@ -46,10 +46,16 @@
                         $state = $row['state'];
                         $candidates = $row['candidates'];
                         $voters = $row['voters'];
+                        $votingDisabled = $row['voting_disabled'] ?? false;
                     @endphp
 
                     <div class="headline-container">
                         <h2>{{ $state->name }}</h2>
+                        @if($votingDisabled)
+                            <span style="display:inline-block; margin-right:10px; padding:3px 10px; border-radius:4px; background:#f0ad4e; color:#fff; font-size:13px;">
+                                تم تحديد النتيجة مسبقاً — لا تصويت في هذا القضاء
+                            </span>
+                        @endif
                     </div>
 
                     <div class="stats-container">
@@ -87,11 +93,15 @@
                                 @php
                                     // Top 3 by rank are the winners, 4th is the رديف
                                     // (alternate) — steps up to a full winner only if
-                                    // one of the top 3 later resigns/is removed. Only
-                                    // once voting has actually started, so an untouched
-                                    // election doesn't highlight rows by list order alone.
-                                    $isWinner = $voters > 0 && $i < 3;
-                                    $isAlternate = $voters > 0 && $i === 3;
+                                    // one of the top 3 later resigns/is removed.
+                                    // Normally only once voting has actually started
+                                    // (so an untouched contested election doesn't
+                                    // highlight rows by list order alone) - but a
+                                    // district with voting toggled off is already
+                                    // agreed by the admin's own display_order, so the
+                                    // badges apply there even with zero votes cast.
+                                    $isWinner = ($votingDisabled || $voters > 0) && $i < 3;
+                                    $isAlternate = ($votingDisabled || $voters > 0) && $i === 3;
                                     $pct = $voters > 0 ? round($candidate->votes_count * 100 / $voters) : 0;
                                 @endphp
                                 <tr class="{{ $isWinner ? 'winner-row' : ($isAlternate ? 'alternate-row' : '') }}">
