@@ -4,6 +4,35 @@ All notable changes to the FPM-CMS (Laravel backend) are documented in this file
 
 ## Unreleased
 
+Committed 2026-10-27 (deployment to staging/production pending):
+
+### Added
+
+- **Internal Election turnout dashboard** (`/admin/internal-election/{id}/progress`, reachable via a new "Progress" button alongside Results/Vote Dispute Review): overall turnout %, per-district turnout (grouped by each permitted voter's own `fpm_users.district`, avoiding the `election_states.name` matching fragility), and a votes-per-hour chart.
+
+### Fixed
+
+- **Super Admin was quietly missing full access to 14 pages** (Social Links, Legislative Doc Categories, Content Engagement, User Activity, Store Analytics, and others) — the original 2026-09-18 backfill was a one-time snapshot, never re-run as new pages were added since. Backfilled via a new idempotent migration resolved by profile name, not a literal id.
+- **About Us has been completely unreachable by any admin profile since 2026-09-18** — its route was gated by a hardcoded `page-perm:39`, but no page with id 39 exists in the `pages` table on any environment (confirmed via `git blame`: wrong/stale literal from the original permissions rollout). Fixed to resolve via `pagePermByUrl()` like every other page added since the cross-environment page-id drift was discovered.
+
+Committed and deployed to staging **and production** 2026-10-24:
+
+### Fixed
+
+- **District voters list clipped compound surnames ending in "الله"** (e.g. "اسامه جبرايل عطا الله" showed as "اسامه الله"). `shortVoterName()`'s compound-surname handling only covered `ابو`/`ابي`-style prefixes — extended to always keep the word before `الله` as part of the family name whenever the last word is literally `الله`, since it's never a standalone surname on its own in this context.
+
+Committed and deployed to staging **and production** 2026-10-23:
+
+### Added
+
+- **Internal Election Candidates list — grouped by district then age**, using DataTables RowGroup (vendored locally, `public/bower_components/datatables.net-rowgroup/`). Each district's group header now also shows that district's candidate count (e.g. "عكار (12)"). New admin-configurable district display order (`election_states.display_order`, nullable) via a new **Order Districts** page (`/admin/internal-election-states-order`) — ordered districts sort first per the configured sequence, unordered ones fall back to alphabetical.
+- Candidates list page now shows a **"Total Candidates: N"** count at the top (`table_title`).
+- `table_ajax.blade.php` component gained two opt-in flags used by the above (left unset everywhere else, so none of the ~50 other admin pages using this component changed behavior): `disableOrdering` (disables client-side column sort, needed since rows arrive pre-grouped) and `rowGroupDataSrc` (enables RowGroup on the given hidden column).
+
+### Fixed
+
+- **Candidate search/add was silently broken for Beirut I, Beirut II, المنية, and الضنية.** `fpm_users.district` doesn't always match `election_states.name` exactly — Beirut's two seats have a double space + hamza spelling in `election_states` (`بيروت  الأولى`/`بيروت  الثانية`) vs. single-space/no-hamza in `fpm_users` (`بيروت الاولى`/`بيروت الثانية`), and some members have combined district values (`المنية-الضنية`, `بعلبك - الهرمل`, `حاصبيا - مرجعيون `) that can never equal a single election state's name. Both the member-search endpoint and the separate (and previously inconsistent) district-match validation in `store()` now go through one shared `districtMatchesAnyState()` helper that normalizes whitespace/hamza and matches by "contains" instead of exact equality. **الزهراني genuinely has zero members tagged with that district in `fpm_users` yet — not a bug, just no data there.**
+
 Committed and deployed to staging **and production** 2026-10-16:
 
 ### Added
