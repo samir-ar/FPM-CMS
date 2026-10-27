@@ -2348,6 +2348,31 @@ class ApiController extends Controller
             ->with('electionState')
             ->get();
 
+        // A district with voting toggled off is already-agreed/uncontested -
+        // the candidate's own voter list for that specific district is
+        // hidden the same way the ballot itself is (see canIVote()). A
+        // candidate spanning multiple districts only loses the disabled
+        // one(s), not their whole list.
+        $relevantElectionIds = $candidateRows->pluck('election_id')
+            ->merge($viewerRows->pluck('election_id'))
+            ->unique();
+        $disabledPairs = InternalElectionDistrictVotingSetting::whereIn('election_id', $relevantElectionIds)
+            ->where('voting_enabled', false)
+            ->get(['election_id', 'election_state_id'])
+            ->map(fn($s) => $s->election_id . '_' . $s->election_state_id)
+            ->flip();
+
+        $candidateRows = $candidateRows->map(function ($candidate) use ($disabledPairs) {
+            $candidate->electionStates = $candidate->electionStates->filter(
+                fn($state) => !$disabledPairs->has($candidate->election_id . '_' . $state->id)
+            )->values();
+            return $candidate;
+        })->filter(fn($c) => $c->electionStates->isNotEmpty())->values();
+
+        $viewerRows = $viewerRows->filter(
+            fn($viewer) => !$disabledPairs->has($viewer->election_id . '_' . $viewer->election_state_id)
+        )->values();
+
         if ($candidateRows->isEmpty() && $viewerRows->isEmpty()) {
             return $this->api_error_response('list_not_visible', 403, "لائحة الناخبين غير متاحة حالياً");
         }
