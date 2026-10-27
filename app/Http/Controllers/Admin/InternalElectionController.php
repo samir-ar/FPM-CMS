@@ -506,6 +506,75 @@ class InternalElectionController extends Controller
         return Excel::download(new InternalElectionVotesExport($election->id), 'votes-report-' . $election->id . '.xlsx');
     }
 
+    public function progress($id){
+        $election = InternalElection::find($id);
+        if(!$election){
+            return redirect(route('admin.internal-election.index'))->withErrors('Election not found');
+        }
+
+        $permittedMemberIds = InternalElectionPermission::where('election_id', $id)
+            ->pluck('member_id')->filter()->unique()->values();
+        $totalPermitted = $permittedMemberIds->count();
+
+        $votedMemberIds = InternalElectionVote::with('user')
+            ->where('internal_election_id', $id)
+            ->get()
+            ->pluck('user.member_id')
+            ->filter()
+            ->unique();
+
+        $totalVoted = $permittedMemberIds->intersect($votedMemberIds)->count();
+        $totalRemaining = $totalPermitted - $totalVoted;
+        $overallTurnout = $totalPermitted > 0 ? round($totalVoted / $totalPermitted * 100, 1) : 0;
+
+        // Per-district breakdown - grouped by each PERMITTED voter's own
+        // fpm_users.district value, used consistently for both the
+        // numerator and denominator. Deliberately NOT matched against
+        // election_states.name (which has known spelling/spacing drift,
+        // see districtMatchesAnyState() in InternalElectionCandidatesController)
+        // - grouping by the voter's own raw district avoids that fragility
+        // entirely since nothing here needs to equal an election_state name.
+        $districtByMember = \DB::table('fpm_users')
+            ->whereIn('MemberId', $permittedMemberIds)
+            ->pluck('district', 'MemberId');
+
+        $votedSet = $votedMemberIds->flip();
+
+        $districtStats = [];
+        foreach ($permittedMemberIds as $memberId) {
+            $district = $districtByMember->get($memberId) ?: 'بدون دائرة';
+            if (!isset($districtStats[$district])) {
+                $districtStats[$district] = ['permitted' => 0, 'voted' => 0];
+            }
+            $districtStats[$district]['permitted']++;
+            if ($votedSet->has($memberId)) {
+                $districtStats[$district]['voted']++;
+            }
+        }
+
+        $districtRows = collect($districtStats)->map(function ($stats, $district) {
+            return [
+                'district' => $district,
+                'permitted' => $stats['permitted'],
+                'voted' => $stats['voted'],
+                'remaining' => $stats['permitted'] - $stats['voted'],
+                'turnout' => $stats['permitted'] > 0 ? round($stats['voted'] / $stats['permitted'] * 100, 1) : 0,
+            ];
+        })->sortBy('turnout')->values(); // lowest turnout first - needs the most attention
+
+        // Live pace: votes cast per hour, for the trend chart.
+        $hourly = InternalElectionVote::where('internal_election_id', $id)
+            ->whereNotNull('voted_at')
+            ->get()
+            ->groupBy(fn($vote) => Carbon::parse($vote->voted_at)->format('Y-m-d H:00'))
+            ->map->count()
+            ->sortKeys();
+
+        return view('internal-election.progress', compact(
+            'election', 'totalPermitted', 'totalVoted', 'totalRemaining', 'overallTurnout', 'districtRows', 'hourly'
+        ))->with('pageTitle', 'Election Progress - ' . $election->title);
+    }
+
     public function export($id){
         $election = InternalElection::find($id);
         if(!$election){

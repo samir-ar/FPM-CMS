@@ -334,9 +334,14 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::get('representatives-content', 'ContentController@representativesForm')->name('representatives.form')->middleware('page-perm:31,full');
     Route::post('representatives-content', 'ContentController@representativesUpdate')->name('representatives.update_form')->middleware('page-perm:31,full');
 
-    //About us — child of Page Contents, page 39
-    Route::get('about-us', 'ContentController@aboutUsForm')->name('aboutUs.form')->middleware('page-perm:39,full');
-    Route::post('about-us', 'ContentController@aboutUsUpdate')->name('aboutUs.update')->middleware('page-perm:39,full');
+    //About us — gated by page_id 39, which doesn't exist in the pages
+    //table on this environment (confirmed via git blame: wrong/stale
+    //literal since the original 2026-09-18 permissions rollout, so this
+    //page has been unreachable by ANY profile the whole time). Resolved
+    //dynamically instead, same safe pattern as every other page added
+    //since the cross-environment page.id drift was found.
+    Route::get('about-us', 'ContentController@aboutUsForm')->name('aboutUs.form')->middleware(pagePermByUrl('admin.aboutUs.form', 'full'));
+    Route::post('about-us', 'ContentController@aboutUsUpdate')->name('aboutUs.update')->middleware(pagePermByUrl('admin.aboutUs.form', 'full'));
 
 
     //links — page 36
@@ -525,6 +530,7 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::get('internal-election/{id}/votes', 'InternalElectionController@votes')->name('internal-election.votes')->middleware('page-perm:57,view');
     Route::get('internal-election/{id}/votes-report', 'InternalElectionController@votesReport')->name('internal-election.votes-report')->middleware('page-perm:57,view');
     Route::get('internal-election/{id}/votes-report/export', 'InternalElectionController@exportVotesReport')->name('internal-election.votes-report.export')->middleware('page-perm:57,view');
+    Route::get('internal-election/{id}/progress', 'InternalElectionController@progress')->name('internal-election.progress')->middleware('page-perm:57,view');
     Route::get('internal-election-vote/reset', 'InternalElectionController@reset')->name('internal-election-votes.reset')->middleware('page-perm:57,full');
     Route::get('internal-election-import-allowed-voters-template', 'InternalElectionController@downloadAllowedVotersTemplate')->name('internal-election.import-allowed-voters-template')->middleware('page-perm:57,view');
     Route::get('internal-election/{id}/voter-viewers', 'InternalElectionController@voterViewers')->name('internal-election.voter-viewers')->middleware('page-perm:57,view');
