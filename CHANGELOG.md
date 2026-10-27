@@ -4,7 +4,7 @@ All notable changes to the FPM-CMS (Laravel backend) are documented in this file
 
 ## Unreleased
 
-Committed 2026-10-27 (deployment to staging/production pending):
+Committed and deployed to staging **and production** 2026-10-27:
 
 ### Added
 
