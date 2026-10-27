@@ -23,7 +23,7 @@
                 <div class="small-box bg-aqua">
                     <div class="inner">
                         <h3>{{ number_format($totalPermitted) }}</h3>
-                        <p>Permitted Voters</p>
+                        <p>اجمالي الناخبين في جميع الاقضية المشاركة</p>
                     </div>
                     <div class="icon"><i class="fa fa-users"></i></div>
                 </div>
@@ -32,7 +32,7 @@
                 <div class="small-box bg-green">
                     <div class="inner">
                         <h3>{{ number_format($totalVoted) }}</h3>
-                        <p>Voted</p>
+                        <p>عدد المصوتين في جميع الاقضية المشاركة</p>
                     </div>
                     <div class="icon"><i class="fa fa-check-circle"></i></div>
                 </div>
@@ -41,7 +41,7 @@
                 <div class="small-box bg-yellow">
                     <div class="inner">
                         <h3>{{ number_format($totalRemaining) }}</h3>
-                        <p>Remaining</p>
+                        <p>عدد المتبقين في جميع الاقضية المشاركة</p>
                     </div>
                     <div class="icon"><i class="fa fa-clock-o"></i></div>
                 </div>
@@ -50,7 +50,7 @@
                 <div class="small-box bg-red">
                     <div class="inner">
                         <h3>{{ $overallTurnout }}%</h3>
-                        <p>Overall Turnout</p>
+                        <p>النسبة المئوية</p>
                     </div>
                     <div class="icon"><i class="fa fa-pie-chart"></i></div>
                 </div>
