@@ -45,10 +45,12 @@
             </div>
         </div>
 
-        <div class="progress" style="height: 25px;">
-            <div class="progress-bar progress-bar-success" role="progressbar" style="width: {{ $overallTurnout }}%;">
-                {{ $overallTurnout }}%
+        <div style="display:flex; align-items:center; gap:10px;">
+            <div class="progress" style="height: 25px; margin-bottom: 0; flex: 1;">
+                <div class="progress-bar progress-bar-success" role="progressbar" style="width: {{ $overallTurnout }}%;">
+                </div>
             </div>
+            <span style="white-space:nowrap; font-weight:bold; font-size:16px;">{{ $overallTurnout }}%</span>
         </div>
 
         <div class="row" style="margin-top: 20px;">
@@ -96,12 +98,14 @@
                                             <td>{{ number_format($row['permitted']) }}</td>
                                             <td>{{ number_format($row['voted']) }}</td>
                                             <td>{{ number_format($row['remaining']) }}</td>
-                                            <td style="min-width: 200px;">
-                                                <div class="progress" style="margin-bottom: 0;">
-                                                    <div class="progress-bar progress-bar-{{ $row['turnout'] < 40 ? 'danger' : ($row['turnout'] < 70 ? 'warning' : 'success') }}"
-                                                         role="progressbar" style="width: {{ $row['turnout'] }}%;">
-                                                        {{ $row['turnout'] }}%
+                                            <td style="min-width: 220px;">
+                                                <div style="display:flex; align-items:center; gap:8px;">
+                                                    <div class="progress" style="margin-bottom: 0; flex: 1;">
+                                                        <div class="progress-bar progress-bar-{{ $row['turnout'] < 40 ? 'danger' : ($row['turnout'] < 70 ? 'warning' : 'success') }}"
+                                                             role="progressbar" style="width: {{ $row['turnout'] }}%;">
+                                                        </div>
                                                     </div>
+                                                    <span style="white-space:nowrap; font-weight:bold;">{{ $row['turnout'] }}%</span>
                                                 </div>
                                             </td>
                                         </tr>
