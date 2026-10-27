@@ -69,7 +69,7 @@
             <div class="col-md-12">
                 <div class="box box-default">
                     <div class="box-header with-border">
-                        <h3 class="box-title">Votes Per Hour</h3>
+                        <h3 class="box-title">عدد الأصوات لكل ساعة</h3>
                     </div>
                     <div class="box-body">
                         @if($hourly->isEmpty())
@@ -86,16 +86,16 @@
             <div class="col-md-12">
                 <div class="box box-default">
                     <div class="box-header with-border">
-                        <h3 class="box-title">Turnout By District</h3>
+                        <h3 class="box-title">نسبة الاقتراع حسب القضاء</h3>
                         <div class="box-tools pull-right">
                             <a href="{{ route('admin.internal-election.progress.export-by-district', $election->id) }}" class="btn btn-success btn-sm">
-                                <i class="fa fa-file-excel-o"></i> Export Districts
+                                <i class="fa fa-file-excel-o"></i> تصدير حسب القضاء
                             </a>
                             <a href="{{ route('admin.internal-election.progress.export-by-town', $election->id) }}" class="btn btn-success btn-sm">
-                                <i class="fa fa-file-excel-o"></i> Export Towns
+                                <i class="fa fa-file-excel-o"></i> تصدير حسب البلدة
                             </a>
                         </div>
-                        <p class="text-muted" style="margin: 5px 0 0;">Sorted highest turnout first.</p>
+                        <p class="text-muted" style="margin: 5px 0 0;">مرتبة من الأعلى إلى الأدنى حسب نسبة الاقتراع.</p>
                     </div>
                     <div class="box-body">
                         @if($districtRows->isEmpty())
@@ -104,11 +104,11 @@
                             <table class="table table-bordered table-striped">
                                 <thead>
                                     <tr>
-                                        <th>District</th>
-                                        <th>Permitted</th>
-                                        <th>Voted</th>
-                                        <th>Remaining</th>
-                                        <th>Turnout</th>
+                                        <th>القضاء</th>
+                                        <th>المسموح لهم</th>
+                                        <th>صوّتوا</th>
+                                        <th>المتبقون</th>
+                                        <th>نسبة الاقتراع</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -147,21 +147,21 @@
         <div class="modal-content">
             <div class="modal-header">
                 <button type="button" class="close" data-dismiss="modal">&times;</button>
-                <h4 class="modal-title" id="townDrilldownModalTitle">Turnout By Town</h4>
+                <h4 class="modal-title" id="townDrilldownModalTitle">نسبة الاقتراع حسب البلدة</h4>
             </div>
             <div class="modal-body">
                 <table class="table table-bordered table-striped">
                     <thead>
                         <tr>
-                            <th>Town</th>
-                            <th>Permitted</th>
-                            <th>Voted</th>
-                            <th>Remaining</th>
-                            <th>Turnout</th>
+                            <th>البلدة</th>
+                            <th>المسموح لهم</th>
+                            <th>صوّتوا</th>
+                            <th>المتبقون</th>
+                            <th>نسبة الاقتراع</th>
                         </tr>
                     </thead>
                     <tbody id="townDrilldownModalBody">
-                        <tr><td colspan="5" class="text-center text-muted">Loading...</td></tr>
+                        <tr><td colspan="5" class="text-center text-muted">جارٍ التحميل...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -200,7 +200,7 @@
             e.preventDefault();
             var district = $(this).data('district');
 
-            $('#townDrilldownModalTitle').text('Turnout By Town — ' + district);
+            $('#townDrilldownModalTitle').text('نسبة الاقتراع حسب البلدة — ' + district);
             $('#townDrilldownModalBody').html('<tr><td colspan="5" class="text-center text-muted">Loading...</td></tr>');
             $('#townDrilldownModal').modal('show');
 
@@ -209,7 +209,7 @@
                     var $body = $('#townDrilldownModalBody').empty();
 
                     if (!response.towns || !response.towns.length) {
-                        $body.append('<tr><td colspan="5" class="text-center text-muted">No permitted voters found for this district.</td></tr>');
+                        $body.append('<tr><td colspan="5" class="text-center text-muted">لا يوجد ناخبون مسموح لهم في هذا القضاء.</td></tr>');
                         return;
                     }
 
