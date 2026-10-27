@@ -4,15 +4,22 @@ All notable changes to the FPM-CMS (Laravel backend) are documented in this file
 
 ## Unreleased
 
-Committed, deployed to staging; production deploy relayed, pending user confirmation (2026-10-27):
+Committed and deployed to staging; production deploy relayed, pending user confirmation (2026-10-27):
 
 ### Added
 
 - **Internal Election turnout dashboard** (`/admin/internal-election/{id}/progress`, reachable via a new "Progress" button alongside Results/Vote Dispute Review): overall turnout %, per-district turnout (grouped by each permitted voter's own `fpm_users.district`, avoiding the `election_states.name` matching fragility), a votes-per-hour chart, and a town-level drilldown modal opened by clicking a district name (same breakdown, scoped to towns within that district).
+- **Excel export for the progress dashboard**, by district and by town, each with an embedded bar chart (turnout % per district/town) showing the value on top of each bar, using Laravel Excel's `WithCharts` concern.
 
 ### Changed
 
 - The turnout progress bars show their percentage as regular text next to the bar rather than inside it (was invisible — white label text with no colored background behind it at low/zero turnout), and the empty track now has a visible background/border instead of defaulting to near-invisible light grey.
+- Districts and towns on the progress dashboard (and both exports) are now sorted highest turnout first.
+- All progress-dashboard labels (stat tiles, section headers, table columns, the town-drilldown modal, export buttons) translated to Arabic per the user's wording — "Permitted"→"الناخبون", "Voted"→"المقترعون", "Remaining"→"لم يقترعوا", "District"→"القضاء", "Turnout"→"نسبة الاقتراع".
+
+### Fixed
+
+- Both progress-dashboard Excel exports showed blank cells instead of "0" for districts/towns with zero votes or zero turnout — Laravel Excel's write pipeline collapses a literal numeric `0` to a NULL cell. Fixed by casting mapped values to string.
 
 Committed and deployed to staging **and production** 2026-10-27:
 
