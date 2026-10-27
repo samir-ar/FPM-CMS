@@ -44,6 +44,15 @@
             <div class="icon"><i class="fa fa-calendar-o"></i></div>
         </div>
     </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="small-box bg-purple" style="cursor:pointer" onclick="openActivityModal('decade', 'Active (Last 10 Years)')">
+            <div class="inner">
+                <h3>{{ number_format($tenYearActive) }}</h3>
+                <p>Active (Last 10 Years)</p>
+            </div>
+            <div class="icon"><i class="fa fa-history"></i></div>
+        </div>
+    </div>
 </div>
 
 <div class="modal fade" id="activityMembersModal" tabindex="-1" role="dialog">

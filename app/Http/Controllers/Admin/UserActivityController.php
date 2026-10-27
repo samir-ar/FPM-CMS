@@ -21,6 +21,11 @@ class UserActivityController extends Controller
         $wau = $this->distinctActiveSince(Carbon::parse($today)->subDays(6)->toDateString());
         $mau = $this->distinctActiveSince(Carbon::parse($today)->subDays(29)->toDateString());
         $yau = $this->distinctActiveSince(Carbon::parse($today)->subDays(364)->toDateString());
+        // Tracking only started 2026-09-24, so this currently shows the
+        // same number as "Active This Year" - that's expected, not a bug.
+        // It's here so the dashboard doesn't need code changes once real
+        // multi-year history exists.
+        $tenYearActive = $this->distinctActiveSince(Carbon::parse($today)->subDays(3650)->toDateString());
 
         // Daily trend, last 30 days — filled with zeros for days with no activity so the chart doesn't skip gaps.
         $trendRaw = DB::table('user_activity_logs')
@@ -132,7 +137,7 @@ class UserActivityController extends Controller
             ->get();
 
         return view('cms.user_activity.index', compact(
-            'totalMembers', 'dau', 'wau', 'mau', 'yau',
+            'totalMembers', 'dau', 'wau', 'mau', 'yau', 'tenYearActive',
             'trendLabels', 'trendValues',
             'periodicLabels', 'periodicValues',
             'powerUsers', 'regularUsers', 'casualUsers',
@@ -159,6 +164,7 @@ class UserActivityController extends Controller
             'week'  => Carbon::parse($today)->subDays(6)->toDateString(),
             'month' => Carbon::parse($today)->subDays(29)->toDateString(),
             'year'  => Carbon::parse($today)->subDays(364)->toDateString(),
+            'decade' => Carbon::parse($today)->subDays(3650)->toDateString(),
             default => null,
         };
 
