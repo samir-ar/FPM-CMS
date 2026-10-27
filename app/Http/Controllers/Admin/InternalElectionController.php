@@ -18,6 +18,8 @@ use App\V2\AppUser;
 use App\Imports\InternalElectionAllowedVotersImport;
 use App\Exports\AllowedToVoteTemplateExport;
 use App\Exports\InternalElectionVotesExport;
+use App\Exports\InternalElectionProgressByDistrictExport;
+use App\Exports\InternalElectionProgressByTownExport;
 use Carbon\Carbon;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -633,6 +635,24 @@ class InternalElectionController extends Controller
         })->sortBy('turnout')->values();
 
         return response()->json(['district' => $district, 'towns' => $townRows]);
+    }
+
+    public function exportProgressByDistrict($id){
+        $election = InternalElection::find($id);
+        if(!$election){
+            return redirect(route('admin.internal-election.index'))->withErrors('Election not found');
+        }
+
+        return Excel::download(new InternalElectionProgressByDistrictExport($election->id), 'progress-by-district-' . $election->id . '.xlsx');
+    }
+
+    public function exportProgressByTown($id){
+        $election = InternalElection::find($id);
+        if(!$election){
+            return redirect(route('admin.internal-election.index'))->withErrors('Election not found');
+        }
+
+        return Excel::download(new InternalElectionProgressByTownExport($election->id), 'progress-by-town-' . $election->id . '.xlsx');
     }
 
     public function export($id){

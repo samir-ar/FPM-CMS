@@ -87,6 +87,14 @@
                 <div class="box box-default">
                     <div class="box-header with-border">
                         <h3 class="box-title">Turnout By District</h3>
+                        <div class="box-tools pull-right">
+                            <a href="{{ route('admin.internal-election.progress.export-by-district', $election->id) }}" class="btn btn-success btn-sm">
+                                <i class="fa fa-file-excel-o"></i> Export Districts
+                            </a>
+                            <a href="{{ route('admin.internal-election.progress.export-by-town', $election->id) }}" class="btn btn-success btn-sm">
+                                <i class="fa fa-file-excel-o"></i> Export Towns
+                            </a>
+                        </div>
                         <p class="text-muted" style="margin: 5px 0 0;">Sorted lowest turnout first — these districts likely need a reminder push.</p>
                     </div>
                     <div class="box-body">
