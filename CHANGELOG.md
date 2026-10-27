@@ -4,11 +4,17 @@ All notable changes to the FPM-CMS (Laravel backend) are documented in this file
 
 ## Unreleased
 
-Committed and deployed to staging **and production** 2026-10-27:
+Committed, deployed to staging; production deploy relayed, pending user confirmation (2026-10-27):
 
 ### Added
 
-- **Internal Election turnout dashboard** (`/admin/internal-election/{id}/progress`, reachable via a new "Progress" button alongside Results/Vote Dispute Review): overall turnout %, per-district turnout (grouped by each permitted voter's own `fpm_users.district`, avoiding the `election_states.name` matching fragility), and a votes-per-hour chart.
+- **Internal Election turnout dashboard** (`/admin/internal-election/{id}/progress`, reachable via a new "Progress" button alongside Results/Vote Dispute Review): overall turnout %, per-district turnout (grouped by each permitted voter's own `fpm_users.district`, avoiding the `election_states.name` matching fragility), a votes-per-hour chart, and a town-level drilldown modal opened by clicking a district name (same breakdown, scoped to towns within that district).
+
+### Changed
+
+- The turnout progress bars show their percentage as regular text next to the bar rather than inside it (was invisible — white label text with no colored background behind it at low/zero turnout), and the empty track now has a visible background/border instead of defaulting to near-invisible light grey.
+
+Committed and deployed to staging **and production** 2026-10-27:
 
 ### Fixed
 
