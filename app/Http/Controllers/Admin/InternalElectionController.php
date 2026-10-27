@@ -575,6 +575,66 @@ class InternalElectionController extends Controller
         ))->with('pageTitle', 'Election Progress - ' . $election->title);
     }
 
+    // Town-level drill-down for one district within the progress dashboard
+    // (AJAX, feeds the modal opened by clicking a district row). Same
+    // permitted/voted/turnout logic as progress(), scoped to permitted
+    // voters whose raw fpm_users.district matches the clicked district
+    // exactly - same value that produced that district's row in the
+    // first place, so this is always a strict subset, never a mismatch.
+    public function progressTowns(Request $request, $id){
+        $district = $request->query('district');
+        if (!$district) {
+            return response()->json(['error' => 'Missing district'], 400);
+        }
+
+        $permittedMemberIds = InternalElectionPermission::where('election_id', $id)
+            ->pluck('member_id')->filter()->unique()->values();
+
+        $votedMemberIds = InternalElectionVote::with('user')
+            ->where('internal_election_id', $id)
+            ->get()
+            ->pluck('user.member_id')
+            ->filter()
+            ->unique();
+        $votedSet = $votedMemberIds->flip();
+
+        $fpmRows = \DB::table('fpm_users')
+            ->whereIn('MemberId', $permittedMemberIds)
+            ->get(['MemberId', 'district', 'town'])
+            ->keyBy('MemberId');
+
+        $districtMemberIds = $permittedMemberIds->filter(function ($memberId) use ($fpmRows, $district) {
+            $row = $fpmRows->get($memberId);
+            $voterDistrict = ($row && $row->district) ? $row->district : 'بدون دائرة';
+            return $voterDistrict === $district;
+        });
+
+        $townStats = [];
+        foreach ($districtMemberIds as $memberId) {
+            $row = $fpmRows->get($memberId);
+            $town = ($row && $row->town) ? $row->town : 'بدون بلدة';
+            if (!isset($townStats[$town])) {
+                $townStats[$town] = ['permitted' => 0, 'voted' => 0];
+            }
+            $townStats[$town]['permitted']++;
+            if ($votedSet->has($memberId)) {
+                $townStats[$town]['voted']++;
+            }
+        }
+
+        $townRows = collect($townStats)->map(function ($stats, $town) {
+            return [
+                'town' => $town,
+                'permitted' => $stats['permitted'],
+                'voted' => $stats['voted'],
+                'remaining' => $stats['permitted'] - $stats['voted'],
+                'turnout' => $stats['permitted'] > 0 ? round($stats['voted'] / $stats['permitted'] * 100, 1) : 0,
+            ];
+        })->sortBy('turnout')->values();
+
+        return response()->json(['district' => $district, 'towns' => $townRows]);
+    }
+
     public function export($id){
         $election = InternalElection::find($id);
         if(!$election){

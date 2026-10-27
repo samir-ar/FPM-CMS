@@ -531,6 +531,7 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::get('internal-election/{id}/votes-report', 'InternalElectionController@votesReport')->name('internal-election.votes-report')->middleware('page-perm:57,view');
     Route::get('internal-election/{id}/votes-report/export', 'InternalElectionController@exportVotesReport')->name('internal-election.votes-report.export')->middleware('page-perm:57,view');
     Route::get('internal-election/{id}/progress', 'InternalElectionController@progress')->name('internal-election.progress')->middleware('page-perm:57,view');
+    Route::get('internal-election/{id}/progress/towns', 'InternalElectionController@progressTowns')->name('internal-election.progress.towns')->middleware('page-perm:57,view');
     Route::get('internal-election-vote/reset', 'InternalElectionController@reset')->name('internal-election-votes.reset')->middleware('page-perm:57,full');
     Route::get('internal-election-import-allowed-voters-template', 'InternalElectionController@downloadAllowedVotersTemplate')->name('internal-election.import-allowed-voters-template')->middleware('page-perm:57,view');
     Route::get('internal-election/{id}/voter-viewers', 'InternalElectionController@voterViewers')->name('internal-election.voter-viewers')->middleware('page-perm:57,view');

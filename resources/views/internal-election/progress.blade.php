@@ -106,7 +106,9 @@
                                 <tbody>
                                     @foreach($districtRows as $row)
                                         <tr>
-                                            <td>{{ $row['district'] }}</td>
+                                            <td>
+                                                <a href="#" class="district-drilldown-link" data-district="{{ $row['district'] }}">{{ $row['district'] }}</a>
+                                            </td>
                                             <td>{{ number_format($row['permitted']) }}</td>
                                             <td>{{ number_format($row['voted']) }}</td>
                                             <td>{{ number_format($row['remaining']) }}</td>
@@ -131,6 +133,33 @@
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="townDrilldownModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title" id="townDrilldownModalTitle">Turnout By Town</h4>
+            </div>
+            <div class="modal-body">
+                <table class="table table-bordered table-striped">
+                    <thead>
+                        <tr>
+                            <th>Town</th>
+                            <th>Permitted</th>
+                            <th>Voted</th>
+                            <th>Remaining</th>
+                            <th>Turnout</th>
+                        </tr>
+                    </thead>
+                    <tbody id="townDrilldownModalBody">
+                        <tr><td colspan="5" class="text-center text-muted">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection
 
 @section('footer_resources')
@@ -150,4 +179,58 @@
     });
 </script>
 @endif
+
+<script>
+    $(function () {
+        function turnoutBarColor(turnout) {
+            if (turnout < 40) return 'progress-bar-danger';
+            if (turnout < 70) return 'progress-bar-warning';
+            return 'progress-bar-success';
+        }
+
+        $('body').on('click', '.district-drilldown-link', function (e) {
+            e.preventDefault();
+            var district = $(this).data('district');
+
+            $('#townDrilldownModalTitle').text('Turnout By Town — ' + district);
+            $('#townDrilldownModalBody').html('<tr><td colspan="5" class="text-center text-muted">Loading...</td></tr>');
+            $('#townDrilldownModal').modal('show');
+
+            $.get('{{ route('admin.internal-election.progress.towns', $election->id) }}', { district: district })
+                .done(function (response) {
+                    var $body = $('#townDrilldownModalBody').empty();
+
+                    if (!response.towns || !response.towns.length) {
+                        $body.append('<tr><td colspan="5" class="text-center text-muted">No permitted voters found for this district.</td></tr>');
+                        return;
+                    }
+
+                    response.towns.forEach(function (row) {
+                        var $tr = $('<tr>');
+                        $tr.append($('<td>').text(row.town));
+                        $tr.append($('<td>').text(row.permitted));
+                        $tr.append($('<td>').text(row.voted));
+                        $tr.append($('<td>').text(row.remaining));
+
+                        var $turnoutCell = $('<td>').css({ 'min-width': '220px' });
+                        var $wrap = $('<div>').css({ display: 'flex', 'align-items': 'center', gap: '8px' });
+                        var $track = $('<div>').addClass('progress election-progress-track').css({ 'margin-bottom': 0, flex: 1 });
+                        var $bar = $('<div>').addClass('progress-bar ' + turnoutBarColor(row.turnout))
+                            .attr('role', 'progressbar').css('width', row.turnout + '%');
+                        $track.append($bar);
+                        var $label = $('<span>').css({ 'white-space': 'nowrap', 'font-weight': 'bold' }).text(row.turnout + '%');
+                        $wrap.append($track).append($label);
+                        $turnoutCell.append($wrap);
+                        $tr.append($turnoutCell);
+
+                        $body.append($tr);
+                    });
+                })
+                .fail(function (xhr) {
+                    console.error('Town drilldown failed', xhr.status, xhr.responseText);
+                    $('#townDrilldownModalBody').html('<tr><td colspan="5" class="text-center text-danger">Failed to load — see console for details.</td></tr>');
+                });
+        });
+    });
+</script>
 @endsection
