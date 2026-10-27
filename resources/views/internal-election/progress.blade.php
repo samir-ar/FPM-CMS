@@ -1,5 +1,17 @@
 @extends('layouts.cms')
 
+@section('header_resources')
+<style>
+    /* Scoped to this page only - makes the track itself visible even at
+       0%, instead of relying on AdminLTE's default near-invisible light
+       grey (which looked like there was no bar at all). */
+    .election-progress-track {
+        background-color: #e4e4e4;
+        border: 1px solid #c9c9c9;
+    }
+</style>
+@endsection
+
 @section('content')
 <div class="box box-default">
     <div class="box-header with-border">
@@ -46,7 +58,7 @@
         </div>
 
         <div style="display:flex; align-items:center; gap:10px;">
-            <div class="progress" style="height: 25px; margin-bottom: 0; flex: 1;">
+            <div class="progress election-progress-track" style="height: 25px; margin-bottom: 0; flex: 1;">
                 <div class="progress-bar progress-bar-success" role="progressbar" style="width: {{ $overallTurnout }}%;">
                 </div>
             </div>
@@ -100,7 +112,7 @@
                                             <td>{{ number_format($row['remaining']) }}</td>
                                             <td style="min-width: 220px;">
                                                 <div style="display:flex; align-items:center; gap:8px;">
-                                                    <div class="progress" style="margin-bottom: 0; flex: 1;">
+                                                    <div class="progress election-progress-track" style="margin-bottom: 0; flex: 1;">
                                                         <div class="progress-bar progress-bar-{{ $row['turnout'] < 40 ? 'danger' : ($row['turnout'] < 70 ? 'warning' : 'success') }}"
                                                              role="progressbar" style="width: {{ $row['turnout'] }}%;">
                                                         </div>
