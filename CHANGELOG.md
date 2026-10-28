@@ -4,7 +4,24 @@ All notable changes to the FPM-CMS (Laravel backend) are documented in this file
 
 ## Unreleased
 
-Committed and deployed to staging; production deploy relayed, pending user confirmation (2026-10-27):
+Committed and deployed to staging **and production** 2026-10-28 (confirmed via full checksum verification):
+
+### Added
+
+- **Per-district voting on/off toggle for Internal Election** (`/admin/internal-election/{id}/district-voting-settings`, linked via a "Voting Settings" button on the Candidates page): for districts whose result is already agreed/uncontested (1-3 candidates with no real contest, or an agreed رديف among 4), turning voting off for that district hides the ballot entirely for its voters (reuses the existing can-i-vote error path, no app release needed) and the Results report ranks that district's candidates by their own admin-set `display_order` instead of vote count, with winner/رديف badges applying even at 0 votes. Only lists districts that already have at least one candidate for that election, same convention as the Results report and Progress dashboard.
+- The candidate's own district-scoped voter list (`getMyDistrictVoters()`) now also hides any district with voting toggled off — a candidate spanning multiple districts only loses the disabled one(s), not their whole list.
+
+Committed and deployed to staging 2026-10-28; **production deploy not yet confirmed**:
+
+### Added
+
+- **"Active (Last 10 Years)" tile** added to the User Activity dashboard (currently shows the same number as "This Year" since tracking only started 2026-09-24 — that's expected, it's there so the dashboard needs no code changes once real multi-year history exists).
+
+### Changed
+
+- User Activity's 5 stat tiles now always stay on one line (switched from Bootstrap's 12-column grid, which can't divide evenly into 5, to a flex row).
+
+Committed and deployed to staging **and production** 2026-10-27:
 
 ### Added
 
