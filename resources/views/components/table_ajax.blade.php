@@ -111,6 +111,13 @@
                     order: [[ 0, "desc" ]],
                 @endif
                 @if(isset($rowGroupDataSrc))
+                    // RowGroup has no visibility into rows outside the
+                    // current page, so with server-side paging a group that
+                    // spans a page boundary gets split into two separate-
+                    // looking headers (same district, two different counts).
+                    // Not a valid combination for this component - always
+                    // show every row on one page whenever grouping is on.
+                    paging: false,
                     rowGroup: {
                         dataSrc: '{{ $rowGroupDataSrc }}',
                         startRender: function (rows, group) {
