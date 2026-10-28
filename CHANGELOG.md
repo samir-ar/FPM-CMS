@@ -15,6 +15,7 @@ Committed and deployed to staging **and production** 2026-10-29 (confirmed via c
 
 - **DataTables RowGroup + server-side pagination**: a district's candidates spanning a page boundary showed as two separate group headers for the same district (split counts). Fixed by disabling `paging` whenever `rowGroupDataSrc` is set (shared `table_ajax.blade.php` component — only the Internal Election Candidates page uses this combination, so the fix is scoped to it).
 - **Internal Election candidate group header showed only one district** for a candidate linked to multiple districts, even though the visible State column correctly showed both. The header now joins every linked `election_states` name.
+- **Results report (`/admin/internal-election/export/{id}`) showed the same candidate list twice** for districts that share an identical candidate set (a shared/split seat, e.g. بعلبك والهرمل) — each district independently pulled the full list, so the report rendered two identical sections instead of one. Districts whose candidate sets match exactly are now merged into a single section with a combined heading (e.g. "بعلبك، الهرمل"); vote counts are not summed across the merge since they were already identical per candidate (vote counts aren't district-scoped to begin with).
 
 ### Note (not a bug — confirmed intentional, 2026-10-28)
 
