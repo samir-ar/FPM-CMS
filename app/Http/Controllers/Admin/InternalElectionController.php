@@ -223,7 +223,7 @@ class InternalElectionController extends Controller
                             "<label>Add a single voter by Member ID</label>" .
                             "<div style='display:flex; gap:8px; max-width:420px;'>" .
                                 "<input type='text' id='addSingleVoterMemberId' class='form-control' placeholder='Member ID'>" .
-                                "<button type='button' id='addSingleVoterBtn' class='btn btn-primary' style='white-space:nowrap;' data-election-id='{$id}'>Add</button>" .
+                                "<button type='button' id='addSingleVoterSearchBtn' class='btn btn-default' style='white-space:nowrap;' data-election-id='{$id}'>Search</button>" .
                             "</div>" .
                             "<div id='addSingleVoterResult' style='margin-top:8px;'></div>" .
                         "</div>",
@@ -262,10 +262,39 @@ class InternalElectionController extends Controller
         return redirect(route('admin.internal-election.index'))->with('message', 'Election has been updated successfully');
     }
 
+    // Look up a member by FPM ID without adding them yet - the admin sees
+    // the real name and current permitted status first, then confirms via
+    // addSinglePermittedVoter() below.
+    public function lookupSinglePermittedVoter(Request $request, $id){
+        $election = InternalElection::find($id);
+        if (!$election) {
+            return response()->json(['error' => 'Election not found'], 404);
+        }
+
+        $memberId = trim((string) $request->input('member_id'));
+        if ($memberId === '' || !ctype_digit($memberId)) {
+            return response()->json(['error' => 'Enter a valid numeric Member ID'], 422);
+        }
+
+        $fpmUser = FpmUser::where('MemberId', $memberId)->first(['MemberId', 'UserFullName']);
+        if (!$fpmUser) {
+            return response()->json(['error' => 'No FPM member found with that ID'], 404);
+        }
+
+        $alreadyPermitted = InternalElectionPermission::where('election_id', $election->id)
+            ->where('member_id', $memberId)
+            ->exists();
+
+        return response()->json([
+            'name' => $fpmUser->UserFullName,
+            'member_id' => $memberId,
+            'already_permitted' => $alreadyPermitted,
+        ]);
+    }
+
     // Adds one member to the permitted-voters list without needing a full
     // Excel re-upload (which replaces the whole list - see update() above).
-    // Looks the member up by FPM ID first so the admin sees the real name
-    // before confirming, same spirit as the candidate-search-by-FPM-ID flow.
+    // Called after lookupSinglePermittedVoter() above confirms the real name.
     public function addSinglePermittedVoter(Request $request, $id){
         $election = InternalElection::find($id);
         if (!$election) {
@@ -294,6 +323,20 @@ class InternalElectionController extends Controller
         ]);
     }
 
+    // Removes one member from the permitted-voters list - the only way to
+    // remove a single person without a full Excel re-upload (which
+    // replaces everyone, see update() above).
+    public function removePermittedVoter($id, $permissionId){
+        $permission = InternalElectionPermission::where('election_id', $id)->where('id', $permissionId)->first();
+        if (!$permission) {
+            return response()->json(['error' => 'Permitted voter not found'], 404);
+        }
+
+        $permission->delete();
+
+        return response()->json(['success' => true]);
+    }
+
     private function getPermittedTable($electionId){
         // A real election can have thousands of permitted voters (e.g.
         // ~15,000 for the Nov 2026 internal election) - paginated (25/page)
@@ -302,9 +345,14 @@ class InternalElectionController extends Controller
         // rather than loading every row into one giant inline table.
         $page = max(1, (int) request('permitted_page', 1));
         $perPage = 25;
+        $search = trim((string) request('permitted_search', ''));
 
-        $listPermissions = InternalElectionPermission::where('election_id', $electionId)
-            ->orderBy('id')
+        $query = InternalElectionPermission::where('election_id', $electionId);
+        if ($search !== '') {
+            $query->where('member_id', 'like', '%' . $search . '%');
+        }
+
+        $listPermissions = $query->orderBy('id')
             ->paginate($perPage, ['*'], 'permitted_page', $page);
 
         // Joining directly to app_users on member_id fans one permission
@@ -332,14 +380,27 @@ class InternalElectionController extends Controller
             $names = $names->union($fpmNames);
         }
 
-        $html = "<p class='text-muted'>" . $listPermissions->total() . " permitted voter(s) total.</p>";
+        // A real <form> here would nest inside this page's outer edit-form
+        // (invalid HTML) - navigate via JS instead of a real GET form submit.
+        $searchParams = request()->except(['permitted_page', 'permitted_search']);
+        $searchUrlBase = request()->url() . (empty($searchParams) ? '' : '?' . http_build_query($searchParams));
+        $html = "<div style='display:flex; gap:8px; max-width:420px; margin-bottom:12px;'>";
+        $html .= "<input type='text' id='permittedSearchInput' class='form-control' placeholder='Search by Member ID' value='" . e($search) . "'>";
+        $html .= "<button type='button' class='btn btn-default permitted-search-btn' style='white-space:nowrap;' data-url='{$searchUrlBase}'>Search</button>";
+        if ($search !== '') {
+            $html .= "<a href='{$searchUrlBase}' class='btn btn-default' style='white-space:nowrap;'>Clear</a>";
+        }
+        $html .= "</div>";
+
+        $html .= "<p class='text-muted'>" . $listPermissions->total() . " permitted voter(s) total" . ($search !== '' ? ' (filtered)' : '') . ".</p>";
         $html .= "<table class='table table-striped table-dark'>";
-        $html .= "<thead><tr><th scope='col'>Member Id</th><th scope='col'>Name</th></tr></thead><tbody>";
+        $html .= "<thead><tr><th scope='col'>Member Id</th><th scope='col'>Name</th><th scope='col'>Action</th></tr></thead><tbody id='permittedVotersTbody'>";
 
         foreach ($listPermissions as $permission) {
-            $html .= "<tr>";
+            $html .= "<tr data-permission-id='{$permission->id}'>";
             $html .= "<td>" . $permission->member_id . "</td>";
             $html .= "<td>" . ($names->get($permission->member_id) ?? '') . "</td>";
+            $html .= "<td><a href='#' class='remove-permitted-voter-link' data-election-id='{$electionId}' data-permission-id='{$permission->id}'><i class='fa fa-trash' style='color:red;' aria-hidden='true'></i></a></td>";
             $html .= "</tr>";
         }
 

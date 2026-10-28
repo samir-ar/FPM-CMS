@@ -31,7 +31,9 @@ $(document).ready(function(){
 
     // Edit Election page: add a single permitted voter by Member ID without
     // needing a full Excel re-upload (which replaces the whole list).
-    $('body').on('click', '#addSingleVoterBtn', function(){
+    // Two-step: Search shows the real name first, then a separate Add
+    // button (shown only if they aren't already permitted) confirms it.
+    $('body').on('click', '#addSingleVoterSearchBtn', function(){
         var $btn = $(this);
         var electionId = $btn.data('election-id');
         var memberId = $('#addSingleVoterMemberId').val().trim();
@@ -45,21 +47,80 @@ $(document).ready(function(){
         $btn.prop('disabled', true);
         $result.html('<span class="text-muted">Looking up...</span>');
 
-        $.post('/admin/internal-election/' + electionId + '/permitted-voters/add-one', {
+        $.post('/admin/internal-election/' + electionId + '/permitted-voters/lookup', {
             _token: $('meta[name=csrf-token]').attr('content'),
             member_id: memberId
         }).done(function(response){
-            var message = response.already_existed
-                ? 'Already in the permitted list: '
-                : 'Added: ';
-            $result.html('<span class="text-success">' + message + response.name + ' (' + response.member_id + ')</span>');
-            $('#addSingleVoterMemberId').val('');
+            if (response.already_permitted) {
+                $result.html('<span class="text-success">Already in the permitted list: ' + response.name + ' (' + response.member_id + ')</span>');
+            } else {
+                var $confirm = $('<span>')
+                    .addClass('text-muted')
+                    .html('Found: <strong>' + response.name + '</strong> (' + response.member_id + ') — not yet permitted. ');
+                var $addBtn = $('<button type="button" class="btn btn-primary btn-sm">Add</button>')
+                    .on('click', function(){
+                        $addBtn.prop('disabled', true).text('Adding...');
+                        $.post('/admin/internal-election/' + electionId + '/permitted-voters/add-one', {
+                            _token: $('meta[name=csrf-token]').attr('content'),
+                            member_id: response.member_id
+                        }).done(function(addResponse){
+                            $result.html('<span class="text-success">Added: ' + addResponse.name + ' (' + addResponse.member_id + ')</span>');
+                            $('#addSingleVoterMemberId').val('');
+                        }).fail(function(xhr){
+                            var msg = (xhr.responseJSON && xhr.responseJSON.error) ? xhr.responseJSON.error : 'Failed to add voter — see console for details.';
+                            $result.html('<span class="text-danger">' + msg + '</span>');
+                            console.error('Add single voter failed', xhr.status, xhr.responseText);
+                        });
+                    });
+                $result.empty().append($confirm).append($addBtn);
+            }
         }).fail(function(xhr){
-            var msg = (xhr.responseJSON && xhr.responseJSON.error) ? xhr.responseJSON.error : 'Failed to add voter — see console for details.';
+            var msg = (xhr.responseJSON && xhr.responseJSON.error) ? xhr.responseJSON.error : 'Lookup failed — see console for details.';
             $result.html('<span class="text-danger">' + msg + '</span>');
-            console.error('Add single voter failed', xhr.status, xhr.responseText);
+            console.error('Lookup single voter failed', xhr.status, xhr.responseText);
         }).always(function(){
             $btn.prop('disabled', false);
+        });
+    });
+
+    // Permitted-voters list: search box navigates via a plain GET-style
+    // redirect (not a real <form>, since this list is embedded inside the
+    // page's outer edit-form and a nested form would be invalid HTML).
+    $('body').on('click', '.permitted-search-btn', function(){
+        var baseUrl = $(this).data('url');
+        var term = $('#permittedSearchInput').val().trim();
+        var separator = baseUrl.indexOf('?') === -1 ? '?' : '&';
+        window.location.href = baseUrl + (term ? separator + 'permitted_search=' + encodeURIComponent(term) : '') + '#permitted-voters';
+    });
+    $('body').on('keydown', '#permittedSearchInput', function(e){
+        if (e.key === 'Enter' || e.keyCode === 13) {
+            e.preventDefault();
+            $('.permitted-search-btn').trigger('click');
+        }
+    });
+
+    // Permitted-voters list: remove one member without a full Excel
+    // re-upload (which replaces everyone, see update()'s delete-then-import
+    // behavior).
+    $('body').on('click', '.remove-permitted-voter-link', function(e){
+        e.preventDefault();
+        var $link = $(this);
+        var electionId = $link.data('election-id');
+        var permissionId = $link.data('permission-id');
+
+        if (!confirm('Remove this member from the permitted-voters list?')) {
+            return;
+        }
+
+        $.ajax({
+            url: '/admin/internal-election/' + electionId + '/permitted-voters/' + permissionId,
+            method: 'DELETE',
+            data: { _token: $('meta[name=csrf-token]').attr('content') }
+        }).done(function(){
+            $link.closest('tr').fadeOut(200, function(){ $(this).remove(); });
+        }).fail(function(xhr){
+            alert('Failed to remove — see console for details.');
+            console.error('Remove permitted voter failed', xhr.status, xhr.responseText);
         });
     });
 

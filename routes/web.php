@@ -526,7 +526,9 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::resource('internal-election', 'InternalElectionController')->only(['index', 'show'])->middleware('page-perm:57,view');
     Route::post('internal-election/publish/{id}', 'InternalElectionController@publish')->middleware('page-perm:57,full');
     Route::post('internal-election/update-closes-at/{id}', 'InternalElectionController@updateClosesAt')->name('internal-election.update-closes-at')->middleware('page-perm:57,full');
+    Route::post('internal-election/{id}/permitted-voters/lookup', 'InternalElectionController@lookupSinglePermittedVoter')->name('internal-election.permitted-voters.lookup')->middleware('page-perm:57,full');
     Route::post('internal-election/{id}/permitted-voters/add-one', 'InternalElectionController@addSinglePermittedVoter')->name('internal-election.permitted-voters.add-one')->middleware('page-perm:57,full');
+    Route::delete('internal-election/{id}/permitted-voters/{permissionId}', 'InternalElectionController@removePermittedVoter')->name('internal-election.permitted-voters.remove')->middleware('page-perm:57,full');
     Route::get('internal-election/export/{id}', 'InternalElectionController@export')->name('internal-election.export')->middleware('page-perm:57,view');
     Route::get('internal-election/{id}/votes', 'InternalElectionController@votes')->name('internal-election.votes')->middleware('page-perm:57,view');
     Route::get('internal-election/{id}/votes-report', 'InternalElectionController@votesReport')->name('internal-election.votes-report')->middleware('page-perm:57,view');
