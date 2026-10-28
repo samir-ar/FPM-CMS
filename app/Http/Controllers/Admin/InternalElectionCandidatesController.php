@@ -59,7 +59,19 @@ class InternalElectionCandidatesController extends Controller
                 $birth = $birthDates->get($candidate->member_id);
                 $candidate->computed_age = $birth ? \Carbon\Carbon::parse($birth)->age : null;
                 $state = $primaryState($candidate);
-                $candidate->computed_state_name = $state->name ?? 'بدون دائرة';
+                // Group header shows every district this candidate is
+                // linked to (e.g. "الهرمل, بعليك" for a merged-seat
+                // candidate), not just the one used to rank the group -
+                // same separator as the visible State column, sorted the
+                // same way so every candidate sharing the same district
+                // set produces an identical header string and groups
+                // together correctly.
+                $candidate->computed_state_name = $candidate->electionStates->isEmpty()
+                    ? 'بدون دائرة'
+                    : $candidate->electionStates
+                        ->sortBy(fn($s) => $stateRanks->get($s->id, PHP_INT_MAX))
+                        ->pluck('name')
+                        ->implode(', ');
                 $rank = $state ? $stateRanks->get($state->id, PHP_INT_MAX) : PHP_INT_MAX;
                 // Candidates with no age on file (manually-entered, no FPM
                 // record) sort last within their district group, per the
