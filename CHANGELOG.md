@@ -4,6 +4,22 @@ All notable changes to the FPM-CMS (Laravel backend) are documented in this file
 
 ## Unreleased
 
+Committed and deployed to staging **and production** 2026-10-29 (confirmed via checksum verification):
+
+### Added
+
+- **Internal Election "Edit Election" page: add a single permitted voter by Member ID** without needing a full Excel re-upload (which replaces the whole list — see note below). Two-step flow: "Search" looks up the member and shows their real name first (and whether they're already permitted) before a separate "Add" button commits it, so a typo can't silently add the wrong person.
+- **Permitted-voters list gained a search box and a per-row delete (trash icon)** — search filters by Member ID (paginated, 25/page, `permitted_search` query param carried through pagination links), delete removes one voter without touching the rest of the list.
+
+### Fixed
+
+- **DataTables RowGroup + server-side pagination**: a district's candidates spanning a page boundary showed as two separate group headers for the same district (split counts). Fixed by disabling `paging` whenever `rowGroupDataSrc` is set (shared `table_ajax.blade.php` component — only the Internal Election Candidates page uses this combination, so the fix is scoped to it).
+- **Internal Election candidate group header showed only one district** for a candidate linked to multiple districts, even though the visible State column correctly showed both. The header now joins every linked `election_states` name.
+
+### Note (not a bug — confirmed intentional, 2026-10-28)
+
+- `InternalElectionController::update()`'s Excel-upload path deletes **all** existing permitted voters for that election before importing the new file (full replace, not a merge) — this caused a real incident where a 1-row "add one member" file wiped ~35,000 real voters, recovered via a backup re-extraction. The user explicitly decided to keep this delete-then-import behavior as-is (matches the National Council Poll's re-upload convention) rather than patch it — the single-voter add/search/delete feature above exists specifically so a one-off change no longer requires touching the Excel upload at all.
+
 Committed and deployed to staging **and production** 2026-10-28 (confirmed via full checksum verification):
 
 ### Added

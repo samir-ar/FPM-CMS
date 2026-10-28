@@ -2,6 +2,10 @@
 
 Practical, non-obvious knowledge about how this CMS actually behaves — things you'd otherwise only discover by debugging.
 
+## Internal Election's Excel permitted-voters upload is a full replace, not a merge
+
+`InternalElectionController::update()` runs `InternalElectionPermission::where('election_id', $internal->id)->delete();` **before** `Excel::import(new InternalElectionAllowedVotersImport(...), ...)` — even though the import class itself does a genuinely additive, chunked `upsert()`. Uploading a file containing only one member therefore wipes every other permitted voter for that election first. This caused a real incident (2026-10-28, ~35,000 voters wiped down to 1, recovered from a DB backup). **This is intentional, confirmed behavior** (matches the National Council Poll's own re-upload convention) — not a bug to patch. For adding/removing one voter at a time without touching the rest of the list, use the "Add a single voter by Member ID" field and the search+delete controls on the same Edit Election page instead of re-uploading Excel.
+
 ## Where "Groups" data comes from
 
 Groups are **not authored locally**. The admin "Refresh Groups" button (`/admin/groups/create`, `GroupsController::create()` — the route name says "create" but it's a sync action, not a form) calls an external API:
