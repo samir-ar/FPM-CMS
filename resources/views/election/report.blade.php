@@ -43,14 +43,14 @@
 
                 @forelse ($results as $row)
                     @php
-                        $state = $row['state'];
+                        $stateLabel = $row['state_label'];
                         $candidates = $row['candidates'];
                         $voters = $row['voters'];
                         $votingDisabled = $row['voting_disabled'] ?? false;
                     @endphp
 
                     <div class="headline-container">
-                        <h2>{{ $state->name }}</h2>
+                        <h2>{{ $stateLabel }}</h2>
                         @if($votingDisabled)
                             <span style="display:inline-block; margin-right:10px; padding:3px 10px; border-radius:4px; background:#f0ad4e; color:#fff; font-size:13px;">
                                 تم تحديد النتيجة مسبقاً — لا تصويت في هذا القضاء

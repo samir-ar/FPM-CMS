@@ -915,12 +915,39 @@ class InternalElectionController extends Controller
             });
 
             return [
-                'state' => $state,
+                'state_label' => $state->name,
                 'candidates' => $candidates,
                 'voters' => $candidates->sum('votes_count'),
                 'voting_disabled' => $votingDisabled,
             ];
         });
+
+        // Districts sharing the exact same candidate set are really one
+        // shared race (e.g. a seat split across two districts, like بعلبك
+        // والهرمل) - merge them into a single section with a combined
+        // heading instead of repeating the identical candidate list once
+        // per district.
+        $merged = collect();
+        foreach ($results as $row) {
+            $key = $row['candidates']->pluck('id')->sort()->values()->implode(',');
+
+            $existingIndex = $key !== '' ? $merged->search(function($existing) use ($key) {
+                return ($existing['_merge_key'] ?? null) === $key;
+            }) : false;
+
+            if ($existingIndex !== false) {
+                $existing = $merged[$existingIndex];
+                $existing['state_label'] .= '، ' . $row['state_label'];
+                $merged[$existingIndex] = $existing;
+            } else {
+                $row['_merge_key'] = $key;
+                $merged->push($row);
+            }
+        }
+        $results = $merged->map(function($row){
+            unset($row['_merge_key']);
+            return $row;
+        })->values();
 
         return view('election.report')->with(compact('election','results','allStates','selectedStateIds'));
     }
