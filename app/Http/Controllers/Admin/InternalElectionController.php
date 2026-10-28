@@ -190,6 +190,7 @@ class InternalElectionController extends Controller
             'pageTitle'		=> 'Edit Election',
             'method'		=> 'update',
             'form_action'	=> route('admin.internal-election.update', $id),
+            'scripts'		=> ['/js/internal-election.js'],
 
             'boxes' => [
                 [
@@ -218,6 +219,14 @@ class InternalElectionController extends Controller
                     'box-header' => 'Permitted',
                     'form_fields' => [
                         "<p><a href='" . route('admin.internal-election.voter-viewers', $id) . "' class='btn btn-default btn-sm'>Manage extra voter-list viewers (non-candidates)</a></p>",
+                        "<div class='form-group col-md-12' style='margin-bottom:20px;'>" .
+                            "<label>Add a single voter by Member ID</label>" .
+                            "<div style='display:flex; gap:8px; max-width:420px;'>" .
+                                "<input type='text' id='addSingleVoterMemberId' class='form-control' placeholder='Member ID'>" .
+                                "<button type='button' id='addSingleVoterBtn' class='btn btn-primary' style='white-space:nowrap;' data-election-id='{$id}'>Add</button>" .
+                            "</div>" .
+                            "<div id='addSingleVoterResult' style='margin-top:8px;'></div>" .
+                        "</div>",
                         $this->getPermittedTable($id),
                     ],
                 ],
@@ -251,6 +260,38 @@ class InternalElectionController extends Controller
         }
 
         return redirect(route('admin.internal-election.index'))->with('message', 'Election has been updated successfully');
+    }
+
+    // Adds one member to the permitted-voters list without needing a full
+    // Excel re-upload (which replaces the whole list - see update() above).
+    // Looks the member up by FPM ID first so the admin sees the real name
+    // before confirming, same spirit as the candidate-search-by-FPM-ID flow.
+    public function addSinglePermittedVoter(Request $request, $id){
+        $election = InternalElection::find($id);
+        if (!$election) {
+            return response()->json(['error' => 'Election not found'], 404);
+        }
+
+        $memberId = trim((string) $request->input('member_id'));
+        if ($memberId === '' || !ctype_digit($memberId)) {
+            return response()->json(['error' => 'Enter a valid numeric Member ID'], 422);
+        }
+
+        $fpmUser = FpmUser::where('MemberId', $memberId)->first(['MemberId', 'UserFullName']);
+        if (!$fpmUser) {
+            return response()->json(['error' => 'No FPM member found with that ID'], 404);
+        }
+
+        $permission = InternalElectionPermission::firstOrCreate([
+            'election_id' => $election->id,
+            'member_id' => $memberId,
+        ]);
+
+        return response()->json([
+            'name' => $fpmUser->UserFullName,
+            'member_id' => $memberId,
+            'already_existed' => !$permission->wasRecentlyCreated,
+        ]);
     }
 
     private function getPermittedTable($electionId){

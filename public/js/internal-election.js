@@ -29,6 +29,40 @@ $(document).ready(function(){
         });
     });
 
+    // Edit Election page: add a single permitted voter by Member ID without
+    // needing a full Excel re-upload (which replaces the whole list).
+    $('body').on('click', '#addSingleVoterBtn', function(){
+        var $btn = $(this);
+        var electionId = $btn.data('election-id');
+        var memberId = $('#addSingleVoterMemberId').val().trim();
+        var $result = $('#addSingleVoterResult');
+
+        if (!memberId) {
+            $result.html('<span class="text-danger">Enter a Member ID first.</span>');
+            return;
+        }
+
+        $btn.prop('disabled', true);
+        $result.html('<span class="text-muted">Looking up...</span>');
+
+        $.post('/admin/internal-election/' + electionId + '/permitted-voters/add-one', {
+            _token: $('meta[name=csrf-token]').attr('content'),
+            member_id: memberId
+        }).done(function(response){
+            var message = response.already_existed
+                ? 'Already in the permitted list: '
+                : 'Added: ';
+            $result.html('<span class="text-success">' + message + response.name + ' (' + response.member_id + ')</span>');
+            $('#addSingleVoterMemberId').val('');
+        }).fail(function(xhr){
+            var msg = (xhr.responseJSON && xhr.responseJSON.error) ? xhr.responseJSON.error : 'Failed to add voter — see console for details.';
+            $result.html('<span class="text-danger">' + msg + '</span>');
+            console.error('Add single voter failed', xhr.status, xhr.responseText);
+        }).always(function(){
+            $btn.prop('disabled', false);
+        });
+    });
+
     // Candidate list: inline-editable display order, saved on change.
     $('body').on('change', '.candidate-order-input', function(){
         var $input = $(this);
