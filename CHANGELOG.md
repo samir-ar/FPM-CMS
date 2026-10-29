@@ -6,6 +6,12 @@ All notable changes to the FPM-CMS (Laravel backend) are documented in this file
 
 Committed and deployed to staging **and production** 2026-10-29 (confirmed via checksum verification):
 
+### Changed
+
+- **Memos admin form now uses a date+time picker instead of date-only.** The `memos.date` column was `date` (no time stored), so multiple memos on the same calendar date had no way to control their relative order in the app's Memos list (sorted by `date` descending). Migrated the column to `datetime`; admins can now pick a time alongside the date so same-day memos sort in the intended order. App-facing display is unchanged (still shows date only).
+
+Committed and deployed to staging **and production** 2026-10-29 (confirmed via checksum verification):
+
 ### Added
 
 - **Internal Election "Edit Election" page: add a single permitted voter by Member ID** without needing a full Excel re-upload (which replaces the whole list — see note below). Two-step flow: "Search" looks up the member and shows their real name first (and whether they're already permitted) before a separate "Add" button commits it, so a typo can't silently add the wrong person.

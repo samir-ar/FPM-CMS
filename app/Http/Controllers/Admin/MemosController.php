@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use DB;
+use Carbon\Carbon;
 use App\Memo;
 use App\Group;
 use DataTables;
@@ -87,7 +88,7 @@ class MemosController extends Controller
                         $this->drawHtml('small_text', 'Title (Arabic)', 'name_ar', $request->old('name_ar') , null, '', 'col-md-12 right-to-left'),
 
                         //$this->drawHtml('text', 'Details', 'details', $request->old('details'), null, '', 'col-md-12'),
-                        $this->drawHtml('date-picker', 'Date', 'date', $request->old('date'), null, '', 'col-md-12'),
+                        $this->drawHtml('date-time-picker', 'Date', 'date', $request->old('date'), null, '', 'col-md-12'),
                         //$this->drawHtml('multiple-file-upload', 'Images', 'images',  null, ['add' => route('admin.memos.upload_file'), 'delete' => route('admin.memos.remove_file')],'', 'col-md-12'),
 
                         $this->drawHtml('pdf', 'PDF file', 'file',  null, null,'', 'col-md-12 required'),
@@ -187,7 +188,7 @@ class MemosController extends Controller
                         $this->drawHtml('small_text', 'Title (Arabic)', 'name_ar', $memo->getTranslation('name', 'ar') , null, '', 'col-md-12 right-to-left required'),
 
                         //$this->drawHtml('text', 'Details', 'details', $memo->details, null, '', 'col-md-12'),
-                        $this->drawHtml('date-picker', 'Date', 'date', $memo->date, null, '', 'col-md-12'),
+                        $this->drawHtml('date-time-picker', 'Date', 'date', $memo->date ? Carbon::parse($memo->date)->format('Y-m-d H:i') : '', null, '', 'col-md-12'),
 
                         $this->drawHtml('pdf', 'PDF file', 'file',  $memo->file, null,'', 'col-md-12'),
                     ],
