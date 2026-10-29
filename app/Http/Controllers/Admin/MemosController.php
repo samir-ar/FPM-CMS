@@ -138,7 +138,7 @@ class MemosController extends Controller
         ]);
 
         //$memo->details = request('details');
-        $memo->date = request('date');
+        $memo->date = request('date') ? Carbon::parse(request('date'))->toDateTimeString() : null;
         $memo->file = $this->moveFile(request('file'), 'images/memos');
         $memo->save();
 
@@ -238,7 +238,7 @@ class MemosController extends Controller
             'ar' => request('name_ar'),
         ]);
         //$memo->details = request('details');
-        $memo->date = request('date');
+        $memo->date = request('date') ? Carbon::parse(request('date'))->toDateTimeString() : null;
 
         if(request('file'))
             $memo->file = $this->moveFile(request('file'), 'images/memos');
