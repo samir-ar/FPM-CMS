@@ -10,6 +10,10 @@ Committed and deployed to staging **and production** 2026-10-29 (confirmed via c
 
 - **Memos admin form now uses a date+time picker instead of date-only.** The `memos.date` column was `date` (no time stored), so multiple memos on the same calendar date had no way to control their relative order in the app's Memos list (sorted by `date` descending). Migrated the column to `datetime`; admins can now pick a time alongside the date so same-day memos sort in the intended order. App-facing display is unchanged (still shows date only).
 
+### Fixed
+
+- **Memo create/edit 500'd on every save** right after the date+time picker change above — the picker outputs 12-hour AM/PM text (e.g. `2026-10-28 12:00 PM`), which was being saved raw into the `datetime` column and rejected by MySQL (`SQLSTATE[22007]`). Fixed by parsing the submitted value through `Carbon::parse(...)->toDateTimeString()` before saving, same pattern already used by `PollsController` for its own date-time-picker field.
+
 Committed and deployed to staging **and production** 2026-10-29 (confirmed via checksum verification):
 
 ### Added
