@@ -54,6 +54,9 @@ use App\V2\InternalElectionVoterViewer;
 use App\V2\InternalElectionDistrictVotingSetting;
 use App\V2\ElectionState;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
 
 use GuzzleHttp\Client;
 
@@ -2317,6 +2320,53 @@ class ApiController extends Controller
             return $this->api_error_response('missing_parameters', 101, "user not found");
         }
 
+        // Escalated lockout check — see below for how this gets set. Short-
+        // circuits everything else once a member has repeatedly tripped the
+        // hourly limit in the same day, independent of whether they'd
+        // otherwise be allowed through right now.
+        $escalatedLockKey = 'district-voters-escalated-lock:' . $user->member_id;
+        if (Cache::has($escalatedLockKey)) {
+            return $this->api_error_response('too_many_requests', 429, 'تم تقييد الوصول مؤقتاً بسبب تكرار تجاوز الحد المسموح، يرجى المحاولة لاحقاً', 429);
+        }
+
+        // Minimum spacing between consecutive pulls — without this, a
+        // script could fire an entire hour's worth of allowance in under a
+        // second. A human paging through a real list naturally pauses
+        // between pages; this just enforces that.
+        $cooldownKey = 'district-voters-cooldown:' . $user->member_id;
+        if (Cache::has($cooldownKey)) {
+            return $this->api_error_response('too_many_requests', 429, 'الرجاء الانتظار قليلاً قبل تحميل المزيد', 429);
+        }
+        Cache::put($cooldownKey, true, 3);
+
+        // Per-candidate rate limit — this endpoint hands back real voter
+        // names and phone numbers for an entire district, so nothing short
+        // of this stops a script (using a perfectly legitimate login) from
+        // pulling it far faster than any human reading the list would.
+        // 20/hour comfortably covers a real candidate opening the list,
+        // paginating through it, and refreshing a few times across the
+        // day — it only ever bites sustained automated polling.
+        $rateLimitKey = 'district-voters:' . $user->member_id;
+        if (RateLimiter::tooManyAttempts($rateLimitKey, 20)) {
+            // Escalating lockout — repeatedly tripping the hourly limit in
+            // the same day pushes the next cooldown out much further
+            // (6h, then 24h) instead of always just waiting out a flat
+            // hour and immediately trying again.
+            $violationsKey = 'district-voters-violations:' . $user->member_id . ':' . now()->toDateString();
+            $violations = Cache::increment($violationsKey);
+            if ($violations == 2) {
+                Cache::put($escalatedLockKey, true, now()->addHours(6));
+            } elseif ($violations >= 3) {
+                Cache::put($escalatedLockKey, true, now()->addHours(24));
+            }
+            Log::warning('district_voters_rate_limited', [
+                'member_id' => $user->member_id,
+                'violations_today' => $violations,
+            ]);
+            return $this->api_error_response('too_many_requests', 429, 'لقد تجاوزت الحد المسموح من الطلبات، يرجى المحاولة لاحقاً', 429);
+        }
+        RateLimiter::hit($rateLimitKey, 3600);
+
         // Checked without the voter_list_visible filter first, so we can
         // tell "not a candidate/viewer at all" apart from "is one, but the
         // admin has the list paused right now" and return the right message
@@ -2406,22 +2456,84 @@ class ApiController extends Controller
             ->pluck('app_users.member_id')
             ->unique();
 
-        $voters = FpmUser::whereIn('district', $districtNames)
+        // Paginated, fixed server-side regardless of anything the client
+        // sends — turns "one call = the whole district" into "dozens of
+        // calls needed", which is what makes the rate limit above actually
+        // mean something instead of just gating a single instant dump.
+        $page = max(1, (int) $request->query('page', 1));
+        $perPage = 30;
+
+        $paginated = FpmUser::whereIn('district', $districtNames)
             ->where('member_status', 1)
             ->whereIn('MemberId', $allowedMemberIds)
             ->orderBy('town')
             ->orderBy('UserFullName')
-            ->get(['MemberId', 'UserFullName', 'MobileNumber', 'town'])
-            ->map(function ($voter) use ($votedMemberIds) {
-                return [
-                    'full_name' => $this->shortVoterName($voter->UserFullName),
-                    'mobile_number' => $voter->MobileNumber,
-                    'town' => $voter->town,
-                    'has_voted' => $votedMemberIds->contains($voter->MemberId),
-                ];
-            });
+            ->paginate($perPage, ['MemberId', 'UserFullName', 'MobileNumber', 'town'], 'page', $page);
 
-        return response()->json(['voters' => $voters], 200);
+        $voters = collect($paginated->items())->map(function ($voter) use ($votedMemberIds) {
+            return [
+                'full_name' => $this->shortVoterName($voter->UserFullName),
+                'mobile_number' => $voter->MobileNumber,
+                'town' => $voter->town,
+                'has_voted' => $votedMemberIds->contains($voter->MemberId),
+            ];
+        })->values();
+
+        // Distinct town list across the candidate's FULL scope (not just
+        // this page) — cheap aggregate, no per-voter data in it — so the
+        // app's town filter dropdown is complete from page 1 onward
+        // instead of only showing towns seen so far as pages load.
+        $towns = FpmUser::whereIn('district', $districtNames)
+            ->where('member_status', 1)
+            ->whereIn('MemberId', $allowedMemberIds)
+            ->whereNotNull('town')
+            ->where('town', '!=', '')
+            ->distinct()
+            ->orderBy('town')
+            ->pluck('town')
+            ->values();
+
+        // Audit trail — a district's voter list is real member PII (names +
+        // phone numbers); this is what lets staff see exactly who pulled
+        // how much, when, and from where if a list ever leaks.
+        Log::info('district_voters_pull', [
+            'member_id' => $user->member_id,
+            'page' => $page,
+            'count' => $voters->count(),
+            'ip' => $request->ip(),
+        ]);
+
+        // A sustained high volume across many hours (not just one burst)
+        // is the real signature of someone looping this endpoint slowly
+        // enough to stay under the hourly cap while still rebuilding the
+        // full dataset over a day — logged distinctly (warning level) so
+        // it's easy to grep/alert on separately from ordinary use. Fires
+        // once per member per day, right when the threshold is crossed.
+        $dailyKey = 'district-voters-daily:' . $user->member_id . ':' . now()->toDateString();
+        $dailyCount = Cache::increment($dailyKey);
+        if ($dailyCount == 100) {
+            Log::warning('district_voters_abuse_suspected', [
+                'member_id' => $user->member_id,
+                'daily_pull_count' => $dailyCount,
+                'ip' => $request->ip(),
+            ]);
+        }
+
+        // Whether any of this candidate's/viewer's own elections is
+        // actually published yet — the vote-status filter (صوّتوا / لم
+        // يصوّتوا) only makes sense once voting can actually happen, so the
+        // app hides it entirely before that.
+        $isPublished = InternalElection::whereIn('id', $relevantElectionIds)
+            ->where('is_active', true)
+            ->exists();
+
+        return response()->json([
+            'voters' => $voters,
+            'towns' => $towns,
+            'page' => $page,
+            'has_more' => $paginated->hasMorePages(),
+            'is_published' => $isPublished,
+        ], 200);
     }
 
     // Drops the father/grandfather middle name(s), keeping just first + family

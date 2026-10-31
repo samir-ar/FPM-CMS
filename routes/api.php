@@ -56,11 +56,18 @@ Route::group(['namespace' => 'Api\V2', 'prefix' => 'v2/', 'middleware' => ['lang
 
 
         /////////////////𝕀𝕟𝕥𝕖𝕣𝕟𝕒𝕝 𝔼𝕝𝕖𝕔𝕥𝕚𝕠𝕟/////////////////////
-        Route::get('get-internal-election-candidates','ApiController@getInternalElectionCandidates');
-        Route::post('internal-election-selfie-upload-url','ApiController@internalElectionSelfieUploadUrl');
-        Route::post('internal-election-vote','ApiController@internalElectionVote');
-        Route::get('can-i-vote','ApiController@canIVoteEndpoint');
-        Route::get('my-district-voters','ApiController@getMyDistrictVoters');
+        // Signed (app-signature) on top of the normal auth — these hand
+        // back real member PII (candidate photos tied to member_id, full
+        // district voter lists with phone numbers), so beyond "is this a
+        // valid login" we also require proof the request came from the
+        // real app, not a script reusing a captured token.
+        Route::group(['middleware' => ['app-signature']], function () {
+            Route::get('get-internal-election-candidates','ApiController@getInternalElectionCandidates');
+            Route::post('internal-election-selfie-upload-url','ApiController@internalElectionSelfieUploadUrl');
+            Route::post('internal-election-vote','ApiController@internalElectionVote');
+            Route::get('can-i-vote','ApiController@canIVoteEndpoint');
+            Route::get('my-district-voters','ApiController@getMyDistrictVoters');
+        });
         //////////////𝔼𝕟𝕕 𝕀𝕟𝕥𝕖𝕣𝕟𝕒𝕝 𝔼𝕝𝕖𝕔𝕥𝕚𝕠𝕟///////////////////
 
 
@@ -162,10 +169,15 @@ Route::group(['namespace' => 'Api\V2', 'prefix' => 'v2/', 'middleware' => ['lang
     Route::post('legislative-categories', 'ApiController@getLegislativeCategories');
     Route::post('legislative-subcategories', 'ApiController@getLegislativeSubcategories');
     Route::post('national-plans', 'ApiController@getNationalPlans');
-    Route::post('municipalities', 'ApiController@getMunicipalities');
-    Route::post('municipality-members', 'ApiController@getMunicipalityMembers');
-    Route::post('mukhtar-villages', 'ApiController@getMukhtarVillages');
-    Route::post('mukhtars', 'ApiController@getMukhtars');
+    // بلديات و مخاتير — these had no auth at all (fully public), so this is
+    // the only thing standing between them and unrestricted anonymous bulk
+    // scraping of every member's name + phone number across every قضاء.
+    Route::group(['middleware' => ['app-signature']], function () {
+        Route::post('municipalities', 'ApiController@getMunicipalities');
+        Route::post('municipality-members', 'ApiController@getMunicipalityMembers');
+        Route::post('mukhtar-villages', 'ApiController@getMukhtarVillages');
+        Route::post('mukhtars', 'ApiController@getMukhtars');
+    });
 
     Route::post('electoral-districts', 'ApiController@getElectoralDistricts');
     Route::post('towns', 'ApiController@getTowns');

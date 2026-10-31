@@ -39,6 +39,10 @@ return [
     'one_signal_url' => env('ONE_SIGNAL_URL'),
     'one_signal_rest_api_key' => env('ONE_SIGNAL_REST_API_KEY'),
 
+    // Shared secret for VerifyAppSignature — must match the value embedded
+    // in the Flutter app's AppConstants.apiSignatureSecret exactly.
+    'api_hmac_secret' => env('API_HMAC_SECRET'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Debug Mode
