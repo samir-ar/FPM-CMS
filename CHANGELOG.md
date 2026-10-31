@@ -4,6 +4,19 @@ All notable changes to the FPM-CMS (Laravel backend) are documented in this file
 
 ## Unreleased
 
+Committed and deployed to staging 2026-10-31 (git `33c15c1`) — **production deploy deliberately held back** until the matching app build (4.4.16+230040135) is confirmed live on both stores, since old app installs don't send the new signature headers and would get rejected outright. See `project_next_steps` memory for the full sequencing.
+
+### Added
+
+- **Request signing on Internal Election + مخاتير/بلديات endpoints** (`VerifyAppSignature` middleware) — HMAC-SHA256 over method + route + timestamp + sorted request params, using a shared secret (`API_HMAC_SECRET`) embedded in the app at build time. Stops a captured login token alone from being used to scrape these endpoints directly (Postman/curl), without the full cost/risk of device attestation. Includes a use-once replay check (a captured signature works exactly once, never again) and a generic per-IP rate limit (20/min) layered under endpoints that have no logged-in member to key a limit on.
+- **`getMyDistrictVoters` paginated (30/page) with a per-candidate rate limit** (20/hour), 3-second minimum spacing between pulls, and an escalating lockout (6h, then 24h) for repeat offenders in the same day — previously one call returned the entire district's voters (names, phone numbers, vote status) in one shot, with no limit on how often it could be called.
+- **Audit logging** of every `getMyDistrictVoters` pull (member_id, page, count, IP), plus a separate `warning`-level log entry if a single member crosses 100 pulls in a day — catches someone pacing requests to stay under the hourly cap while still slowly scraping.
+- `is_published` flag added to `getMyDistrictVoters`'s response so the app can hide the vote-status filter (صوّتوا/لم يصوّتوا) before an election is actually live — a candidate can see their voter list earlier than that (`voter_list_visible` is independent of `is_active`), but the filter makes no sense when nobody could have voted yet.
+
+### Fixed
+
+- `VerifyAppSignature`'s param-signing crashed with a 500 (`Error encoding model [App\V2\FpmUser] ... Malformed UTF-8`) on any signed request that went through `FpmCheckToken`/`MyAuthV2` — those middlewares merge whole Eloquent models (`loggedInUser`, `user`) and a Collection (`groups_info`) into the request before signature verification runs, and naively stringifying one of those for the canonical signing string implicitly calls the model's `toJson()`, which throws on `FpmUser`'s binary `PersonImage` column. Fixed by filtering request params to plain scalars only (defends against *any* future middleware merging in a non-scalar value, not just these specific keys) plus a small named-exclusion list for scalar-but-injected values (`language`, from `SetLanguage`) that the app itself never actually signs.
+
 Committed and deployed to staging **and production** 2026-10-29 (confirmed via checksum verification):
 
 ### Changed
