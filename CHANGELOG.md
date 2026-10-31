@@ -4,7 +4,7 @@ All notable changes to the FPM-CMS (Laravel backend) are documented in this file
 
 ## Unreleased
 
-Committed and deployed to staging 2026-10-31 (git `33c15c1`) — **production deploy deliberately held back** until the matching app build (4.4.16+230040135) is confirmed live on both stores, since old app installs don't send the new signature headers and would get rejected outright. See `project_next_steps` memory for the full sequencing.
+Committed and deployed to staging 2026-10-31 (git `33c15c1`), then to **production** the same day once `4.4.16+230040135` was confirmed approved and live on both app stores (checksum-verified, `php -l` clean, smoke-tested live: unsigned request → 403, signed request → 200).
 
 ### Added
 
