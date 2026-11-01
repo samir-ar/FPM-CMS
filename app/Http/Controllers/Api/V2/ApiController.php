@@ -2329,25 +2329,17 @@ class ApiController extends Controller
             return $this->api_error_response('too_many_requests', 429, 'تم تقييد الوصول مؤقتاً بسبب تكرار تجاوز الحد المسموح، يرجى المحاولة لاحقاً', 429);
         }
 
-        // Minimum spacing between consecutive pulls — without this, a
-        // script could fire an entire hour's worth of allowance in under a
-        // second. A human paging through a real list naturally pauses
-        // between pages; this just enforces that.
-        $cooldownKey = 'district-voters-cooldown:' . $user->member_id;
-        if (Cache::has($cooldownKey)) {
-            return $this->api_error_response('too_many_requests', 429, 'الرجاء الانتظار قليلاً قبل تحميل المزيد', 429);
-        }
-        Cache::put($cooldownKey, true, 3);
-
         // Per-candidate rate limit — this endpoint hands back real voter
         // names and phone numbers for an entire district, so nothing short
         // of this stops a script (using a perfectly legitimate login) from
         // pulling it far faster than any human reading the list would.
-        // 20/hour comfortably covers a real candidate opening the list,
-        // paginating through it, and refreshing a few times across the
-        // day — it only ever bites sustained automated polling.
+        // 60/hour at 100 voters/page is 6,000 voters/hour — comfortably
+        // covers a real candidate paging through even a large district
+        // (Zahle) in one sitting plus refreshing a few times, without the
+        // forced per-request wait a lower cap + cooldown used to need.
+        // Only ever bites sustained automated polling.
         $rateLimitKey = 'district-voters:' . $user->member_id;
-        if (RateLimiter::tooManyAttempts($rateLimitKey, 20)) {
+        if (RateLimiter::tooManyAttempts($rateLimitKey, 60)) {
             // Escalating lockout — repeatedly tripping the hourly limit in
             // the same day pushes the next cooldown out much further
             // (6h, then 24h) instead of always just waiting out a flat
@@ -2461,7 +2453,7 @@ class ApiController extends Controller
         // calls needed", which is what makes the rate limit above actually
         // mean something instead of just gating a single instant dump.
         $page = max(1, (int) $request->query('page', 1));
-        $perPage = 30;
+        $perPage = 100;
 
         // Town filter is applied server-side, not just client-side on
         // whatever's already loaded — otherwise a large district (e.g.
@@ -2539,7 +2531,7 @@ class ApiController extends Controller
         // once per member per day, right when the threshold is crossed.
         $dailyKey = 'district-voters-daily:' . $user->member_id . ':' . now()->toDateString();
         $dailyCount = Cache::increment($dailyKey);
-        if ($dailyCount == 100) {
+        if ($dailyCount == 300) {
             Log::warning('district_voters_abuse_suspected', [
                 'member_id' => $user->member_id,
                 'daily_pull_count' => $dailyCount,
