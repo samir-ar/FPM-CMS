@@ -4,6 +4,10 @@ All notable changes to the FPM-CMS (Laravel backend) are documented in this file
 
 ## Unreleased
 
+### Fixed
+
+- **`getMyDistrictVoters` town filter showed "no matches" for towns pagination hadn't reached yet** — the app's town dropdown lists every town across the candidate's full district (a separate aggregate query), but the actual filtering only searched voters already loaded on screen (30/page, alphabetical by town). Small districts never exposed this (the whole list loads before anyone opens the filter); large districts like Zahle (many towns, thousands of voters) did, since most towns genuinely weren't loaded yet when picked. Fixed by moving the town filter server-side: the app now sends `town` as a query param, the backend filters the paginated query directly (`''` = "غير محدد"/no town on file), and a new `has_unspecified_town` flag drives whether that option even appears in the dropdown — both fully scoped to the candidate's full district, not just what's loaded. Doesn't change any of the request-signing/pagination/rate-limiting protections below — `town` is just one more signed, paginated query param.
+
 Committed and deployed to staging 2026-10-31 (git `33c15c1`), then to **production** the same day once `4.4.16+230040135` was confirmed approved and live on both app stores (checksum-verified, `php -l` clean, smoke-tested live: unsigned request → 403, signed request → 200).
 
 ### Added

@@ -2463,9 +2463,27 @@ class ApiController extends Controller
         $page = max(1, (int) $request->query('page', 1));
         $perPage = 30;
 
-        $paginated = FpmUser::whereIn('district', $districtNames)
+        // Town filter is applied server-side, not just client-side on
+        // whatever's already loaded — otherwise a large district (e.g.
+        // Zahle, many towns/voters sorted alphabetically) would show "no
+        // matches" for any town not yet reached by pagination, even though
+        // it genuinely has voters. '' (as opposed to absent) means "no town
+        // on file", matching the app's "غير محدد" option.
+        $townFilter = $request->query('town');
+
+        $votersQuery = FpmUser::whereIn('district', $districtNames)
             ->where('member_status', 1)
-            ->whereIn('MemberId', $allowedMemberIds)
+            ->whereIn('MemberId', $allowedMemberIds);
+
+        if ($townFilter !== null) {
+            if ($townFilter === '') {
+                $votersQuery->where(fn($q) => $q->whereNull('town')->orWhere('town', ''));
+            } else {
+                $votersQuery->where('town', $townFilter);
+            }
+        }
+
+        $paginated = $votersQuery
             ->orderBy('town')
             ->orderBy('UserFullName')
             ->paginate($perPage, ['MemberId', 'UserFullName', 'MobileNumber', 'town'], 'page', $page);
@@ -2492,6 +2510,16 @@ class ApiController extends Controller
             ->orderBy('town')
             ->pluck('town')
             ->values();
+
+        // Same full-scope reasoning as $towns above — whether the "غير
+        // محدد" (unspecified town) option should even appear in the
+        // dropdown shouldn't depend on whether such a voter happens to be
+        // on the page that's loaded so far.
+        $hasUnspecifiedTown = FpmUser::whereIn('district', $districtNames)
+            ->where('member_status', 1)
+            ->whereIn('MemberId', $allowedMemberIds)
+            ->where(fn($q) => $q->whereNull('town')->orWhere('town', ''))
+            ->exists();
 
         // Audit trail — a district's voter list is real member PII (names +
         // phone numbers); this is what lets staff see exactly who pulled
@@ -2530,6 +2558,7 @@ class ApiController extends Controller
         return response()->json([
             'voters' => $voters,
             'towns' => $towns,
+            'has_unspecified_town' => $hasUnspecifiedTown,
             'page' => $page,
             'has_more' => $paginated->hasMorePages(),
             'is_published' => $isPublished,
