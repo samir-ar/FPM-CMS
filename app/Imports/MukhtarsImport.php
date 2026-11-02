@@ -6,12 +6,12 @@ use App\V2\Mukhtar;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\ToCollection;
 
+// Flat, one-row-per-member format: every row carries its own قضاء/قرية
+// directly, so a single file can hold every district at once and each row
+// is self-contained - no more tracking "current قضاء/قرية" across sparse
+// rows that only sometimes repeat it. Mirrors MunicipalityMembersImport.
 class MukhtarsImport implements ToCollection
 {
-    private string $currentQada = '';
-    private string $currentVillage = '';
-    private int $sortOrder = 0;
-
     private static array $validPositions = ['مختار', 'عضو اختياري', 'متوفي'];
 
     private static array $qadaMap = [
@@ -46,101 +46,75 @@ class MukhtarsImport implements ToCollection
     {
         $this->deleteExistingQadas($rows);
 
-        foreach ($rows as $index => $row) {
-            $col1 = trim($row[0] ?? ''); // village OR section header
-            $col2 = trim($row[1] ?? ''); // neighborhood
-            $col3 = trim($row[2] ?? ''); // full name
-            $col4 = trim($row[3] ?? ''); // votes (عدد الأصوات)
-            $col5 = trim($row[4] ?? ''); // position (مرشح عن)
-            $col6 = trim($row[5] ?? ''); // phone (الجوال)
-            $col8 = trim($row[7] ?? ''); // رقم الانتساب
+        $lastQada = null;
+        $lastVillage = null;
+        $sortOrder = 0;
 
-            // Row 0: governorate title — skip
+        foreach ($rows as $index => $row) {
+            // Row 0 (Excel row 1): column headers — skip
             if ($index === 0) continue;
 
-            // Row 1: قضاء name — capture
-            if ($index === 1) {
-                if ($col1 !== '') {
-                    $this->currentQada = self::$qadaMap[$col1] ?? $col1;
-                }
-                continue;
+            $qadaRaw      = trim($row[0] ?? '');
+            $village      = trim($row[1] ?? '');
+            $neighborhood = trim($row[2] ?? '');
+            $name         = trim($row[3] ?? '');
+            $votesRaw     = trim($row[4] ?? '');
+            $positionRaw  = trim($row[5] ?? '');
+            $phoneRaw     = trim($row[6] ?? '');
+            $mountasibRaw = trim($row[7] ?? '');
+
+            // Skip fully blank rows
+            if ($qadaRaw === '' && $village === '' && $name === '') continue;
+
+            // Every real data row must have at minimum a قضاء, قرية, and a
+            // name — skip anything incomplete rather than inheriting from a
+            // previous row.
+            if ($qadaRaw === '' || $village === '' || $name === '') continue;
+
+            $qada = self::$qadaMap[$qadaRaw] ?? $qadaRaw;
+
+            // Sort order restarts per (قضاء, قرية) pair
+            if ($qada !== $lastQada || $village !== $lastVillage) {
+                $sortOrder = 0;
+                $lastQada = $qada;
+                $lastVillage = $village;
             }
 
-            // Row 2: header row — skip
-            if ($index === 2) continue;
-
-            // Mid-file qada section header: col1 non-empty, col3 empty, col5 empty
-            if ($col1 !== '' && $col3 === '' && $col5 === '') {
-                $this->currentQada = self::$qadaMap[$col1] ?? $col1;
-                $this->currentVillage = '';
-                continue;
-            }
-
-            // Skip rows with no name
-            if ($col3 === '') continue;
-
-            // Update village when col1 has value
-            if ($col1 !== '') {
-                $this->currentVillage = $col1;
-                $this->sortOrder = 0;
-            }
-
-            if ($this->currentVillage === '') continue;
-
-            // Validate position
-            $position = in_array($col5, self::$validPositions) ? $col5 : 'مختار';
-
-            // Phone: null if empty or #N/A
-            $phone = ($col6 === '' || $col6 === '#N/A') ? null : $col6;
-
-            // is_mountasib: true if رقم الانتساب is non-empty
-            $isMountasib = $col8 !== '';
-
-            $votes = (int) str_replace(['٬', ',', ' '], '', $col4);
+            $position = in_array($positionRaw, self::$validPositions) ? $positionRaw : 'مختار';
+            $phone = ($phoneRaw === '' || $phoneRaw === '#N/A') ? null : $phoneRaw;
+            $isMountasib = $mountasibRaw !== '';
+            $votes = (int) str_replace(['٬', ',', ' '], '', $votesRaw);
 
             Mukhtar::create([
-                'qada'         => $this->currentQada,
-                'village_name' => $this->currentVillage,
-                'neighborhood' => $col2 ?: null,
-                'full_name'    => $col3,
+                'qada'         => $qada,
+                'village_name' => $village,
+                'neighborhood' => $neighborhood ?: null,
+                'full_name'    => $name,
                 'position'     => $position,
                 'votes'        => $votes,
                 'phone'        => $phone,
                 'is_mountasib' => $isMountasib,
-                'sort_order'   => ++$this->sortOrder,
+                'sort_order'   => ++$sortOrder,
             ]);
         }
     }
 
-    // Scans the file for every قضاء it references (row 2 + any mid-file
-    // section headers) and deletes that قضاء's existing rows before the
-    // real import pass inserts the new ones — so re-uploading an updated
-    // file for a قضاء that's already in the DB replaces it cleanly instead
-    // of duplicating it, while قضاء's not present in this file are
-    // untouched.
+    // Scans the file for every قضاء it references and deletes that قضاء's
+    // existing rows before the real import pass inserts the new ones — so
+    // re-uploading a file replaces those قضاء's data cleanly instead of
+    // duplicating it, while قضاء's not present in this file are untouched.
     private function deleteExistingQadas(Collection $rows): void
     {
         $qadas = [];
-        $current = '';
 
         foreach ($rows as $index => $row) {
-            $col1 = trim($row[0] ?? '');
-            $col3 = trim($row[2] ?? '');
-            $col5 = trim($row[4] ?? '');
+            if ($index === 0) continue;
 
-            if ($index === 1) {
-                if ($col1 !== '') {
-                    $current = self::$qadaMap[$col1] ?? $col1;
-                }
-            } elseif ($index > 1 && $col1 !== '' && $col3 === '' && $col5 === '') {
-                $current = self::$qadaMap[$col1] ?? $col1;
-            } else {
-                continue;
-            }
+            $qadaRaw = trim($row[0] ?? '');
+            if ($qadaRaw === '') continue;
 
-            if ($current !== '') {
-                $qadas[$current] = true;
-            }
+            $qada = self::$qadaMap[$qadaRaw] ?? $qadaRaw;
+            $qadas[$qada] = true;
         }
 
         if (!empty($qadas)) {
