@@ -37,10 +37,13 @@ class UserActivityController extends Controller
         // Daily trend, last 30 days — filled with zeros for days with no activity so the chart doesn't skip gaps.
         // Joined/filtered the same as distinctActiveSince() above, so a
         // deleted member's past activity doesn't inflate this chart either.
+        // Counts DISTINCT member_id, not app_user_id - a real person with
+        // two duplicate app_users accounts (a known recurring issue on this
+        // table) would otherwise count as 2 active people instead of 1.
         $trendRaw = DB::table('user_activity_logs')
             ->join('app_users', 'app_users.id', '=', 'user_activity_logs.app_user_id')
             ->whereNull('app_users.deleted_at')
-            ->select('activity_date', DB::raw('COUNT(DISTINCT user_activity_logs.app_user_id) as active_count'))
+            ->select('activity_date', DB::raw('COUNT(DISTINCT app_users.member_id) as active_count'))
             ->where('activity_date', '>=', Carbon::parse($today)->subDays(29)->toDateString())
             ->groupBy('activity_date')
             ->pluck('active_count', 'activity_date');
@@ -60,15 +63,18 @@ class UserActivityController extends Controller
         $windowSize = 30;
         $trendDays = 30;
         $lookbackStart = Carbon::parse($today)->subDays($trendDays - 1 + $windowSize - 1)->toDateString();
+        // member_id, not app_user_id - same duplicate-account reasoning as
+        // the trend chart above, so this window count matches it exactly.
         $rowsByDate = DB::table('user_activity_logs')
             ->join('app_users', 'app_users.id', '=', 'user_activity_logs.app_user_id')
             ->whereNull('app_users.deleted_at')
-            ->select('activity_date', 'user_activity_logs.app_user_id')
+            ->select('activity_date', 'app_users.member_id')
             ->where('activity_date', '>=', $lookbackStart)
+            ->distinct()
             ->get()
             ->groupBy(fn($r) => $r->activity_date);
 
-        $userCountsInWindow = []; // app_user_id => how many of their active-dates are currently in the window
+        $userCountsInWindow = []; // member_id => how many of their active-dates are currently in the window
         $periodicLabels = [];
         $periodicValues = [];
 
@@ -79,7 +85,7 @@ class UserActivityController extends Controller
         $firstWindowStart = $firstWindowEnd->copy()->subDays($windowSize - 1);
         for ($d = $firstWindowStart->copy(); $d->lte($firstWindowEnd); $d->addDay()) {
             foreach ($rowsByDate[$d->toDateString()] ?? [] as $row) {
-                $userCountsInWindow[$row->app_user_id] = ($userCountsInWindow[$row->app_user_id] ?? 0) + 1;
+                $userCountsInWindow[$row->member_id] = ($userCountsInWindow[$row->member_id] ?? 0) + 1;
             }
         }
         $periodicLabels[] = $firstWindowEnd->format('M j');
@@ -90,15 +96,15 @@ class UserActivityController extends Controller
             $windowStart = $windowEnd->copy()->subDays($windowSize - 1);
 
             foreach ($rowsByDate[$windowEnd->toDateString()] ?? [] as $row) {
-                $userCountsInWindow[$row->app_user_id] = ($userCountsInWindow[$row->app_user_id] ?? 0) + 1;
+                $userCountsInWindow[$row->member_id] = ($userCountsInWindow[$row->member_id] ?? 0) + 1;
             }
 
             $expiredDate = $windowStart->copy()->subDay()->toDateString();
             foreach ($rowsByDate[$expiredDate] ?? [] as $row) {
-                if (isset($userCountsInWindow[$row->app_user_id])) {
-                    $userCountsInWindow[$row->app_user_id]--;
-                    if ($userCountsInWindow[$row->app_user_id] <= 0) {
-                        unset($userCountsInWindow[$row->app_user_id]);
+                if (isset($userCountsInWindow[$row->member_id])) {
+                    $userCountsInWindow[$row->member_id]--;
+                    if ($userCountsInWindow[$row->member_id] <= 0) {
+                        unset($userCountsInWindow[$row->member_id]);
                     }
                 }
             }
@@ -108,12 +114,16 @@ class UserActivityController extends Controller
         }
 
         // Frequency buckets: how many distinct days each currently-active-in-last-30 member showed up.
+        // Grouped by member_id (real person), not app_user_id - and
+        // COUNT(DISTINCT activity_date), not COUNT(*), since a member with
+        // two duplicate accounts could otherwise have the same day counted
+        // twice if both accounts logged activity on it.
         $frequencyCounts = DB::table('user_activity_logs')
             ->join('app_users', 'app_users.id', '=', 'user_activity_logs.app_user_id')
             ->whereNull('app_users.deleted_at')
-            ->select('user_activity_logs.app_user_id', DB::raw('COUNT(*) as days_active'))
+            ->select('app_users.member_id', DB::raw('COUNT(DISTINCT activity_date) as days_active'))
             ->where('activity_date', '>=', Carbon::parse($today)->subDays(29)->toDateString())
-            ->groupBy('user_activity_logs.app_user_id')
+            ->groupBy('app_users.member_id')
             ->pluck('days_active');
 
         $powerUsers = $frequencyCounts->filter(fn($c) => $c >= 20)->count();
@@ -121,17 +131,24 @@ class UserActivityController extends Controller
         $casualUsers = $frequencyCounts->filter(fn($c) => $c < 5)->count();
 
         // Most engaged — by total distinct active days since tracking began.
+        // Grouped by member_id, not app_users.id/name - a member with two
+        // duplicate accounts would otherwise appear as two separate rows
+        // here, each with a partial day count, instead of one row with
+        // their combined (deduplicated) activity. COUNT(DISTINCT
+        // activity_date), not COUNT(*), so a day both accounts were active
+        // on isn't counted twice. name uses MAX() since it's not part of
+        // the grouping key but every row sharing a member_id should have
+        // the same name anyway.
         $mostEngaged = DB::table('user_activity_logs')
             ->join('app_users', 'app_users.id', '=', 'user_activity_logs.app_user_id')
             ->select(
-                'app_users.id',
-                'app_users.name',
                 'app_users.member_id',
-                DB::raw('COUNT(*) as days_active'),
+                DB::raw('MAX(app_users.name) as name'),
+                DB::raw('COUNT(DISTINCT activity_date) as days_active'),
                 DB::raw('MAX(activity_date) as last_active')
             )
             ->whereNull('app_users.deleted_at')
-            ->groupBy('app_users.id', 'app_users.name', 'app_users.member_id')
+            ->groupBy('app_users.member_id')
             ->orderByDesc('days_active')
             ->limit(20)
             ->get();
@@ -139,15 +156,22 @@ class UserActivityController extends Controller
         // Dormant — registered members with no activity in the last 30 days (or ever). Only meaningful
         // once tracking has been running a while; on day one this will correctly show almost everyone,
         // since we simply don't know anything about anyone yet.
+        //
+        // Grouped by member_id, taking MAX(last_active) across all of a
+        // member's non-deleted accounts - otherwise a member with two
+        // accounts could show up here as "dormant" via their stale account
+        // even though they're genuinely active via the other one.
         $dormant = DB::table('app_users')
             ->leftJoin(DB::raw('(SELECT app_user_id, MAX(activity_date) as last_active FROM user_activity_logs GROUP BY app_user_id) as ua'), 'ua.app_user_id', '=', 'app_users.id')
-            ->select('app_users.id', 'app_users.name', 'app_users.member_id', 'ua.last_active')
+            ->select(
+                'app_users.member_id',
+                DB::raw('MAX(app_users.name) as name'),
+                DB::raw('MAX(ua.last_active) as last_active')
+            )
             ->whereNull('app_users.deleted_at')
-            ->where(function ($q) use ($today) {
-                $q->whereNull('ua.last_active')
-                    ->orWhere('ua.last_active', '<', Carbon::parse($today)->subDays(30)->toDateString());
-            })
-            ->orderBy('ua.last_active')
+            ->groupBy('app_users.member_id')
+            ->havingRaw('last_active IS NULL OR last_active < ?', [Carbon::parse($today)->subDays(30)->toDateString()])
+            ->orderBy('last_active')
             ->limit(50)
             ->get();
 
@@ -168,12 +192,19 @@ class UserActivityController extends Controller
         // deleted after their activity was logged still counts toward this
         // tile's total but is correctly excluded from the list you see when
         // you click into it, so the two numbers silently drift apart.
+        //
+        // Counts DISTINCT member_id, not app_user_id - a real person can
+        // have two separate app_users account rows (a known recurring
+        // duplicate-account issue on this table, see app-users:dedupe) that
+        // would otherwise count as 2 active people instead of 1. Confirmed
+        // on production 2026-11-02: by account_id=2299, by member_id=2278,
+        // matching the popup's member-grouped count exactly.
         return DB::table('user_activity_logs')
             ->join('app_users', 'app_users.id', '=', 'user_activity_logs.app_user_id')
             ->whereNull('app_users.deleted_at')
             ->where('user_activity_logs.activity_date', '>=', $sinceDate)
-            ->distinct('user_activity_logs.app_user_id')
-            ->count('user_activity_logs.app_user_id');
+            ->distinct('app_users.member_id')
+            ->count('app_users.member_id');
     }
 
     /** Member list behind a DAU/WAU/MAU/YAU tile, for the "click to see who" popup. */
