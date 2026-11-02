@@ -6,13 +6,12 @@ use App\V2\MunicipalityMember;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\ToCollection;
 
+// Flat, one-row-per-member format: every row carries its own قضاء/بلدية/قرية
+// directly, so a single file can hold every district at once and each row
+// is self-contained - no more tracking "current قضاء" across sparse rows
+// that only sometimes repeat it.
 class MunicipalityMembersImport implements ToCollection
 {
-    private string $currentQada = '';
-    private string $currentMunicipality = '';
-    private string $currentVillage = '';
-    private int $sortOrder = 0;
-
     private static array $validPositions = ['رئيس', 'نائب رئيس', 'عضو', 'متوفي'];
 
     // Maps Excel qada names → Flutter district names
@@ -48,107 +47,80 @@ class MunicipalityMembersImport implements ToCollection
     {
         $this->deleteExistingQadas($rows);
 
-        foreach ($rows as $index => $row) {
-            $col1  = trim($row[0] ?? '');
-            $col3  = trim($row[2] ?? '');
-            $col5  = trim($row[4] ?? '');
-            $col6  = trim($row[5] ?? '');  // عدد الأصوات
-            $col7  = trim($row[6] ?? '');
-            $col8  = trim($row[7] ?? '');
-            $col10 = trim($row[9] ?? '');
+        $lastQada = null;
+        $lastMunicipality = null;
+        $sortOrder = 0;
 
-            // Row 0 (Excel 1): governorate title — skip
+        foreach ($rows as $index => $row) {
+            // Row 0 (Excel row 1): column headers — skip
             if ($index === 0) continue;
 
-            // Row 1 (Excel 2): قضاء name — capture it, normalize to Flutter format
-            if ($index === 1) {
-                if ($col1 !== '') {
-                    $this->currentQada = self::$qadaMap[$col1] ?? $col1;
-                }
-                continue;
+            $qadaRaw      = trim($row[0] ?? '');
+            $municipality = trim($row[1] ?? '');
+            $village      = trim($row[2] ?? '');
+            $name         = trim($row[3] ?? '');
+            $votesRaw     = trim($row[4] ?? '');
+            $positionRaw  = trim($row[5] ?? '');
+            $phoneRaw     = trim($row[6] ?? '');
+            $mountasibRaw = trim($row[7] ?? '');
+
+            // Skip fully blank rows (trailing empty rows at the end of a sheet, etc.)
+            if ($qadaRaw === '' && $municipality === '' && $name === '') continue;
+
+            // Every real data row must have at minimum a قضاء, بلدية, and a name —
+            // skip anything incomplete rather than guessing/inheriting from a
+            // previous row (the whole point of the flat format is that nothing
+            // is implied from context).
+            if ($qadaRaw === '' || $municipality === '' || $name === '') continue;
+
+            $qada = self::$qadaMap[$qadaRaw] ?? $qadaRaw;
+
+            // Sort order restarts per (قضاء, بلدية) pair, same as before — just
+            // detected by comparing consecutive rows now, instead of resetting
+            // on every "col1 non-empty" row.
+            if ($qada !== $lastQada || $municipality !== $lastMunicipality) {
+                $sortOrder = 0;
+                $lastQada = $qada;
+                $lastMunicipality = $municipality;
             }
 
-            // Row 2 (Excel 3): column headers — skip
-            if ($index === 2) continue;
+            $phone = ($phoneRaw === '' || $phoneRaw === '#N/A') ? null : $phoneRaw;
+            $position = in_array($positionRaw, self::$validPositions) ? $positionRaw : 'عضو';
+            $isMountasib = $mountasibRaw !== '';
 
-            // Mid-file قضاء section headers: col1 non-empty, col5 empty
-            if ($col1 !== '' && $col5 === '') {
-                $this->currentQada = $col1;
-                $this->currentMunicipality = '';
-                $this->currentVillage = '';
-                continue;
-            }
-
-            // Skip rows with no member name
-            if ($col5 === '') continue;
-
-            // Update municipality if col1 has a value
-            if ($col1 !== '') {
-                $this->currentMunicipality = $col1;
-                $this->sortOrder = 0;
-            }
-
-            // Update village if col3 has a value
-            if ($col3 !== '') {
-                $this->currentVillage = $col3;
-            }
-
-            // Clean up phone: treat #N/A as null
-            $phone = ($col8 === '' || $col8 === '#N/A') ? null : $col8;
-
-            // Validate position
-            $position = in_array($col7, self::$validPositions) ? $col7 : 'عضو';
-
-            // is_mountasib: true if col10 has any non-empty value
-            $isMountasib = $col10 !== '';
-
-            if ($this->currentMunicipality === '') continue;
-
-            // Parse votes: strip Arabic thousands separator ٬ and commas
-            $votes = (int) str_replace(['٬', ',', ' '], '', $col6);
+            // Strip Arabic thousands separator ٬ and commas
+            $votes = (int) str_replace(['٬', ',', ' '], '', $votesRaw);
 
             MunicipalityMember::create([
-                'qada'              => $this->currentQada,
-                'municipality_name' => $this->currentMunicipality,
-                'village_name'      => $this->currentVillage ?: null,
-                'full_name'         => $col5,
+                'qada'              => $qada,
+                'municipality_name' => $municipality,
+                'village_name'      => $village ?: null,
+                'full_name'         => $name,
                 'position'          => $position,
                 'votes'             => $votes,
                 'phone'             => $phone,
                 'is_mountasib'      => $isMountasib,
-                'sort_order'        => ++$this->sortOrder,
+                'sort_order'        => ++$sortOrder,
             ]);
         }
     }
 
-    // Scans the file for every قضاء it references (row 2 + any mid-file
-    // section headers) and deletes that قضاء's existing rows before the
-    // real import pass inserts the new ones — so re-uploading an updated
-    // file for a قضاء that's already in the DB replaces it cleanly instead
-    // of duplicating it, while قضاء's not present in this file are
-    // untouched.
+    // Scans the file for every قضاء it references and deletes that قضاء's
+    // existing rows before the real import pass inserts the new ones — so
+    // re-uploading a file replaces those قضاء's data cleanly instead of
+    // duplicating it, while قضاء's not present in this file are untouched.
     private function deleteExistingQadas(Collection $rows): void
     {
         $qadas = [];
-        $current = '';
 
         foreach ($rows as $index => $row) {
-            $col1 = trim($row[0] ?? '');
-            $col5 = trim($row[4] ?? '');
+            if ($index === 0) continue;
 
-            if ($index === 1) {
-                if ($col1 !== '') {
-                    $current = self::$qadaMap[$col1] ?? $col1;
-                }
-            } elseif ($index > 1 && $col1 !== '' && $col5 === '') {
-                $current = $col1;
-            } else {
-                continue;
-            }
+            $qadaRaw = trim($row[0] ?? '');
+            if ($qadaRaw === '') continue;
 
-            if ($current !== '') {
-                $qadas[$current] = true;
-            }
+            $qada = self::$qadaMap[$qadaRaw] ?? $qadaRaw;
+            $qadas[$qada] = true;
         }
 
         if (!empty($qadas)) {
