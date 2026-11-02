@@ -65,6 +65,18 @@ class SendPushNotification
                 foreach ($groupMembers as $member) {
                     $member_ids[] = $member->MemberId;
                 }
+
+                // The external TWH groups-members API has a documented
+                // history of intermittently returning empty for large
+                // group counts (e.g. "All Members") - if that happens,
+                // everything downstream silently ends up empty too, with
+                // nothing else in this function logging why. This is the
+                // one place that can actually tell the two apart.
+                if (empty($member_ids)) {
+                    Log::info('SendPushNotification: groups-members API returned 0 members', [
+                        'group_ids' => $data['groups'] ?? null,
+                    ]);
+                }
             }
 
             $users = AppUser::whereIn('member_id', $member_ids)->get();
@@ -73,8 +85,13 @@ class SendPushNotification
             $player_ids = array_unique(array_filter($users->pluck('player_id')->toArray()));
 
             //dd($player_ids);
-            if (empty($player_ids))
+            if (empty($player_ids)) {
+                Log::info('SendPushNotification: no valid player_ids, nothing sent', [
+                    'member_ids_count' => count($member_ids),
+                    'users_found' => $users->count(),
+                ]);
                 return;
+            }
 
 
             $content_en = Str::limit(strip_tags($data['text']), 240);
