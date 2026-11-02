@@ -35,8 +35,12 @@ class UserActivityController extends Controller
         $tenYearActive = $this->distinctActiveSince(Carbon::parse($today)->subDays(3650)->toDateString());
 
         // Daily trend, last 30 days — filled with zeros for days with no activity so the chart doesn't skip gaps.
+        // Joined/filtered the same as distinctActiveSince() above, so a
+        // deleted member's past activity doesn't inflate this chart either.
         $trendRaw = DB::table('user_activity_logs')
-            ->select('activity_date', DB::raw('COUNT(DISTINCT app_user_id) as active_count'))
+            ->join('app_users', 'app_users.id', '=', 'user_activity_logs.app_user_id')
+            ->whereNull('app_users.deleted_at')
+            ->select('activity_date', DB::raw('COUNT(DISTINCT user_activity_logs.app_user_id) as active_count'))
             ->where('activity_date', '>=', Carbon::parse($today)->subDays(29)->toDateString())
             ->groupBy('activity_date')
             ->pluck('active_count', 'activity_date');
@@ -57,7 +61,9 @@ class UserActivityController extends Controller
         $trendDays = 30;
         $lookbackStart = Carbon::parse($today)->subDays($trendDays - 1 + $windowSize - 1)->toDateString();
         $rowsByDate = DB::table('user_activity_logs')
-            ->select('activity_date', 'app_user_id')
+            ->join('app_users', 'app_users.id', '=', 'user_activity_logs.app_user_id')
+            ->whereNull('app_users.deleted_at')
+            ->select('activity_date', 'user_activity_logs.app_user_id')
             ->where('activity_date', '>=', $lookbackStart)
             ->get()
             ->groupBy(fn($r) => $r->activity_date);
@@ -103,9 +109,11 @@ class UserActivityController extends Controller
 
         // Frequency buckets: how many distinct days each currently-active-in-last-30 member showed up.
         $frequencyCounts = DB::table('user_activity_logs')
-            ->select('app_user_id', DB::raw('COUNT(*) as days_active'))
+            ->join('app_users', 'app_users.id', '=', 'user_activity_logs.app_user_id')
+            ->whereNull('app_users.deleted_at')
+            ->select('user_activity_logs.app_user_id', DB::raw('COUNT(*) as days_active'))
             ->where('activity_date', '>=', Carbon::parse($today)->subDays(29)->toDateString())
-            ->groupBy('app_user_id')
+            ->groupBy('user_activity_logs.app_user_id')
             ->pluck('days_active');
 
         $powerUsers = $frequencyCounts->filter(fn($c) => $c >= 20)->count();
@@ -155,10 +163,17 @@ class UserActivityController extends Controller
 
     private function distinctActiveSince(string $sinceDate): int
     {
+        // Joined against app_users and filtered the same way the popup's
+        // members() list is, below - otherwise a member whose account gets
+        // deleted after their activity was logged still counts toward this
+        // tile's total but is correctly excluded from the list you see when
+        // you click into it, so the two numbers silently drift apart.
         return DB::table('user_activity_logs')
-            ->where('activity_date', '>=', $sinceDate)
-            ->distinct('app_user_id')
-            ->count('app_user_id');
+            ->join('app_users', 'app_users.id', '=', 'user_activity_logs.app_user_id')
+            ->whereNull('app_users.deleted_at')
+            ->where('user_activity_logs.activity_date', '>=', $sinceDate)
+            ->distinct('user_activity_logs.app_user_id')
+            ->count('user_activity_logs.app_user_id');
     }
 
     /** Member list behind a DAU/WAU/MAU/YAU tile, for the "click to see who" popup. */
