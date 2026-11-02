@@ -4,9 +4,48 @@ use App\V2\AppUser;
 use DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Image;
+use Storage;
 
 trait PushNotificationTrait
 {
+
+    // Push images (big_picture on Android, ios_attachments on iOS) have to
+    // be small and fast to fetch - iOS in particular runs attachment
+    // downloads through a Notification Service Extension with a strict
+    // memory/time budget, and an oversized image there commonly just gets
+    // silently dropped: the notification still arrives with its text, the
+    // image quietly never renders, with no error anywhere. Confirmed
+    // 2026-11-02: a 1.29MB news image reliably failed to show on iPhone
+    // while ~45KB test images worked fine. This resizes/recompresses a
+    // SEPARATE copy just for the push - the original, full-resolution
+    // image used everywhere else in the app (news detail page, og:image,
+    // etc.) is never touched.
+    private function compressForPush(string $imageUrl): string
+    {
+        try {
+            $contents = file_get_contents($imageUrl);
+            if ($contents === false) {
+                return $imageUrl;
+            }
+
+            $resized = Image::make($contents)
+                ->resize(1024, null, function ($constraint) {
+                    $constraint->aspectRatio();
+                    $constraint->upsize();
+                })
+                ->encode('jpg', 70);
+
+            $fileName = 'push_' . time() . '_' . Str::random(8) . '.jpg';
+            $path = config('app.aws_bucket_project_name') . '/storage/images/notification_images/' . $fileName;
+            Storage::disk('s3')->put($path, (string) $resized);
+
+            return Storage::disk('s3')->url($path);
+        } catch (\Exception $e) {
+            Log::info('Push image compression failed, sending original: ' . $e->getMessage());
+            return $imageUrl;
+        }
+    }
 
     function oneSignal($info, $data = []){
         ini_set('memory_limit', '-1');
@@ -14,6 +53,10 @@ trait PushNotificationTrait
         ini_set('post_max_size', '200M');
         ini_set('client_max_body_size', '200M');
         ini_set('max_execution_time', 3600);
+
+        if (isset($info['image'])) {
+            $info['image'] = $this->compressForPush($info['image']);
+        }
 
         if(isset($info['player_ids'])){
             $chunks = array_chunk($info['player_ids'], 200);
