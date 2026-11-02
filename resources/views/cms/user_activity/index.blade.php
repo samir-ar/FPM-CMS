@@ -79,6 +79,7 @@
                         </select>
                     </div>
                 </div>
+                <p id="activityMembersCount" class="text-muted"></p>
                 <div style="max-height: 55vh; overflow-y: auto;">
                     <table class="table table-striped">
                         <thead>
@@ -222,6 +223,9 @@
     }
 
     function renderActivityRows(members) {
+        $('#activityMembersCount').text(
+            members.length === 1 ? '1 member' : members.length + ' members'
+        );
         if (!members.length) {
             $('#activityMembersModalBody').html('<tr><td colspan="5" class="text-center text-muted">No members found.</td></tr>');
             return;
@@ -277,6 +281,7 @@
     function openActivityModal(period, title) {
         $('#activityMembersModalTitle').text(title);
         $('#activityMembersModalBody').html('<tr><td colspan="5" class="text-center text-muted">Loading...</td></tr>');
+        $('#activityMembersCount').text('');
         $('#activityDistrictFilter').html('<option value="">All districts</option>');
         $('#activityTownFilter').html('<option value="">All towns</option>');
         $('#activityMembersModal').modal('show');
