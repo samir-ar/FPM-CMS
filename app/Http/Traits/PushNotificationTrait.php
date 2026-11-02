@@ -66,6 +66,16 @@ trait PushNotificationTrait
 
                 }
 
+                // Diagnostic: confirms whether an image was actually
+                // included in this specific OneSignal call, since nothing
+                // else in this function logs the outgoing payload - without
+                // this, "the push arrived with no image" is unverifiable
+                // from the logs alone.
+                Log::info('oneSignal push ' . (isset($info['image']) ? 'includes image' : 'has no image'), [
+                    'title' => $headings['en'] ?? null,
+                    'image' => $info['image'] ?? null,
+                ]);
+
                 if(isset($info['ios_badgeType'])){
                     $fields['ios_badgeType'] = $info['ios_badgeType'];
                 }
@@ -159,6 +169,12 @@ trait PushNotificationTrait
 
             }
 
+            // Same diagnostic as the chunked branch above.
+            Log::info('oneSignal push ' . (isset($info['image']) ? 'includes image' : 'has no image'), [
+                'title' => $headings['en'] ?? null,
+                'image' => $info['image'] ?? null,
+            ]);
+
             if(isset($info['ios_badgeType'])){
                 $fields['ios_badgeType'] = $info['ios_badgeType'];
             }
@@ -211,13 +227,27 @@ trait PushNotificationTrait
         if (isset($responseData['errors']['invalid_player_ids'])) {
             $invalidPlayerIds = $responseData['errors']['invalid_player_ids'];
             foreach ($invalidPlayerIds as $playerId) {
-                Log::info($playerId);
+                Log::info('Clearing stale OneSignal player_id: ' . $playerId);
                 $user = AppUser::where('player_id', $playerId)->first();
-                $user->player_id = null;
-                $user->save();
+                if ($user) {
+                    $user->player_id = null;
+                    $user->save();
+                }
             }
 
-            $result['error'] = 'Invalid Player IDs Found, Failed to Send Push. Please try again.';
+            // A handful of stale player_ids in a large batch is routine
+            // (uninstalls, revoked permissions) - OneSignal still delivers
+            // to every other valid device and just flags these for
+            // cleanup. A notification `id` in the response means it really
+            // was sent; only treat this as an actual failure when there's
+            // no id at all, i.e. nothing was sent to anyone. Previously
+            // this unconditionally overwrote $result as a failure even
+            // when the push had already gone out successfully, which with
+            // a list this size (2,000+) meant almost every push looked
+            // like a failure in the CMS even though recipients got it.
+            if (empty($responseData['id'])) {
+                $result['error'] = 'Invalid Player IDs Found, Failed to Send Push. Please try again.';
+            }
         }
 
         return $result;

@@ -144,7 +144,7 @@ class NotificationController extends Controller
         $image = null;
 
         if(request("image")){
-           $image =  $this->moveFile($image, 'images/notification_images');
+           $image =  $this->moveFile(request('image'), 'images/notification_images');
         }
 
 
