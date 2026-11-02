@@ -17,14 +17,21 @@ class UserActivityController extends Controller
 
         $totalMembers = DB::table('app_users')->whereNull('deleted_at')->count();
 
+        // Week/Month/Year are true calendar-period resets (since Monday /
+        // since the 1st / since Jan 1), not rolling trailing windows -
+        // matches what the tile labels actually say, so "This Week" really
+        // does reset every Monday instead of just sliding forward daily.
+        // Only "Active (Last 10 Years)" stays a rolling window, per its own
+        // "(Last N)" label.
         $dau = $this->distinctActiveSince($today);
-        $wau = $this->distinctActiveSince(Carbon::parse($today)->subDays(6)->toDateString());
-        $mau = $this->distinctActiveSince(Carbon::parse($today)->subDays(29)->toDateString());
-        $yau = $this->distinctActiveSince(Carbon::parse($today)->subDays(364)->toDateString());
-        // Tracking only started 2026-09-24, so this currently shows the
-        // same number as "Active This Year" - that's expected, not a bug.
-        // It's here so the dashboard doesn't need code changes once real
-        // multi-year history exists.
+        $wau = $this->distinctActiveSince(Carbon::parse($today)->startOfWeek(Carbon::MONDAY)->toDateString());
+        $mau = $this->distinctActiveSince(Carbon::parse($today)->startOfMonth()->toDateString());
+        $yau = $this->distinctActiveSince(Carbon::parse($today)->startOfYear()->toDateString());
+        // Tracking only started 2026-09-24 (after this/any prior calendar
+        // year's Jan 1), so this currently shows the same number as "Active
+        // This Year" - that's expected, not a bug. It's here so the
+        // dashboard doesn't need code changes once real multi-year history
+        // exists.
         $tenYearActive = $this->distinctActiveSince(Carbon::parse($today)->subDays(3650)->toDateString());
 
         // Daily trend, last 30 days — filled with zeros for days with no activity so the chart doesn't skip gaps.
@@ -161,9 +168,9 @@ class UserActivityController extends Controller
 
         $sinceDate = match ($period) {
             'today' => $today,
-            'week'  => Carbon::parse($today)->subDays(6)->toDateString(),
-            'month' => Carbon::parse($today)->subDays(29)->toDateString(),
-            'year'  => Carbon::parse($today)->subDays(364)->toDateString(),
+            'week'  => Carbon::parse($today)->startOfWeek(Carbon::MONDAY)->toDateString(),
+            'month' => Carbon::parse($today)->startOfMonth()->toDateString(),
+            'year'  => Carbon::parse($today)->startOfYear()->toDateString(),
             'decade' => Carbon::parse($today)->subDays(3650)->toDateString(),
             default => null,
         };
