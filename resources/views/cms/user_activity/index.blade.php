@@ -231,9 +231,11 @@
             return;
         }
         var rows = members.map(function (m) {
-            return '<tr>' +
+            var rowAttrs = m.is_new ? ' style="background-color:#dff5e1;"' : '';
+            var nameCell = escapeHtml(m.name || '—') + (m.is_new ? ' <span style="color:#1e8a43; font-size:11px; font-weight:bold;">(جديد)</span>' : '');
+            return '<tr' + rowAttrs + '>' +
                 '<td>' + escapeHtml(m.member_id || '—') + '</td>' +
-                '<td>' + escapeHtml(m.name || '—') + '</td>' +
+                '<td>' + nameCell + '</td>' +
                 '<td>' + escapeHtml(m.district || '—') + '</td>' +
                 '<td>' + escapeHtml(m.town || '—') + '</td>' +
                 '<td>' + escapeHtml(m.last_active || '—') + '</td>' +

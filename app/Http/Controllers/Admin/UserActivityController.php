@@ -265,12 +265,28 @@ class UserActivityController extends Controller
         // convert to Beirut time for display, same as everywhere else an
         // admin-facing timestamp is shown. Sort order above is unaffected
         // since a fixed-offset conversion preserves relative ordering.
-        $members->each(function ($m) {
+        //
+        // is_new uses the same definition as the Active Today tile's "new"
+        // count: never active before today (MIN(activity_date) across all
+        // of a member's history is today) - computed here regardless of
+        // which tile's popup this is, so it only ever lights up members who
+        // are genuinely first-time-active today.
+        $newMemberIds = DB::table('user_activity_logs')
+            ->join('app_users', 'app_users.id', '=', 'user_activity_logs.app_user_id')
+            ->whereNull('app_users.deleted_at')
+            ->select('app_users.member_id')
+            ->groupBy('app_users.member_id')
+            ->havingRaw('MIN(user_activity_logs.activity_date) = ?', [$today])
+            ->pluck('member_id')
+            ->flip();
+
+        $members->each(function ($m) use ($newMemberIds) {
             if ($m->last_active) {
                 $m->last_active = Carbon::parse($m->last_active, 'UTC')
                     ->setTimezone(config('app.timezone'))
                     ->toDateTimeString();
             }
+            $m->is_new = $newMemberIds->has($m->member_id);
         });
 
         return response()->json($members);
