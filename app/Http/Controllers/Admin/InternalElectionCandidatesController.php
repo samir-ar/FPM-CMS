@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\FormTrait;
 use App\Http\Traits\FileTrait;
+use App\Http\Traits\DistrictMatchingTrait;
 use DataTables;
 use App\V2\InternalElection;
 use App\V2\InternalElectionCandidate;
@@ -18,6 +19,7 @@ class InternalElectionCandidatesController extends Controller
 {
     use FormTrait;
     use FileTrait;
+    use DistrictMatchingTrait;
     public function index($id,Request $request){
 
 
@@ -252,33 +254,6 @@ class InternalElectionCandidatesController extends Controller
         }
 
         // fpm_users.district is free-text and doesn't always match
-        // election_states.name exactly (double spaces, hamza spelling like
-        // بيروت الاولى vs بيروت  الأولى, or combined values like
-        // المنية-الضنية / بعلبك - الهرمل covering more than one state) —
-        // normalize whitespace/hamza and match by "contains" instead of
-        // exact equality so these real-world variants still match. Shared
-        // by the search endpoint and the store() validation so they can
-        // never disagree about whether a member belongs to a state.
-        private function normalizeDistrictName(string $s): string
-        {
-            $s = trim(preg_replace('/\s+/u', ' ', $s));
-            return str_replace(['أ', 'إ', 'آ'], 'ا', $s);
-        }
-
-        private function districtMatchesAnyState(?string $memberDistrict, array $stateNames): bool
-        {
-            if (!$memberDistrict) {
-                return false;
-            }
-            $normalizedDistrict = $this->normalizeDistrictName($memberDistrict);
-            foreach ($stateNames as $name) {
-                if (str_contains($normalizedDistrict, $this->normalizeDistrictName($name))) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
         public function searchFpmUsers(Request $request) {
             $q = trim((string) $request->get('q', ''));
 

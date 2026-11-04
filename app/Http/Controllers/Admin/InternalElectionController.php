@@ -28,6 +28,7 @@ class InternalElectionController extends Controller
 {
     use FormTrait;
     use FileTrait;
+    use \App\Http\Traits\DistrictMatchingTrait;
     public function index(Request $request){
 
         if($request->ajax()) {
@@ -559,14 +560,52 @@ class InternalElectionController extends Controller
 
         $selectedStateId = request()->filled('state_id') ? (int) request('state_id') : null;
 
+        // '__unspecified__' (not plain '') is the "no town on file" sentinel
+        // - an empty-string query value is indistinguishable from "town"
+        // simply being absent once it round-trips through an HTML <select>,
+        // so it can't double as both "no filter" and "filter to blank town".
+        $townParam = request()->query('town');
+        $selectedTown = null;
+        if ($townParam === '__unspecified__') {
+            $selectedTown = '';
+        } elseif ($townParam !== null && $townParam !== '') {
+            $selectedTown = $townParam;
+        }
+
         $votes = collect();
+        $towns = collect();
         if ($selectedStateId) {
             $votes = InternalElectionVote::with(['user', 'candidate'])
                 ->where('internal_election_id', $election->id)
                 ->whereHas('candidate.electionStates', function($q) use ($selectedStateId){
                     $q->where('election_states.id', $selectedStateId);
                 })
+                ->orderBy('voted_at', 'desc')
                 ->get();
+
+            // Town lives on fpm_users, not app_users - AppUser has no direct
+            // relation to FpmUser in this codebase, so it's bulk-fetched and
+            // attached here instead.
+            $memberIds = $votes->pluck('user.member_id')->filter()->unique();
+            $townByMember = \DB::table('fpm_users')
+                ->whereIn('MemberId', $memberIds)
+                ->pluck('town', 'MemberId');
+
+            $votes->each(function ($vote) use ($townByMember) {
+                $vote->voter_town = $vote->user ? ($townByMember[$vote->user->member_id] ?? null) : null;
+            });
+
+            // Full district scope (before the town filter itself is
+            // applied), so the dropdown always offers every town that
+            // actually has a vote here, not just whatever survived the
+            // currently-selected town.
+            $towns = $votes->pluck('voter_town')->filter()->unique()->sort()->values();
+
+            if ($selectedTown !== null) {
+                $votes = $votes->filter(
+                    fn($v) => $selectedTown === '' ? !$v->voter_town : $v->voter_town === $selectedTown
+                )->values();
+            }
         }
 
         // Fraud signal: the same device used to cast votes for more than one
@@ -580,7 +619,7 @@ class InternalElectionController extends Controller
             ->havingRaw('COUNT(DISTINCT user_id) > 1')
             ->pluck('device_id');
 
-        return view('internal-election.votes', compact('election', 'allStates', 'selectedStateId', 'votes', 'suspiciousDeviceIds'))
+        return view('internal-election.votes', compact('election', 'allStates', 'selectedStateId', 'towns', 'selectedTown', 'votes', 'suspiciousDeviceIds'))
             ->with('pageTitle', 'Vote Dispute Review - ' . $election->title);
     }
 
@@ -617,8 +656,33 @@ class InternalElectionController extends Controller
             return redirect(route('admin.internal-election.index'))->withErrors('Election not found');
         }
 
-        $permittedMemberIds = InternalElectionPermission::where('election_id', $id)
+        $allPermittedMemberIds = InternalElectionPermission::where('election_id', $id)
             ->pluck('member_id')->filter()->unique()->values();
+
+        // Scope every figure on this page - the summary tiles too, not just
+        // the per-district table - to permitted voters whose own
+        // fpm_users.district actually matches one of this election's
+        // candidate districts (districtMatchesAnyState, shared with
+        // InternalElectionCandidatesController). A permitted voter whose
+        // district has no candidate running can't actually vote, so
+        // counting them anywhere on this page only inflates "remaining"/
+        // deflates turnout for people who were never really part of this
+        // election to begin with.
+        $districtByMember = \DB::table('fpm_users')
+            ->whereIn('MemberId', $allPermittedMemberIds)
+            ->pluck('district', 'MemberId');
+
+        $stateIds = \DB::table('internal_election_candidate_states')
+            ->join('internal_election_candidates', 'internal_election_candidates.id', '=', 'internal_election_candidate_states.candidate_id')
+            ->where('internal_election_candidates.election_id', $election->id)
+            ->distinct()
+            ->pluck('internal_election_candidate_states.election_state_id');
+        $electionStateNames = ElectionState::whereIn('id', $stateIds)->pluck('name')->toArray();
+
+        $permittedMemberIds = $allPermittedMemberIds->filter(function ($memberId) use ($districtByMember, $electionStateNames) {
+            $district = $districtByMember->get($memberId) ?: 'بدون دائرة';
+            return $this->districtMatchesAnyState($district, $electionStateNames);
+        })->values();
         $totalPermitted = $permittedMemberIds->count();
 
         $votedMemberIds = InternalElectionVote::with('user')
@@ -632,17 +696,8 @@ class InternalElectionController extends Controller
         $totalRemaining = $totalPermitted - $totalVoted;
         $overallTurnout = $totalPermitted > 0 ? round($totalVoted / $totalPermitted * 100, 1) : 0;
 
-        // Per-district breakdown - grouped by each PERMITTED voter's own
-        // fpm_users.district value, used consistently for both the
-        // numerator and denominator. Deliberately NOT matched against
-        // election_states.name (which has known spelling/spacing drift,
-        // see districtMatchesAnyState() in InternalElectionCandidatesController)
-        // - grouping by the voter's own raw district avoids that fragility
-        // entirely since nothing here needs to equal an election_state name.
-        $districtByMember = \DB::table('fpm_users')
-            ->whereIn('MemberId', $permittedMemberIds)
-            ->pluck('district', 'MemberId');
-
+        // Per-district breakdown - $permittedMemberIds is already scoped to
+        // election districts above, so every member here belongs in it.
         $votedSet = $votedMemberIds->flip();
 
         $districtStats = [];

@@ -14,7 +14,7 @@
                 <div class="small-box bg-aqua" style="cursor:pointer" onclick="openActivityModal('today', 'Active Today')">
                     <div class="inner">
                         <h3>{{ number_format($dau) }}</h3>
-                        <p>Active Today</p>
+                        <p>Active Today <span style="float:right; font-size:13px; opacity:0.85;">{{ number_format($newToday) }} new</span></p>
                     </div>
                     <div class="icon"><i class="fa fa-bolt"></i></div>
                 </div>

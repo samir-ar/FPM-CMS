@@ -2475,6 +2475,18 @@ class ApiController extends Controller
             }
         }
 
+        // Same reasoning as the town filter above — applied server-side,
+        // before pagination, not just on whatever's already loaded.
+        // $votedMemberIds (computed above) already covers the candidate's
+        // full district scope, not just this page, so this is cheap to add
+        // here.
+        $voteStatusFilter = $request->query('vote_status');
+        if ($voteStatusFilter === 'voted') {
+            $votersQuery->whereIn('MemberId', $votedMemberIds);
+        } elseif ($voteStatusFilter === 'not_voted') {
+            $votersQuery->whereNotIn('MemberId', $votedMemberIds);
+        }
+
         $paginated = $votersQuery
             ->orderBy('town')
             ->orderBy('UserFullName')

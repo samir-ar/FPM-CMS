@@ -18,6 +18,20 @@
                     @endforeach
                 </select>
             </div>
+            @if($selectedStateId)
+                <div class="form-group" style="margin-left: 10px;">
+                    <label for="town">Town</label>
+                    <select name="town" id="town" class="form-control" onchange="this.form.submit()">
+                        <option value="">— All towns —</option>
+                        @foreach($towns as $town)
+                            <option value="{{ $town }}" {{ $selectedTown === $town ? 'selected' : '' }}>
+                                {{ $town }}
+                            </option>
+                        @endforeach
+                        <option value="__unspecified__" {{ $selectedTown === '' ? 'selected' : '' }}>(no town on file)</option>
+                    </select>
+                </div>
+            @endif
         </form>
 
         @if($suspiciousDeviceIds->isNotEmpty())

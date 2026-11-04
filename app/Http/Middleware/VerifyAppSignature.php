@@ -42,6 +42,16 @@ class VerifyAppSignature
 
         $timestamp = $request->header('X-Timestamp');
         $signature = $request->header('X-Signature');
+        // Optional, not required like X-Timestamp/X-Signature - the app
+        // version currently live in both stores was built before this
+        // header existed, so making it mandatory here would 403 every
+        // request from every user who hasn't yet updated. When it's
+        // missing we fall back to the pre-nonce canonical string below,
+        // which keeps today's live app working exactly as it does now
+        // (collision risk and all) until the nonce-sending build is out
+        // and adopted - see districtMatchesAnyState-sibling note in
+        // app_signature_interceptor.dart for why the nonce was added.
+        $nonce = $request->header('X-Nonce');
 
         // Deliberately 403, never 401 — this app treats any 401 anywhere as
         // "the login token is invalid" and force-logs the user out
@@ -66,9 +76,22 @@ class VerifyAppSignature
         // without this, a captured signature could be replayed with a
         // different page number / village / قضاء and still pass, since the
         // signature never looked at what was actually being asked for.
+        //
+        // $nonce (when sent) is folded in purely so two different requests
+        // can never produce the same signature (see the use-once check
+        // below) — on an endpoint like can-i-vote, whose only param is
+        // build_number, every logged-in member on the same app version
+        // sends an otherwise-identical canonical string, so without a
+        // per-request nonce any two members hitting it in the same
+        // wall-clock second (routine on election day) would collide and
+        // the second one would get wrongly rejected as "already used".
+        // Omitted entirely (not just blank) for an old client that never
+        // sent X-Nonce, so its canonical string - and therefore its
+        // signature - matches exactly what that build actually computed.
         $canonical = strtoupper($request->method()) . "\n"
             . $request->route()->uri() . "\n"
             . $timestamp . "\n"
+            . ($nonce !== null ? $nonce . "\n" : '')
             . $this->canonicalParams($request);
         $expected = hash_hmac('sha256', $canonical, $secret);
 

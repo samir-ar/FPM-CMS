@@ -182,8 +182,7 @@ class MukhtarsController extends Controller
     public function importStore(Request $request)
     {
         $request->validate(['file' => 'required|mimes:xlsx,xls|max:20480']);
-        $path = $request->file('file')->getPathname();
-        \Maatwebsite\Excel\Facades\Excel::import(new \App\Imports\MukhtarsImport(), $path);
+        \Maatwebsite\Excel\Facades\Excel::import(new \App\Imports\MukhtarsImport(), $request->file('file'));
         $count = Mukhtar::count();
         return redirect()->route('admin.mukhtars.index')
             ->with('message', "تم الاستيراد بنجاح — $count سجل");

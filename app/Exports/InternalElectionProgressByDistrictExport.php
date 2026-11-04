@@ -2,6 +2,8 @@
 
 namespace App\Exports;
 
+use App\Http\Traits\DistrictMatchingTrait;
+use App\V2\ElectionState;
 use App\V2\InternalElectionPermission;
 use App\V2\InternalElectionVote;
 use Maatwebsite\Excel\Concerns\FromCollection;
@@ -18,11 +20,13 @@ use PhpOffice\PhpSpreadsheet\Chart\Title;
 
 // Same permitted/voted/turnout computation as
 // InternalElectionController::progress() - grouped by each permitted
-// voter's own fpm_users.district value, not matched against
-// election_states.name (see districtMatchesAnyState() for why that
-// matching is fragile).
+// voter's own fpm_users.district value, restricted to the districts this
+// election actually has candidates in (districtMatchesAnyState - see that
+// trait for why a plain == against election_states.name doesn't work).
 class InternalElectionProgressByDistrictExport implements FromCollection, WithHeadings, WithMapping, WithCharts
 {
+    use DistrictMatchingTrait;
+
     private int $electionId;
     // Set by collection() so charts() knows the real cell range - charts()
     // runs after collection() in Laravel Excel's write pipeline, so this is
@@ -51,9 +55,19 @@ class InternalElectionProgressByDistrictExport implements FromCollection, WithHe
             ->whereIn('MemberId', $permittedMemberIds)
             ->pluck('district', 'MemberId');
 
+        $stateIds = \DB::table('internal_election_candidate_states')
+            ->join('internal_election_candidates', 'internal_election_candidates.id', '=', 'internal_election_candidate_states.candidate_id')
+            ->where('internal_election_candidates.election_id', $this->electionId)
+            ->distinct()
+            ->pluck('internal_election_candidate_states.election_state_id');
+        $electionStateNames = ElectionState::whereIn('id', $stateIds)->pluck('name')->toArray();
+
         $districtStats = [];
         foreach ($permittedMemberIds as $memberId) {
             $district = $districtByMember->get($memberId) ?: 'بدون دائرة';
+            if (!$this->districtMatchesAnyState($district, $electionStateNames)) {
+                continue;
+            }
             if (!isset($districtStats[$district])) {
                 $districtStats[$district] = ['permitted' => 0, 'voted' => 0];
             }

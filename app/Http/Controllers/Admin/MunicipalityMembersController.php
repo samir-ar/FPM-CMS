@@ -183,10 +183,8 @@ class MunicipalityMembersController extends Controller
     {
         $request->validate(['file' => 'required|mimes:xlsx,xls|max:20480']);
 
-        $path = $request->file('file')->getPathname();
-
         \Maatwebsite\Excel\Facades\Excel::import(
-            new \App\Imports\MunicipalityMembersImport(), $path
+            new \App\Imports\MunicipalityMembersImport(), $request->file('file')
         );
 
         $count = MunicipalityMember::count();

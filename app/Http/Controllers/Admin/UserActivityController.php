@@ -24,6 +24,20 @@ class UserActivityController extends Controller
         // Only "Active (Last 10 Years)" stays a rolling window, per its own
         // "(Last N)" label.
         $dau = $this->distinctActiveSince($today);
+        // "New" = members whose very first ever logged activity (across all
+        // time, not just since today) is today - i.e. first-time-active
+        // under tracking, not necessarily a brand-new app_users registration
+        // (someone could've registered months ago and just now opened the
+        // app for the first time - that's still "new" in the sense that
+        // matters here: never-before-seen by this activity system).
+        $newToday = DB::table('user_activity_logs')
+            ->join('app_users', 'app_users.id', '=', 'user_activity_logs.app_user_id')
+            ->whereNull('app_users.deleted_at')
+            ->select('app_users.member_id')
+            ->groupBy('app_users.member_id')
+            ->havingRaw('MIN(user_activity_logs.activity_date) = ?', [$today])
+            ->get()
+            ->count();
         $wau = $this->distinctActiveSince(Carbon::parse($today)->startOfWeek(Carbon::MONDAY)->toDateString());
         $mau = $this->distinctActiveSince(Carbon::parse($today)->startOfMonth()->toDateString());
         $yau = $this->distinctActiveSince(Carbon::parse($today)->startOfYear()->toDateString());
@@ -176,7 +190,7 @@ class UserActivityController extends Controller
             ->get();
 
         return view('cms.user_activity.index', compact(
-            'totalMembers', 'dau', 'wau', 'mau', 'yau', 'tenYearActive',
+            'totalMembers', 'dau', 'newToday', 'wau', 'mau', 'yau', 'tenYearActive',
             'trendLabels', 'trendValues',
             'periodicLabels', 'periodicValues',
             'powerUsers', 'regularUsers', 'casualUsers',
