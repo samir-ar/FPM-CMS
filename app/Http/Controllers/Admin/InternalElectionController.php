@@ -634,10 +634,68 @@ class InternalElectionController extends Controller
         }
 
         // Same row-building the Excel export uses, so the page and the
-        // download always show exactly the same data.
-        $votes = (new InternalElectionVotesExport($election->id))->collection();
+        // download always show exactly the same data (before any
+        // filter/sort/pagination below is applied on top of it).
+        $allVotes = (new InternalElectionVotesExport($election->id))->collection();
 
-        return view('internal-election.votes-report', compact('election', 'votes'))
+        $stateIds = \DB::table('internal_election_candidate_states')
+            ->join('internal_election_candidates', 'internal_election_candidates.id', '=', 'internal_election_candidate_states.candidate_id')
+            ->where('internal_election_candidates.election_id', $election->id)
+            ->distinct()
+            ->pluck('internal_election_candidate_states.election_state_id');
+        $allStates = ElectionState::whereIn('id', $stateIds)->orderBy('name')->get();
+
+        $selectedStateId = request()->filled('state_id') ? (int) request('state_id') : null;
+        $selectedStateName = $selectedStateId ? optional($allStates->firstWhere('id', $selectedStateId))->name : null;
+
+        // '__unspecified__' (not plain '') is the "no town on file" sentinel
+        // - same convention as the Vote Dispute Review page's town filter.
+        $townParam = request()->query('town');
+        $selectedTown = null;
+        if ($townParam === '__unspecified__') {
+            $selectedTown = '';
+        } elseif ($townParam !== null && $townParam !== '') {
+            $selectedTown = $townParam;
+        }
+
+        $filtered = $allVotes;
+        if ($selectedStateName !== null) {
+            // districtMatchesAnyState(), not a plain ==, since
+            // fpm_users.district free text doesn't always match
+            // election_states.name exactly (see DistrictMatchingTrait).
+            $filtered = $filtered->filter(fn($v) => $this->districtMatchesAnyState($v->district, [$selectedStateName]))->values();
+        }
+
+        // Town options reflect the district-filtered scope (or everyone, if
+        // no district is selected yet), same convention as Vote Dispute
+        // Review - so the dropdown never offers a town with zero rows here.
+        $towns = $filtered->pluck('town')->filter()->unique()->sort()->values();
+
+        if ($selectedTown !== null) {
+            $filtered = $filtered->filter(
+                fn($v) => $selectedTown === '' ? !$v->town : $v->town === $selectedTown
+            )->values();
+        }
+
+        $sortDir = request('sort') === 'asc' ? 'asc' : 'desc';
+        $filtered = $sortDir === 'asc'
+            ? $filtered->sortBy('voted_at')->values()
+            : $filtered->sortByDesc('voted_at')->values();
+
+        // Plain query-string page param + prev/next links, same zero-JS
+        // pagination convention as getPermittedTable() above - a real
+        // election can have thousands of votes.
+        $page = max(1, (int) request('page', 1));
+        $perPage = 50;
+        $votes = new \Illuminate\Pagination\LengthAwarePaginator(
+            $filtered->forPage($page, $perPage),
+            $filtered->count(),
+            $perPage,
+            $page,
+            ['path' => request()->url(), 'query' => request()->query()]
+        );
+
+        return view('internal-election.votes-report', compact('election', 'votes', 'allStates', 'selectedStateId', 'towns', 'selectedTown', 'sortDir'))
             ->with('pageTitle', 'Votes Report - ' . $election->title);
     }
 
