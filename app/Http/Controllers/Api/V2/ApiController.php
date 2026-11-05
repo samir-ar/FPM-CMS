@@ -2080,8 +2080,23 @@ class ApiController extends Controller
         // election (internal_election_permissions) — required for everyone
         // in addition to (not instead of) the district match below. Replaces
         // the old global Allowed_to_vote column (removed 2026-09-29).
+        //
+        // member_id is matched tolerating a leading-zero difference: the
+        // permitted-voters Excel lists get built from various external
+        // sources/exports whose ID formatting doesn't reliably agree with
+        // app_users.member_id (confirmed 2026-11-05 — 736 existing
+        // permission rows across elections differed from the real member's
+        // app account by exactly one leading zero, silently locking those
+        // members out with no visible error). Checking both padded and
+        // stripped variants here fixes it for every already-uploaded list
+        // and every future one, without needing to clean the underlying
+        // data.
         $isAllowed = InternalElectionPermission::where('election_id', $election->id)
-            ->where('member_id', $user->member_id)
+            ->where(function ($q) use ($user) {
+                $q->where('member_id', $user->member_id)
+                    ->orWhere('member_id', '0' . $user->member_id)
+                    ->orWhere('member_id', ltrim($user->member_id, '0'));
+            })
             ->exists();
 
         if (!$isAllowed) {

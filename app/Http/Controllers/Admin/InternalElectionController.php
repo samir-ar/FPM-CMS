@@ -282,8 +282,15 @@ class InternalElectionController extends Controller
             return response()->json(['error' => 'No FPM member found with that ID'], 404);
         }
 
+        // Leading-zero tolerant, same reasoning as canIVote() in
+        // ApiController — an existing permission row may have been
+        // imported with a different zero-padding than this lookup's ID.
         $alreadyPermitted = InternalElectionPermission::where('election_id', $election->id)
-            ->where('member_id', $memberId)
+            ->where(function ($q) use ($memberId) {
+                $q->where('member_id', $memberId)
+                    ->orWhere('member_id', '0' . $memberId)
+                    ->orWhere('member_id', ltrim($memberId, '0'));
+            })
             ->exists();
 
         return response()->json([
