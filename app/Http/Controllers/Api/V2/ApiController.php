@@ -2335,15 +2335,6 @@ class ApiController extends Controller
             return $this->api_error_response('missing_parameters', 101, "user not found");
         }
 
-        // Escalated lockout check — see below for how this gets set. Short-
-        // circuits everything else once a member has repeatedly tripped the
-        // hourly limit in the same day, independent of whether they'd
-        // otherwise be allowed through right now.
-        $escalatedLockKey = 'district-voters-escalated-lock:' . $user->member_id;
-        if (Cache::has($escalatedLockKey)) {
-            return $this->api_error_response('too_many_requests', 429, 'تم تقييد الوصول مؤقتاً بسبب تكرار تجاوز الحد المسموح، يرجى المحاولة لاحقاً', 429);
-        }
-
         // Per-candidate rate limit — this endpoint hands back real voter
         // names and phone numbers for an entire district, so nothing short
         // of this stops a script (using a perfectly legitimate login) from
@@ -2353,22 +2344,17 @@ class ApiController extends Controller
         // (Zahle) in one sitting plus refreshing a few times, without the
         // forced per-request wait a lower cap + cooldown used to need.
         // Only ever bites sustained automated polling.
+        // No escalating lockout (removed 2026-11-05) — repeat trips within
+        // the same day used to push the next cooldown out to 6h then 24h,
+        // which punished legitimate repeat testing far more than it ever
+        // discouraged a real scraper (who'd just wait out whatever window
+        // applies anyway). A flat, always-the-same 1-hour wait every time
+        // keeps the real protection (the steady-state cap below never
+        // changes) without that extra penalty.
         $rateLimitKey = 'district-voters:' . $user->member_id;
         if (RateLimiter::tooManyAttempts($rateLimitKey, 60)) {
-            // Escalating lockout — repeatedly tripping the hourly limit in
-            // the same day pushes the next cooldown out much further
-            // (6h, then 24h) instead of always just waiting out a flat
-            // hour and immediately trying again.
-            $violationsKey = 'district-voters-violations:' . $user->member_id . ':' . now()->toDateString();
-            $violations = Cache::increment($violationsKey);
-            if ($violations == 2) {
-                Cache::put($escalatedLockKey, true, now()->addHours(6));
-            } elseif ($violations >= 3) {
-                Cache::put($escalatedLockKey, true, now()->addHours(24));
-            }
             Log::warning('district_voters_rate_limited', [
                 'member_id' => $user->member_id,
-                'violations_today' => $violations,
             ]);
             return $this->api_error_response('too_many_requests', 429, 'لقد تجاوزت الحد المسموح من الطلبات، يرجى المحاولة لاحقاً', 429);
         }
