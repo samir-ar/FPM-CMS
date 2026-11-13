@@ -139,6 +139,8 @@
                 </div>
             </div>
         </div>
+
+        @include('internal-election._app_registered_progress')
     </div>
 </div>
 
@@ -204,7 +206,7 @@
             $('#townDrilldownModalBody').html('<tr><td colspan="5" class="text-center text-muted">Loading...</td></tr>');
             $('#townDrilldownModal').modal('show');
 
-            $.get('{{ route('admin.internal-election.progress.towns', $election->id) }}', { district: district })
+            $.get('{{ route('admin.internal-election.progress.towns', $election->id) }}', { district: district, base: $(this).data('base') || '' })
                 .done(function (response) {
                     var $body = $('#townDrilldownModalBody').empty();
 

@@ -32,6 +32,7 @@ class InternalElectionController extends Controller
     use FormTrait;
     use FileTrait;
     use \App\Http\Traits\DistrictMatchingTrait;
+    use \App\Http\Traits\AppRegisteredVotersTrait;
     public function index(Request $request){
 
         if($request->ajax()) {
@@ -916,9 +917,13 @@ class InternalElectionController extends Controller
             ->map->count()
             ->sortKeys();
 
+        // Second block: same figures against only the permitted voters who
+        // are registered and logged in to the app (AppRegisteredVotersTrait).
+        $appStats = $this->appRegisteredStats($permittedMemberIds, $districtByMember, $votedMemberIds, $votedSet);
+
         return view('internal-election.progress', compact(
             'election', 'totalPermitted', 'totalVoted', 'totalRemaining', 'overallTurnout', 'districtRows', 'hourly'
-        ))->with('pageTitle', 'Election Progress - ' . $election->title);
+        ))->with($appStats)->with('pageTitle', 'Election Progress - ' . $election->title);
     }
 
     // Town-level drill-down for one district within the progress dashboard
@@ -943,6 +948,15 @@ class InternalElectionController extends Controller
             ->filter()
             ->unique();
         $votedSet = $votedMemberIds->flip();
+
+        // ?base=app: the "registered and logged in to the app" table's drilldown
+        // - restrict to permitted voters who are registered in the app.
+        if ($request->query('base') === 'app') {
+            $registeredSet = $this->registeredMemberSet($votedMemberIds);
+            $permittedMemberIds = $permittedMemberIds
+                ->filter(fn($memberId) => $this->isAppRegistered($memberId, $registeredSet))
+                ->values();
+        }
 
         $fpmRows = \DB::table('fpm_users')
             ->whereIn('MemberId', $permittedMemberIds)

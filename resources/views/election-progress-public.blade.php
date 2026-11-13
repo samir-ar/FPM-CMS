@@ -144,6 +144,8 @@
                     </div>
                 </div>
 
+                @include('internal-election._app_registered_progress')
+
                 <div class="muted text-muted" style="font-size:12px;">يتم تحديث هذه الصفحة تلقائياً كل دقيقة.</div>
             </div>
         </div>
@@ -214,7 +216,7 @@
                 $('#townDrilldownModalBody').html('<tr><td colspan="5" class="text-center text-muted">جارٍ التحميل...</td></tr>');
                 $('#townDrilldownModal').modal('show');
 
-                $.get('{{ route('election-progress.towns', $election->id) }}', { district: district })
+                $.get('{{ route('election-progress.towns', $election->id) }}', { district: district, base: $(this).data('base') || '' })
                     .done(function (response) {
                         var $body = $('#townDrilldownModalBody').empty();
 

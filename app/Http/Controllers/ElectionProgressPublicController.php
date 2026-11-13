@@ -27,6 +27,7 @@ use Carbon\Carbon;
 class ElectionProgressPublicController extends Controller
 {
     use \App\Http\Traits\DistrictMatchingTrait;
+    use \App\Http\Traits\AppRegisteredVotersTrait;
 
     const SESSION_KEY = 'election_progress_authenticated';
 
@@ -151,9 +152,13 @@ class ElectionProgressPublicController extends Controller
             ->map->count()
             ->sortKeys();
 
+        // Second block: same figures against only the permitted voters who
+        // are registered and logged in to the app (AppRegisteredVotersTrait).
+        $appStats = $this->appRegisteredStats($permittedMemberIds, $districtByMember, $votedMemberIds, $votedSet);
+
         return view('election-progress-public', compact(
             'election', 'totalPermitted', 'totalVoted', 'totalRemaining', 'overallTurnout', 'districtRows', 'hourly'
-        ));
+        ))->with($appStats);
     }
 
     // Town drill-down for one district, same shape as the admin progress
@@ -185,6 +190,15 @@ class ElectionProgressPublicController extends Controller
             ->filter()
             ->unique();
         $votedSet = $votedMemberIds->flip();
+
+        // ?base=app: the "registered and logged in to the app" table's drilldown
+        // - restrict to permitted voters who are registered in the app.
+        if ($request->query('base') === 'app') {
+            $registeredSet = $this->registeredMemberSet($votedMemberIds);
+            $permittedMemberIds = $permittedMemberIds
+                ->filter(fn($memberId) => $this->isAppRegistered($memberId, $registeredSet))
+                ->values();
+        }
 
         $fpmRows = \DB::table('fpm_users')
             ->whereIn('MemberId', $permittedMemberIds)
