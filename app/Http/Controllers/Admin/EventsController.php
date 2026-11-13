@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Event;
+use App\EventImage;
 use App\Events\NewItem;
 use App\Group;
 use Carbon\Carbon;
@@ -166,6 +167,25 @@ class EventsController extends Controller
         ]);
         // dd($request->all());
 
+        // Guards against duplicate submissions (double-click, slow page
+        // reload/resubmit) creating multiple events and firing a push
+        // notification for each - confirmed 2026-11-12: one slow submission
+        // produced 8 duplicate events and 7 pushes to every recipient
+        // within ~90 seconds before anyone noticed.
+        $duplicate = Event::where('created_at', '>=', now()->subSeconds(60))
+            ->where('organized_by', request('organized_by'))
+            ->where('from_date', Carbon::parse(request('from_date'))->toDateTimeString())
+            ->where('to_date', Carbon::parse(request('to_date'))->toDateTimeString())
+            ->get()
+            ->first(function ($e) use ($request) {
+                return $e->getTranslation('name', 'en') === $request->input('name')
+                    && $e->getTranslation('name', 'ar') === $request->input('name_ar');
+            });
+
+        if ($duplicate) {
+            return redirect()->route('admin.events.index')->with('message', 'This event was just created a moment ago - duplicate submission ignored.');
+        }
+
         $event = new Event();
         $event->name = request('name');
 
@@ -190,6 +210,17 @@ class EventsController extends Controller
 
 
         $event->save();
+
+        // The Home feed only ever reads an event's gallery (event_images),
+        // never its single cover `image` field - so without this, an event
+        // with no extra gallery photos shows no image there at all, even
+        // though the cover photo displays fine everywhere else (admin,
+        // Events tab). Mirroring it into the gallery keeps both in sync
+        // with zero app changes needed.
+        $galleryImage = new EventImage();
+        $galleryImage->event_id = $event->id;
+        $galleryImage->src = $event->image;
+        $galleryImage->save();
 
         if(request('all_groups')){
             $groups = Group::all()->pluck('group_id')->toArray();
@@ -268,7 +299,7 @@ class EventsController extends Controller
                         $this->drawHtml('date-time-picker', 'From Date', 'from_date', $event->from_date, null, '', 'col-md-12'),
                         $this->drawHtml('date-time-picker', 'To Date', 'to_date', $event->to_date, null, '', 'col-md-12'),
 
-                        $this->drawHtml('image', 'Image', 'image', null, null, '', 'col-md-12'),
+                        $this->drawHtml('image', 'Image', 'image', $event->image ? 'images/events/' . $event->image : null, null, '', 'col-md-12'),
 
 
                     ],
@@ -295,7 +326,7 @@ class EventsController extends Controller
             'organized_by' => 'required',
             'from_date' => 'required',
             'to_date' => 'required',
-            'image' => 'required|mimes:jpeg,png,jpg,gif,svg|max:700',
+            'image' => 'nullable|mimes:jpeg,png,jpg,gif,svg|max:700',
             'groups' => 'required_without:all_groups'
         ]);
 
@@ -319,8 +350,22 @@ class EventsController extends Controller
         $event->lat = request('lat');
         $event->lng = request('lng');
 
-        if(request('image'))
+        if(request('image')){
+            $oldImage = $event->image;
             $event->image = $this->moveFile(request('image'), 'images/events');
+
+            // Keep the gallery mirror (see store()) in sync: drop the gallery
+            // entry for the photo being replaced and add one for the new
+            // cover photo, so the Home feed picks it up without piling up
+            // a stale duplicate on every edit.
+            if ($oldImage) {
+                EventImage::where('event_id', $event->id)->where('src', $oldImage)->delete();
+            }
+            $galleryImage = new EventImage();
+            $galleryImage->event_id = $event->id;
+            $galleryImage->src = $event->image;
+            $galleryImage->save();
+        }
 
         if(request('all_groups')){
             $groups = Group::all()->pluck('group_id')->toArray();

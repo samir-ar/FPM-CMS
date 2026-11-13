@@ -8,6 +8,17 @@
 		document.getElementById('sendAnotherFormFlag').value = 'true';
 		document.getElementById('form').submit();
 	}
+
+	document.addEventListener('DOMContentLoaded', function() {
+		var form = document.getElementById('form');
+		form.addEventListener('submit', function() {
+			var btn = form.querySelector('button[type="submit"]');
+			if (btn) {
+				btn.disabled = true;
+				btn.innerText = 'Submitting...';
+			}
+		});
+	});
 </script>
 
 <style>
