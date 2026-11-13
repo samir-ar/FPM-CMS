@@ -39,6 +39,18 @@ return [
     'one_signal_url' => env('ONE_SIGNAL_URL'),
     'one_signal_rest_api_key' => env('ONE_SIGNAL_REST_API_KEY'),
 
+    // Single hardcoded destination for the Internal Election results/votes-
+    // report OTP lock (EnsureInternalElectionResultsOtp) - intentionally not
+    // tied to any admin account, so it's not affected by who knows which
+    // admin password.
+    'internal_election_results_otp_phone' => env('INTERNAL_ELECTION_RESULTS_OTP_PHONE'),
+
+    // A standalone, non-admin, username+password-gated turnout-only page
+    // (ElectionProgressPublicController) - password is stored bcrypt-hashed,
+    // never in plain text, compared via password_verify().
+    'election_progress_username' => env('ELECTION_PROGRESS_USERNAME'),
+    'election_progress_password_hash' => env('ELECTION_PROGRESS_PASSWORD_HASH'),
+
     // Shared secret for VerifyAppSignature — must match the value embedded
     // in the Flutter app's AppConstants.apiSignatureSecret exactly.
     'api_hmac_secret' => env('API_HMAC_SECRET'),

@@ -91,12 +91,24 @@ Route::group(['middleware' => [], 'prefix' => 'webview', 'as' => 'webview.'], fu
     Route::get('faqs', 'HomeController@faqs');
 });
 
+// Standalone turnout-only page, deliberately outside auth:admin and the
+// Profile/page-perm system entirely - see ElectionProgressPublicController
+// for why. Gated by its own username+password login, not a bare link.
+Route::get('election-progress', 'ElectionProgressPublicController@loginForm')->name('election-progress.index');
+Route::post('election-progress/login', 'ElectionProgressPublicController@login')->name('election-progress.login');
+Route::post('election-progress/logout', 'ElectionProgressPublicController@logout')->name('election-progress.logout');
+Route::get('election-progress/{electionId}', 'ElectionProgressPublicController@show')->name('election-progress.show');
+Route::get('election-progress/{electionId}/towns', 'ElectionProgressPublicController@progressTowns')->name('election-progress.towns');
+
 Route::group(['middleware' => ['my-auth', 'fpm-auth']], function () {
     Route::get('tracker', 'TrackingModuleController@getCondidates');
 });
 
 Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 'admin', 'as' => 'admin.'], function () {
-    Route::get('/', 'UserActivityController@index')->name('dashboard');
+    // Page id 0 ("Dashboards" in the Profile form) was never actually
+    // enforced here - found 2026-11-10 alongside the login-redirect fix,
+    // same class of gap as the unprotected add-user route above.
+    Route::get('/', 'UserActivityController@index')->name('dashboard')->middleware('page-perm:0,view');
 
     //Route::get('/', 'ProfileController@editForm')->name('dashboard');
     Route::resource('profile', 'ProfileController', ['only' => ['edit', 'update']]);
@@ -264,6 +276,7 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     //User Activity report — page 90
     Route::get('user-activity', 'UserActivityController@index')->name('user-activity.index')->middleware('page-perm:90,view');
     Route::get('user-activity/members/{period}', 'UserActivityController@members')->name('user-activity.members')->middleware('page-perm:90,view');
+    Route::get('user-activity/members-by-date/{date}', 'UserActivityController@membersByDate')->name('user-activity.members-by-date')->middleware('page-perm:90,view');
 
     //Content Engagement — page 89
     Route::get('content-engagement', 'ContentEngagementController@index')->name('content-engagement.index')->middleware('page-perm:89,view');
@@ -529,10 +542,13 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::post('internal-election/{id}/permitted-voters/lookup', 'InternalElectionController@lookupSinglePermittedVoter')->name('internal-election.permitted-voters.lookup')->middleware('page-perm:57,full');
     Route::post('internal-election/{id}/permitted-voters/add-one', 'InternalElectionController@addSinglePermittedVoter')->name('internal-election.permitted-voters.add-one')->middleware('page-perm:57,full');
     Route::delete('internal-election/{id}/permitted-voters/{permissionId}', 'InternalElectionController@removePermittedVoter')->name('internal-election.permitted-voters.remove')->middleware('page-perm:57,full');
-    Route::get('internal-election/export/{id}', 'InternalElectionController@export')->name('internal-election.export')->middleware('page-perm:57,view');
-    Route::get('internal-election/{id}/votes', 'InternalElectionController@votes')->name('internal-election.votes')->middleware('page-perm:57,view');
-    Route::get('internal-election/{id}/votes-report', 'InternalElectionController@votesReport')->name('internal-election.votes-report')->middleware('page-perm:57,view');
-    Route::get('internal-election/{id}/votes-report/export', 'InternalElectionController@exportVotesReport')->name('internal-election.votes-report.export')->middleware('page-perm:57,view');
+    Route::get('internal-election/export/{id}', 'InternalElectionController@export')->name('internal-election.export')->middleware(['page-perm:57,view', 'ie-results-otp']);
+    Route::get('internal-election/{id}/votes', 'InternalElectionController@votes')->name('internal-election.votes')->middleware(['page-perm:57,view', 'ie-results-otp']);
+    Route::get('internal-election/{id}/votes-report', 'InternalElectionController@votesReport')->name('internal-election.votes-report')->middleware(['page-perm:57,view', 'ie-results-otp']);
+    Route::get('internal-election/{id}/votes-report/export', 'InternalElectionController@exportVotesReport')->name('internal-election.votes-report.export')->middleware(['page-perm:57,view', 'ie-results-otp']);
+    Route::get('internal-election-results-otp', 'InternalElectionController@resultsOtpForm')->name('internal-election.results-otp')->middleware('page-perm:57,view');
+    Route::post('internal-election-results-otp/send', 'InternalElectionController@sendResultsOtp')->name('internal-election.results-otp.send')->middleware('page-perm:57,view');
+    Route::post('internal-election-results-otp/verify', 'InternalElectionController@verifyResultsOtp')->name('internal-election.results-otp.verify')->middleware('page-perm:57,view');
     Route::get('internal-election/{id}/progress', 'InternalElectionController@progress')->name('internal-election.progress')->middleware('page-perm:57,view');
     Route::get('internal-election/{id}/progress/towns', 'InternalElectionController@progressTowns')->name('internal-election.progress.towns')->middleware('page-perm:57,view');
     Route::get('internal-election/{id}/progress/export-by-district', 'InternalElectionController@exportProgressByDistrict')->name('internal-election.progress.export-by-district')->middleware('page-perm:57,view');

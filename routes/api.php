@@ -17,13 +17,8 @@ use Illuminate\Http\Request;
 
 
 Route::group(['namespace' => 'Api\V2', 'prefix' => 'v2/', 'middleware' => ['lang']], function(){
-    Route::post('seed',"ApiController@seed");
-    Route::post('get-qr-code', 'ApiController@getQRCode');
     // Route::post('google-forms', 'ApiController@getInternalProcess');
     // Route::post('single-google-form', 'ApiController@getSingleInternalProcess');
-
-
-    Route::post('getFpmUsers', 'ApiController@getFpmUsers');
 
     Route::post('send-verification', 'RegistrationController@sendVerfication');
     Route::post('verify-pin', 'RegistrationController@verify_pin');

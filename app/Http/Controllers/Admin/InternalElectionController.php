@@ -23,6 +23,9 @@ use App\Exports\InternalElectionProgressByDistrictExport;
 use App\Exports\InternalElectionProgressByTownExport;
 use Carbon\Carbon;
 use Maatwebsite\Excel\Facades\Excel;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
+use App\Http\Repositories\V2\FpmApisRepository;
 
 class InternalElectionController extends Controller
 {
@@ -76,7 +79,7 @@ class InternalElectionController extends Controller
             'scripts' => ['/js/internal-election.js'],
             'slug'		=> 'Archives',
             'custom_btn' => "<a href='" . route('admin.internal-election.create') ."' class='btn btn-primary'>Add Election</a>",
-            'custom_btn1' => "<a class='btn btn-danger' href='" . route('admin.internal-election-votes.reset') . "'>DELETE ALL VOTES</a>",
+            // HIDDEN 2026-11-14 (election day): 'custom_btn1' => "<a class='btn btn-danger' href='" . route('admin.internal-election-votes.reset') . "'>DELETE ALL VOTES</a>",
             'headers'	=> ['id','Title', 'Status', 'Closes at', 'Action'],
             'action' => route('admin.internal-election.index'),
             'columns' => json_encode([
@@ -115,8 +118,10 @@ class InternalElectionController extends Controller
 
 
     public function reset(Request $request){
-        InternalElectionVote::truncate();
-        return redirect()->route('admin.internal-election.index')->with('message', 'Election has been reset successfully');
+        // DISABLED 2026-11-14 (election day): was an unguarded GET that truncated ALL votes.
+        abort(404);
+        // InternalElectionVote::truncate();
+        // return redirect()->route('admin.internal-election.index')->with('message', 'Election has been reset successfully');
     }
 
     public function downloadAllowedVotersTemplate(){
@@ -545,6 +550,114 @@ class InternalElectionController extends Controller
             ->with('message', 'District order updated');
     }
 
+    // --- Results / Votes-Report OTP lock ---
+    // An extra gate on top of page-perm:57,view, scoped to only the results
+    // tally and the "who voted for whom" report - these are the two pages
+    // that let anyone logged into the admin panel (regardless of which
+    // Profile they're on, including the shared Super Admin account) see who
+    // is winning and who voted for whom, with no restriction today on
+    // whether the election is even still open. The code is sent only to one
+    // hardcoded number (config('app.internal_election_results_otp_phone')),
+    // so holding the admin password alone is no longer enough to reach
+    // these two pages.
+    const RESULTS_OTP_SESSION_KEY = 'ie_results_otp_verified_until';
+    const RESULTS_OTP_WINDOW_MINUTES = 5;
+
+    public function resultsOtpForm(Request $request)
+    {
+        $intended = $request->query('intended', route('admin.internal-election.index'));
+        session(['ie_results_otp_intended' => $intended]);
+
+        $codeSentAt = Cache::get($this->resultsOtpCacheKey() . ':sent_at');
+
+        return view('internal-election.results-otp', [
+            'layout' => 'layouts.cms',
+            'pageTitle' => 'Verification Required',
+            'codeSentAt' => $codeSentAt,
+        ]);
+    }
+
+    public function sendResultsOtp(Request $request)
+    {
+        $throttleKey = 'ie-results-otp-send:' . $request->ip();
+        if (Cache::has($throttleKey)) {
+            return back()->withErrors('Please wait a minute before requesting another code.');
+        }
+        Cache::put($throttleKey, true, now()->addSeconds(60));
+
+        $phone = config('app.internal_election_results_otp_phone');
+        if (!$phone) {
+            Log::warning('ie_results_otp_phone_not_configured');
+            return back()->withErrors('OTP phone number is not configured.');
+        }
+
+        $code = (string) random_int(100000, 999999);
+        // Encrypted at rest (APP_KEY-based, Laravel's encrypt()/decrypt())
+        // rather than stored as a plain digit string - the file cache
+        // driver writes this to a flat file under storage/framework/cache,
+        // and whoever has shell access to the server (not just DB access)
+        // could otherwise just cat it during the short window it's valid.
+        Cache::put($this->resultsOtpCacheKey(), encrypt($code), now()->addMinutes(5));
+        Cache::put($this->resultsOtpCacheKey() . ':sent_at', now(), now()->addMinutes(5));
+
+        try {
+            $fpmRepo = new FpmApisRepository();
+            $fpmRepo->sendSMS([
+                'phone_number' => $phone,
+                'message' => 'FPM Election Results code: ' . $code,
+            ]);
+        } catch (\Exception $e) {
+            Log::info('ie_results_otp_sms_failed', ['error' => $e->getMessage()]);
+            return back()->withErrors('Failed to send the code. Try again.');
+        }
+
+        Log::info('ie_results_otp_sent', [
+            'admin_id' => auth('admin')->id(),
+            'ip' => $request->ip(),
+        ]);
+
+        return back()->with('message', 'A code was sent.');
+    }
+
+    public function verifyResultsOtp(Request $request)
+    {
+        $this->validate($request, ['code' => 'required|string']);
+
+        $encrypted = Cache::get($this->resultsOtpCacheKey());
+        $expected = null;
+        if ($encrypted) {
+            try {
+                $expected = decrypt($encrypted);
+            } catch (\Illuminate\Contracts\Encryption\DecryptException $e) {
+                $expected = null;
+            }
+        }
+
+        if (!$expected || !hash_equals($expected, trim($request->input('code')))) {
+            Log::warning('ie_results_otp_failed_attempt', [
+                'admin_id' => auth('admin')->id(),
+                'ip' => $request->ip(),
+            ]);
+            return back()->withErrors('Incorrect or expired code.');
+        }
+
+        Cache::forget($this->resultsOtpCacheKey());
+        session([self::RESULTS_OTP_SESSION_KEY => now()->addMinutes(self::RESULTS_OTP_WINDOW_MINUTES)]);
+
+        Log::info('ie_results_otp_verified', [
+            'admin_id' => auth('admin')->id(),
+            'ip' => $request->ip(),
+        ]);
+
+        $intended = session('ie_results_otp_intended', route('admin.internal-election.index'));
+        return redirect($intended);
+    }
+
+    private function resultsOtpCacheKey(): string
+    {
+        return 'ie-results-otp:' . session()->getId();
+    }
+
 
     // Per-voter dispute review — not a tally, individual rows with the
     // selfie captured at vote time next to the voter's real on-file photo.
@@ -578,6 +691,19 @@ class InternalElectionController extends Controller
         } elseif ($townParam !== null && $townParam !== '') {
             $selectedTown = $townParam;
         }
+
+        // Fraud signal: the same device used to cast votes for more than one
+        // distinct member, anywhere in this election - not scoped to the
+        // currently selected district, since the whole point is catching
+        // reuse an admin browsing one district at a time would never see.
+        $suspiciousDeviceIds = \DB::table('internal_election_votes')
+            ->where('internal_election_id', $election->id)
+            ->whereNotNull('device_id')
+            ->groupBy('device_id')
+            ->havingRaw('COUNT(DISTINCT user_id) > 1')
+            ->pluck('device_id');
+
+        $onlyDuplicateDevices = request()->boolean('only_duplicate_devices');
 
         $votes = collect();
         $towns = collect();
@@ -613,20 +739,15 @@ class InternalElectionController extends Controller
                     fn($v) => $selectedTown === '' ? !$v->voter_town : $v->voter_town === $selectedTown
                 )->values();
             }
+
+            if ($onlyDuplicateDevices) {
+                $votes = $votes->filter(
+                    fn($v) => $v->device_id && $suspiciousDeviceIds->contains($v->device_id)
+                )->values();
+            }
         }
 
-        // Fraud signal: the same device used to cast votes for more than one
-        // distinct member, anywhere in this election - not scoped to the
-        // currently selected district, since the whole point is catching
-        // reuse an admin browsing one district at a time would never see.
-        $suspiciousDeviceIds = \DB::table('internal_election_votes')
-            ->where('internal_election_id', $election->id)
-            ->whereNotNull('device_id')
-            ->groupBy('device_id')
-            ->havingRaw('COUNT(DISTINCT user_id) > 1')
-            ->pluck('device_id');
-
-        return view('internal-election.votes', compact('election', 'allStates', 'selectedStateId', 'towns', 'selectedTown', 'votes', 'suspiciousDeviceIds'))
+        return view('internal-election.votes', compact('election', 'allStates', 'selectedStateId', 'towns', 'selectedTown', 'votes', 'suspiciousDeviceIds', 'onlyDuplicateDevices'))
             ->with('pageTitle', 'Vote Dispute Review - ' . $election->title);
     }
 

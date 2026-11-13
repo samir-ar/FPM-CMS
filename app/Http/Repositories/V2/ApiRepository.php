@@ -547,7 +547,7 @@ class ApiRepository
         switch ($type) {
             case "NEWS":
                 return $this->getNewsMedia($element, $placeholder);
-            case "EVENTS":
+            case "EVENT":
                 return $this->getEventsMedia($element);
             default:
                 return [];
@@ -728,7 +728,7 @@ class ApiRepository
         //Thumbnail
         $thumbnail = null;
 
-        if ($type == 'EVENTS' && $g->image) {
+        if ($type == 'EVENT' && $g->image) {
             $thumbnail = $g->image;
         }
 
@@ -751,10 +751,10 @@ class ApiRepository
             'title' => ($g->title) ? $g->title : $name,
             'details' => $details,
             'source' => $g->source,
-            "post_image" => ($g->source_image) ? ($type === "NEWS" ? Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/news/' . $g->source_image) : ($type === "EVENTS" ? Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/events/' . $g->source_image) : null)) : null,
+            "post_image" => ($g->source_image) ? ($type === "NEWS" ? Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/news/' . $g->source_image) : ($type === "EVENT" ? Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/events/' . $g->source_image) : null)) : null,
             'media' => $this->getMedia($type, $g, $placeholder),
             'type' => $g->type,
-            "thumbnail" => ($thumbnail) ? ($type === "NEWS" ? Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'news/videos/thumbnails/' . $thumbnail) : ($type === "EVENTS" ? Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/events/' . $thumbnail) : null)) : null,
+            "thumbnail" => ($thumbnail) ? ($type === "NEWS" ? Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'news/videos/thumbnails/' . $thumbnail) : ($type === "EVENT" ? Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/events/' . $thumbnail) : null)) : null,
             "date" => ($g->date) ? strtotime($g->date) : null,
             "likes_nb" => ($type === "NEWS") ? ($likesCounts[$g->id] ?? 0) : null,
             "like" => ($type === "NEWS") ? in_array($g->id, $likedByMe) : null,

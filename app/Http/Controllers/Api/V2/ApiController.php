@@ -75,22 +75,6 @@ class ApiController extends Controller
     use ResponseTrait;
     use TokenTrait;
 
-    // this function will replace getToken function in FpmApisRepository
-    public function getFpmUsers(Request $request){
-        $validator = Validator::make($request->all(), [
-            'member_id' => 'required|exists:fpm_users,MemberId',
-        ]);
-
-        if ($validator->fails()) {
-            return $this->api_error_response('missing_parameters', 101, implode(', ', $validator->messages()->all()));
-        }
-
-        $user = FpmUser::where('MemberId', $request->member_id)->with('fpmUsersActions')->first();
-
-        return response()->json($user);
-    }
-    // this function will replace getToken function in FpmApisRepository
-
     public function myProfile(Request $request)
     {
         $token = $request->user->token;
@@ -177,17 +161,6 @@ class ApiController extends Controller
         return response()->json($appUser->getUser());
     }
 
-    public function getQRCode(Request $request){
-        $validator = Validator::make($request->all(), [
-            'id' => 'required|exists:app_users,id',
-        ]);
-
-        if ($validator->fails()) {
-            return $this->api_error_response('missing_parameters', 101, implode(', ', $validator->messages()->all()));
-        }
-        $qr_code = AppUser::find($request->id);
-        return response()->json(asset($qr_code->qr_code));
-    }
     public function getInternalProcess(Request $request){
         $internal_process = InternalProcess::all();
         return response()->json($internal_process->map(function ($g) {
@@ -607,12 +580,12 @@ class ApiController extends Controller
 
         if ($user) {
             foreach ($apiRepository->getPollsByGroupsRaw($user, request('groups')) as $poll) {
-                $merged->push(['type' => 'POLLS', 'created_at' => $poll->created_at, 'model' => $poll]);
+                $merged->push(['type' => 'POLL', 'created_at' => $poll->created_at, 'model' => $poll]);
             }
         }
 
         foreach ($apiRepository->getEventsUpcomingByGroup(request('groups'))->get() as $event) {
-            $merged->push(['type' => 'EVENTS', 'created_at' => $event->created_at, 'model' => $event]);
+            $merged->push(['type' => 'EVENT', 'created_at' => $event->created_at, 'model' => $event]);
         }
 
         foreach ($apiRepository->getNewsByGroups(request('groups'))->get() as $n) {

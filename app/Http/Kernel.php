@@ -68,6 +68,7 @@ class Kernel extends HttpKernel
         'not-required-token' => \App\Http\Middleware\TokenNotRequired::class,
         'page-perm' => \App\Http\Middleware\CheckPagePermission::class,
         'app-signature' => \App\Http\Middleware\VerifyAppSignature::class,
+        'ie-results-otp' => \App\Http\Middleware\EnsureInternalElectionResultsOtp::class,
     ];
 
     /**

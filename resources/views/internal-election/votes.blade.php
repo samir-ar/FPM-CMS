@@ -31,6 +31,12 @@
                         <option value="__unspecified__" {{ $selectedTown === '' ? 'selected' : '' }}>(no town on file)</option>
                     </select>
                 </div>
+                <div class="checkbox" style="margin-left: 15px; display: inline-block; margin-top: 25px;">
+                    <label>
+                        <input type="checkbox" name="only_duplicate_devices" value="1" onchange="this.form.submit()" {{ $onlyDuplicateDevices ? 'checked' : '' }}>
+                        Show only reused devices
+                    </label>
+                </div>
             @endif
         </form>
 
@@ -73,14 +79,14 @@
                             </td>
                             <td>
                                 @if($vote->selfie_url)
-                                    <img src="{{ $vote->selfie_url }}" style="width:100px;height:100px;object-fit:cover;" onerror="this.style.visibility='hidden'">
+                                    <img src="{{ $vote->selfie_url }}" style="width:100px;height:100px;object-fit:cover;cursor:pointer;" onerror="this.style.visibility='hidden'" onclick="showEnlargedImage(this.src)">
                                 @else
                                     <span class="text-muted">none</span>
                                 @endif
                             </td>
                             <td>
                                 @if($vote->user && $vote->user->member_id)
-                                    <img src="/api/v2/member-photo/{{ $vote->user->member_id }}" style="width:100px;height:100px;object-fit:cover;" onerror="this.style.visibility='hidden'">
+                                    <img src="/api/v2/member-photo/{{ $vote->user->member_id }}" style="width:100px;height:100px;object-fit:cover;cursor:pointer;" onerror="this.style.visibility='hidden'" onclick="showEnlargedImage(this.src)">
                                 @else
                                     <span class="text-muted">none</span>
                                 @endif
@@ -92,4 +98,14 @@
         @endif
     </div>
 </div>
+
+<div id="imageEnlargeOverlay" onclick="this.style.display='none'" style="display:none;position:fixed;z-index:9999;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);cursor:zoom-out;text-align:center;">
+    <img id="imageEnlargeOverlayImg" style="max-width:90%;max-height:90%;margin-top:5vh;box-shadow:0 0 20px rgba(0,0,0,0.5);">
+</div>
+<script>
+    function showEnlargedImage(src) {
+        document.getElementById('imageEnlargeOverlayImg').src = src;
+        document.getElementById('imageEnlargeOverlay').style.display = 'block';
+    }
+</script>
 @endsection
