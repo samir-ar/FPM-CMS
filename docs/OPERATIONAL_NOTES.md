@@ -150,13 +150,13 @@ Read-only audit of every code path that writes to a votes table, plus production
 
 **Duplicate-account finding (production, 2026-11-14)**
 - 14,422 members have more than one non-deleted `app_users` row (31,829 rows), so `app-users:dedupe` has never been run on production.
-- Login resolves the account by phone: `AppUser::where('phone_number', ...)->first()` (`RegistrationRepository.php`), so same-phone duplicates normally land on one row. The live risk is a member holding two **tokened** rows. 23 members did; none had voted in election 2.
+- Login resolves the account by phone: `AppUser::where('phone_number', ...)->first()` (`RegistrationRepository.php`), so same-phone duplicates normally land on one row. The live risk is a member holding two **tokened** rows. 23 members did; none had voted in election 5 (the real election; other ids are tests).
 - Fixed with 28 soft-deletes (kept the most recently updated row per member; all rows of a member shared one phone number). Backup: `app_users_backup_20261114` (28 rows). Rollback: `UPDATE app_users SET deleted_at = NULL WHERE id IN (...)` using the ids in that table. Re-verified with a query for members with two or more verified+tokened rows: returned nothing.
 - Still open: ~14,400 other duplicate members (cannot vote twice today because only one row holds a token); a handful of leading-zero pairs (`0100100129` vs `100100129`, etc.) that the dedupe command misses because it groups on the exact `member_id` string; the structural fix (member-level vote check in `canIVote` and before the insert).
 
 **Useful read-only checks for next time**
 - Members with 2+ tokened accounts: group by `TRIM(LEADING '0' FROM member_id)` with `HAVING SUM(verified=1 AND member_status=1) >= 2 AND SUM(token IS NOT NULL AND token <> '') >= 2`.
-- Double votes in one election: join `internal_election_votes` to `app_users`, group by normalized `member_id` for `internal_election_id = 2`, `HAVING COUNT(*) > 1`.
-- Elections other than id 2 on production are test data; scope vote checks to the real election id or the counts mislead.
+- Double votes in one election: join `internal_election_votes` to `app_users`, group by normalized `member_id` for `internal_election_id = 5`, `HAVING COUNT(*) > 1`.
+- Elections other than id 5 on production are test data; scope vote checks to the real election id (5) or the counts mislead.
 
 **Deploy note**: a single-file production deploy (upload to `/tmp`, `md5sum`, `php8.2 -l`, backup with `cp -p`, `cp`, `chown www-data`, `php8.2 artisan view:clear`) was used for `InternalElectionController.php`; `cache:clear` was deliberately skipped in case the file cache holds the results-OTP state.
