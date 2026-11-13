@@ -280,7 +280,7 @@
     });
     $('#activityTownFilter').on('change', applyActivityFilters);
 
-    function openActivityModal(period, title) {
+    function openActivityModalFromUrl(url, title) {
         $('#activityMembersModalTitle').text(title);
         $('#activityMembersModalBody').html('<tr><td colspan="5" class="text-center text-muted">Loading...</td></tr>');
         $('#activityMembersCount').text('');
@@ -288,7 +288,7 @@
         $('#activityTownFilter').html('<option value="">All towns</option>');
         $('#activityMembersModal').modal('show');
 
-        $.getJSON('{{ url('admin/user-activity/members') }}/' + period, function (members) {
+        $.getJSON(url, function (members) {
             activityModalMembers = members;
             populateActivityDistrictOptions();
             populateActivityTownOptions('');
@@ -298,10 +298,18 @@
         });
     }
 
+    function openActivityModal(period, title) {
+        openActivityModalFromUrl('{{ url('admin/user-activity/members') }}/' + period, title);
+    }
+
+    function openActivityModalByDate(date, title) {
+        openActivityModalFromUrl('{{ url('admin/user-activity/members-by-date') }}/' + date, title);
+    }
+
     $(function () {
-        Morris.Line({
+        var dailyChart = Morris.Line({
             element: 'activity-trend-chart',
-            data: @json(collect($trendLabels)->map(fn($label, $i) => ['day' => $label, 'active' => $trendValues[$i]])),
+            data: @json($trendChartData),
             xkey: 'day',
             ykeys: ['active'],
             labels: ['Active Members'],
@@ -310,6 +318,13 @@
             smooth: false,
             parseTime: false,
         });
+
+        // Click a point to see who was active that exact day - same popup
+        // as the tiles above, just scoped to one day instead of a period.
+        dailyChart.on('click', function (i, row) {
+            openActivityModalByDate(row.date, 'Active on ' + row.day);
+        });
+        $('#activity-trend-chart').css('cursor', 'pointer');
 
         Morris.Line({
             element: 'periodic-trend-chart',

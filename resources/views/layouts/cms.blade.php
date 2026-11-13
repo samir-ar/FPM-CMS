@@ -184,7 +184,7 @@
 
                                 <ul class="treeview-menu">
                                     @foreach($children as $child)
-                                        @if(!$child->hide)
+                                        @if(!$child->hide && $user->hasPage($child->id))
                                             @php
                                                 $active = false;
                                                 if(Route::currentRouteName() == $child->url)

@@ -80,6 +80,37 @@ class User extends Authenticatable
         return $this->permissionLevel($page_id) !== null;
     }
 
+    // Where to send this admin after login instead of the Dashboard, for
+    // profiles that don't have Dashboard access. Mirrors the sidebar's own
+    // visibility rule (layouts/cms.blade.php): a top-level group needs its
+    // own grant to show at all, and within it only children the admin is
+    // individually granted. Returns null if nothing is accessible.
+    public function firstAccessibleUrl(): ?string
+    {
+        $topPages = \App\Page::whereNull('parent_id')->orderBy('id')->get();
+
+        foreach ($topPages as $page) {
+            if (!$this->hasPage($page->id)) {
+                continue;
+            }
+
+            if (!empty($page->url)) {
+                return route($page->url);
+            }
+
+            if ($page->is_parent) {
+                $child = \App\Page::where('parent_id', $page->id)->orderBy('id')->get()
+                    ->first(fn($c) => !$c->hide && !empty($c->url) && $this->hasPage($c->id));
+
+                if ($child) {
+                    return route($child->url) . $child->parameters;
+                }
+            }
+        }
+
+        return null;
+    }
+
     // A specific action (e.g. 'attendance.store') granted on top of a
     // 'view' profile — lets a View-only admin do one specific Full-level
     // thing without giving them Full access to the whole page. Meaningless

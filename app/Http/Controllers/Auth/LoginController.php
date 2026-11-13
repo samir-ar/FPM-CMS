@@ -53,8 +53,16 @@ class LoginController extends Controller
         ]);
 
         if (Auth::guard('admin')->attempt(['email' => $request->email, 'password' => $request->password], $request->get('remember'))) {
+            $admin = Auth::guard('admin')->user();
 
-            return redirect()->intended('/admin');
+            // Profiles without Dashboard access (page id 0) shouldn't land
+            // there just because it's the default - send them to the first
+            // page they actually have access to instead. Still honors a
+            // real "intended" URL (e.g. they hit a protected link while
+            // logged out) over this fallback.
+            $default = $admin->hasPage(0) ? '/admin' : ($admin->firstAccessibleUrl() ?? '/admin');
+
+            return redirect()->intended($default);
         }
         return back()->withInput($request->only('email', 'remember'));
     }

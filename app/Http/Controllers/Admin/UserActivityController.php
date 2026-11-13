@@ -64,10 +64,21 @@ class UserActivityController extends Controller
 
         $trendLabels = [];
         $trendValues = [];
+        $trendDates = [];
+        $trendChartData = [];
         for ($i = 29; $i >= 0; $i--) {
             $date = Carbon::parse($today)->subDays($i)->toDateString();
-            $trendLabels[] = Carbon::parse($date)->format('M j');
-            $trendValues[] = (int) ($trendRaw[$date] ?? 0);
+            $label = Carbon::parse($date)->format('M j');
+            $count = (int) ($trendRaw[$date] ?? 0);
+            $trendLabels[] = $label;
+            $trendValues[] = $count;
+            $trendDates[] = $date;
+            // Pre-built for the chart's @json() in the view - keeping the
+            // array literal out of the Blade template avoids a real Blade
+            // @json() directive bug where an inline ->map(fn(...) => [...])
+            // with more than 2 keys gets its argument-matching confused and
+            // silently truncates the expression (confirmed 2026-11-10).
+            $trendChartData[] = ['day' => $label, 'active' => $count, 'date' => $date];
         }
 
         // "Periodically active" trend — for each of the last 30 days, count everyone active at ANY
@@ -191,7 +202,7 @@ class UserActivityController extends Controller
 
         return view('cms.user_activity.index', compact(
             'totalMembers', 'dau', 'newToday', 'wau', 'mau', 'yau', 'tenYearActive',
-            'trendLabels', 'trendValues',
+            'trendLabels', 'trendValues', 'trendDates', 'trendChartData',
             'periodicLabels', 'periodicValues',
             'powerUsers', 'regularUsers', 'casualUsers',
             'mostEngaged', 'dormant'
@@ -277,6 +288,52 @@ class UserActivityController extends Controller
             ->select('app_users.member_id')
             ->groupBy('app_users.member_id')
             ->havingRaw('MIN(user_activity_logs.activity_date) = ?', [$today])
+            ->pluck('member_id')
+            ->flip();
+
+        $members->each(function ($m) use ($newMemberIds) {
+            if ($m->last_active) {
+                $m->last_active = Carbon::parse($m->last_active, 'UTC')
+                    ->setTimezone(config('app.timezone'))
+                    ->toDateTimeString();
+            }
+            $m->is_new = $newMemberIds->has($m->member_id);
+        });
+
+        return response()->json($members);
+    }
+
+    /** Member list behind a single point on the "Daily Active Members" chart - that exact day only, not "since". */
+    public function membersByDate(string $date)
+    {
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) || !Carbon::createFromFormat('Y-m-d', $date)) {
+            return response()->json(['error' => 'Invalid date'], 400);
+        }
+
+        // Same shape/joins as members() above, just activity_date = $date
+        // instead of >= $sinceDate - one exact day, not a rolling window.
+        $members = DB::table('user_activity_logs')
+            ->join('app_users', 'app_users.id', '=', 'user_activity_logs.app_user_id')
+            ->leftJoin('fpm_users', 'fpm_users.MemberId', '=', 'app_users.member_id')
+            ->select(
+                'app_users.member_id',
+                'app_users.name',
+                'fpm_users.district',
+                'fpm_users.town',
+                DB::raw('MAX(user_activity_logs.created_at) as last_active')
+            )
+            ->whereNull('app_users.deleted_at')
+            ->where('user_activity_logs.activity_date', '=', $date)
+            ->groupBy('app_users.member_id', 'app_users.name', 'fpm_users.district', 'fpm_users.town')
+            ->orderByDesc('last_active')
+            ->get();
+
+        $newMemberIds = DB::table('user_activity_logs')
+            ->join('app_users', 'app_users.id', '=', 'user_activity_logs.app_user_id')
+            ->whereNull('app_users.deleted_at')
+            ->select('app_users.member_id')
+            ->groupBy('app_users.member_id')
+            ->havingRaw('MIN(user_activity_logs.activity_date) = ?', [$date])
             ->pluck('member_id')
             ->flip();
 
