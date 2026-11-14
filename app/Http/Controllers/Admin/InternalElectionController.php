@@ -805,10 +805,18 @@ class InternalElectionController extends Controller
         // Review - so the dropdown never offers a town with zero rows here.
         $towns = $filtered->pluck('town')->filter()->unique()->sort()->values();
 
+        // Candidate options follow the same district-filtered scope.
+        $candidates = $filtered->pluck('candidate_name')->filter()->unique()->sort()->values();
+        $selectedCandidate = request()->filled('candidate') ? (string) request('candidate') : null;
+
         if ($selectedTown !== null) {
             $filtered = $filtered->filter(
                 fn($v) => $selectedTown === '' ? !$v->town : $v->town === $selectedTown
             )->values();
+        }
+
+        if ($selectedCandidate !== null) {
+            $filtered = $filtered->filter(fn($v) => $v->candidate_name === $selectedCandidate)->values();
         }
 
         $sortDir = request('sort') === 'asc' ? 'asc' : 'desc';
@@ -829,7 +837,7 @@ class InternalElectionController extends Controller
             ['path' => request()->url(), 'query' => request()->query()]
         );
 
-        return view('internal-election.votes-report', compact('election', 'votes', 'allStates', 'selectedStateId', 'towns', 'selectedTown', 'sortDir'))
+        return view('internal-election.votes-report', compact('election', 'votes', 'allStates', 'selectedStateId', 'towns', 'selectedTown', 'sortDir', 'candidates', 'selectedCandidate'))
             ->with('pageTitle', 'Votes Report - ' . $election->title);
     }
 
@@ -839,7 +847,27 @@ class InternalElectionController extends Controller
             return redirect(route('admin.internal-election.index'))->withErrors('Election not found');
         }
 
-        return Excel::download(new InternalElectionVotesExport($election->id), 'votes-report-' . $election->id . '.xlsx');
+        // Honor the web page's filters when the export link carries them
+        // (state_id / town / candidate); with none, every vote is exported.
+        $rows = (new InternalElectionVotesExport($election->id))->collection();
+
+        if (request()->filled('state_id')) {
+            $stateName = optional(ElectionState::find((int) request('state_id')))->name;
+            if ($stateName !== null) {
+                $rows = $rows->filter(fn($v) => $this->districtMatchesAnyState($v->district, [$stateName]))->values();
+            }
+        }
+        $townParam = request()->query('town');
+        if ($townParam === '__unspecified__') {
+            $rows = $rows->filter(fn($v) => !$v->town)->values();
+        } elseif ($townParam !== null && $townParam !== '') {
+            $rows = $rows->filter(fn($v) => $v->town === $townParam)->values();
+        }
+        if (request()->filled('candidate')) {
+            $rows = $rows->filter(fn($v) => $v->candidate_name === (string) request('candidate'))->values();
+        }
+
+        return Excel::download(new InternalElectionVotesExport($election->id, $rows), 'votes-report-' . $election->id . '.xlsx');
     }
 
     public function progress($id){

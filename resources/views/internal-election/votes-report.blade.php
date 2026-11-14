@@ -5,7 +5,7 @@
     <div class="box-header with-border">
         <h3 class="box-title">{{ $election->title }} — Votes Report</h3>
         <div class="box-tools pull-right">
-            <a href="{{ route('admin.internal-election.votes-report.export', $election->id) }}" class="btn btn-success btn-sm">
+            <a href="{{ route('admin.internal-election.votes-report.export', array_merge(['id' => $election->id], request()->only(['state_id', 'town', 'candidate']))) }}" class="btn btn-success btn-sm">
                 <i class="fa fa-file-excel-o"></i> Export to Excel
             </a>
         </div>
@@ -34,6 +34,17 @@
                         </option>
                     @endforeach
                     <option value="__unspecified__" {{ $selectedTown === '' ? 'selected' : '' }}>(no town on file)</option>
+                </select>
+            </div>
+            <div class="col-sm-4">
+                <label for="candidate">Candidate</label>
+                <select name="candidate" id="candidate" class="form-control" onchange="this.form.submit()">
+                    <option value="">— All candidates —</option>
+                    @foreach($candidates as $candidate)
+                        <option value="{{ $candidate }}" {{ $selectedCandidate === $candidate ? 'selected' : '' }}>
+                            {{ $candidate }}
+                        </option>
+                    @endforeach
                 </select>
             </div>
         </form>

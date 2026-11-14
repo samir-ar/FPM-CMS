@@ -16,13 +16,22 @@ class InternalElectionVotesExport implements FromCollection, WithHeadings, WithM
 {
     private int $electionId;
 
-    public function __construct(int $electionId)
+    // Optional already-filtered rows (the web page's district/town/candidate
+    // filters) - when given, they are exported as-is instead of every vote.
+    private $presetRows;
+
+    public function __construct(int $electionId, $presetRows = null)
     {
         $this->electionId = $electionId;
+        $this->presetRows = $presetRows;
     }
 
     public function collection()
     {
+        if ($this->presetRows !== null) {
+            return $this->presetRows;
+        }
+
         $votes = InternalElectionVote::with(['user', 'candidate'])
             ->where('internal_election_id', $this->electionId)
             ->get();
