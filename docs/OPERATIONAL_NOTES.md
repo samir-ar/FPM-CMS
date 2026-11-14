@@ -150,20 +150,20 @@ Read-only audit of every code path that writes to a votes table, plus production
 
 **Duplicate-account finding (production, 2026-11-14)**
 - 14,422 members have more than one non-deleted `app_users` row (31,829 rows), so `app-users:dedupe` has never been run on production.
-- Login resolves the account by phone: `AppUser::where('phone_number', ...)->first()` (`RegistrationRepository.php`), so same-phone duplicates normally land on one row. The live risk is a member holding two **tokened** rows. 23 members did; none had voted in election 5 (the real election; other ids are tests).
+- Login resolves the account by phone: `AppUser::where('phone_number', ...)->first()` (`RegistrationRepository.php`), so same-phone duplicates normally land on one row. The live risk is a member holding two **tokened** rows. 23 members did; none had voted in election 2 (the real election; checked for election 5 too, which was a rehearsal).
 - Fixed with 28 soft-deletes (kept the most recently updated row per member; all rows of a member shared one phone number). Backup: `app_users_backup_20261114` (28 rows). Rollback: `UPDATE app_users SET deleted_at = NULL WHERE id IN (...)` using the ids in that table. Re-verified with a query for members with two or more verified+tokened rows: returned nothing.
 - Still open: ~14,400 other duplicate members (cannot vote twice today because only one row holds a token); a handful of leading-zero pairs (`0100100129` vs `100100129`, etc.) that the dedupe command misses because it groups on the exact `member_id` string; the structural fix (member-level vote check in `canIVote` and before the insert).
 
 **Useful read-only checks for next time**
 - Members with 2+ tokened accounts: group by `TRIM(LEADING '0' FROM member_id)` with `HAVING SUM(verified=1 AND member_status=1) >= 2 AND SUM(token IS NOT NULL AND token <> '') >= 2`.
-- Double votes in one election: join `internal_election_votes` to `app_users`, group by normalized `member_id` for `internal_election_id = 5`, `HAVING COUNT(*) > 1`.
-- Elections other than id 5 on production are test data; scope vote checks to the real election id (5) or the counts mislead.
+- Double votes in one election: join `internal_election_votes` to `app_users`, group by normalized `member_id` for `internal_election_id = 2`, `HAVING COUNT(*) > 1`.
+- Elections other than id 2 on production are tests or rehearsals (3 and 5 are the Batroun rehearsals, 4 and 6 blank tests, 1 is المجلس الوطني, inactive); scope vote checks to the real election id (2) or the counts mislead.
 
 **Deploy note**: a single-file production deploy (upload to `/tmp`, `md5sum`, `php8.2 -l`, backup with `cp -p`, `cp`, `chown www-data`, `php8.2 artisan view:clear`) was used for `InternalElectionController.php`; `cache:clear` was deliberately skipped in case the file cache holds the results-OTP state.
 
 ## Election-day follow-up notes (2026-11-14)
 
-- **Real election id is 5**; other ids on production are tests. Always scope vote/turnout queries to `internal_election_id = 5`. Staging election 1 has 35,085 permitted voters, which is why a screenshot showing "35085" is staging, not production.
+- **Real election id is 2** (انتخابات مجلس الاقضية: active, closes 2026-11-14 16:00 Beirut, requires_selfie, voter_list_visible, 35,090 permitted). Other ids are rehearsals or tests and are inactive. Always scope vote/turnout queries to `internal_election_id = 2`.
 - **Who can follow the day safely**: an admin profile with the Internal Election page set to View only sees Progress and Candidate Activity; Results, Votes Report, Vote Dispute Review and all progress/votes Excel exports require the phone code (`ie-results-otp`). The two blank import templates and the standalone `/election-progress` page have no data export.
 - **Candidate Activity** deliberately shows only a boolean per candidate. Do not add counts, ranking or timestamps to it.
 - **Progress pages "registered and logged in" block**: live verified active `app_users` row holding a token, plus anyone who voted (logout clears the token). 203 (User Activity, البترون) vs 196 (progress) is expected: activity counts anyone seen since Sep 24 in the district regardless of permitted list/token; progress counts permitted voters with a token. They are different definitions, not a bug.
