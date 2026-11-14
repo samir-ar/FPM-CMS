@@ -52,7 +52,17 @@ $(document).ready(function(){
             member_id: memberId
         }).done(function(response){
             if (response.already_permitted) {
-                $result.html('<span class="text-success">Already in the permitted list: ' + response.name + ' (' + response.member_id + ')</span>');
+                // "Show in list / remove" re-opens this page filtered to just this
+                // member (same permitted_search filter the table's own search box
+                // uses), so the trash icon on his row is the only one on screen.
+                var params = new URLSearchParams(window.location.search);
+                params.delete('permitted_page');
+                params.set('permitted_search', response.member_id);
+                var showUrl = window.location.pathname + '?' + params.toString() + '#permitted-voters';
+                var $showLink = $('<a>').attr('href', showUrl).addClass('btn btn-default btn-sm').css('margin-left', '8px').text('Show in list / remove');
+                $result.empty()
+                    .append($('<span>').addClass('text-success').text('Already in the permitted list: ' + response.name + ' (' + response.member_id + ')'))
+                    .append($showLink);
             } else {
                 var $confirm = $('<span>')
                     .addClass('text-muted')
