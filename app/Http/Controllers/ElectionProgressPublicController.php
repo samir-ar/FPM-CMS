@@ -115,9 +115,12 @@ class ElectionProgressPublicController extends Controller
             ->get()
             ->pluck('user.member_id')
             ->filter()
+            ->map(fn($id) => ltrim((string) $id, '0'))
             ->unique();
 
-        $totalVoted = $permittedMemberIds->intersect($votedMemberIds)->count();
+        // Leading-zero tolerant, same as the admin progress page.
+        $votedLookup = $votedMemberIds->flip();
+        $totalVoted = $permittedMemberIds->filter(fn($m) => $votedLookup->has(ltrim((string) $m, '0')))->count();
         $totalRemaining = $totalPermitted - $totalVoted;
         $overallTurnout = $totalPermitted > 0 ? round($totalVoted / $totalPermitted * 100, 1) : 0;
 
@@ -130,7 +133,7 @@ class ElectionProgressPublicController extends Controller
                 $districtStats[$district] = ['permitted' => 0, 'voted' => 0];
             }
             $districtStats[$district]['permitted']++;
-            if ($votedSet->has($memberId)) {
+            if ($votedSet->has(ltrim((string) $memberId, '0'))) {
                 $districtStats[$district]['voted']++;
             }
         }
@@ -188,6 +191,7 @@ class ElectionProgressPublicController extends Controller
             ->get()
             ->pluck('user.member_id')
             ->filter()
+            ->map(fn($id) => ltrim((string) $id, '0'))
             ->unique();
         $votedSet = $votedMemberIds->flip();
 
@@ -219,7 +223,7 @@ class ElectionProgressPublicController extends Controller
                 $townStats[$town] = ['permitted' => 0, 'voted' => 0];
             }
             $townStats[$town]['permitted']++;
-            if ($votedSet->has($memberId)) {
+            if ($votedSet->has(ltrim((string) $memberId, '0'))) {
                 $townStats[$town]['voted']++;
             }
         }

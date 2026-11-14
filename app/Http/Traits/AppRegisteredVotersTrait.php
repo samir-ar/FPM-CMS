@@ -58,7 +58,7 @@ trait AppRegisteredVotersTrait
             ->values();
 
         $total = $registeredIds->count();
-        $voted = $registeredIds->intersect($votedMemberIds)->count();
+        $voted = $registeredIds->filter(fn($m) => $votedSet->has(ltrim((string) $m, '0')))->count();
 
         $byDistrict = [];
         foreach ($registeredIds as $memberId) {
@@ -67,7 +67,7 @@ trait AppRegisteredVotersTrait
                 $byDistrict[$district] = ['permitted' => 0, 'voted' => 0];
             }
             $byDistrict[$district]['permitted']++;
-            if ($votedSet->has($memberId)) {
+            if ($votedSet->has(ltrim((string) $memberId, '0'))) {
                 $byDistrict[$district]['voted']++;
             }
         }

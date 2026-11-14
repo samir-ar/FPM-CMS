@@ -41,6 +41,7 @@ class InternalElectionProgressByTownExport implements FromCollection, WithHeadin
             ->get()
             ->pluck('user.member_id')
             ->filter()
+            ->map(fn($id) => ltrim((string) $id, '0'))
             ->unique();
         $votedSet = $votedMemberIds->flip();
 
@@ -60,7 +61,7 @@ class InternalElectionProgressByTownExport implements FromCollection, WithHeadin
                 $stats[$key] = ['district' => $district, 'town' => $town, 'permitted' => 0, 'voted' => 0];
             }
             $stats[$key]['permitted']++;
-            if ($votedSet->has($memberId)) {
+            if ($votedSet->has(ltrim((string) $memberId, '0'))) {
                 $stats[$key]['voted']++;
             }
         }

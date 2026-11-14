@@ -877,9 +877,14 @@ class InternalElectionController extends Controller
             ->get()
             ->pluck('user.member_id')
             ->filter()
+            ->map(fn($id) => ltrim((string) $id, '0'))
             ->unique();
 
-        $totalVoted = $permittedMemberIds->intersect($votedMemberIds)->count();
+        // member_id compared with leading zeros stripped on both sides (the
+        // app's own vote check does the same) - app_users.member_id can carry
+        // a leading 0 the permitted list doesn't, which used to hide ~35 voters.
+        $votedLookup = $votedMemberIds->flip();
+        $totalVoted = $permittedMemberIds->filter(fn($m) => $votedLookup->has(ltrim((string) $m, '0')))->count();
         $totalRemaining = $totalPermitted - $totalVoted;
         $overallTurnout = $totalPermitted > 0 ? round($totalVoted / $totalPermitted * 100, 1) : 0;
 
@@ -894,7 +899,7 @@ class InternalElectionController extends Controller
                 $districtStats[$district] = ['permitted' => 0, 'voted' => 0];
             }
             $districtStats[$district]['permitted']++;
-            if ($votedSet->has($memberId)) {
+            if ($votedSet->has(ltrim((string) $memberId, '0'))) {
                 $districtStats[$district]['voted']++;
             }
         }
@@ -946,6 +951,7 @@ class InternalElectionController extends Controller
             ->get()
             ->pluck('user.member_id')
             ->filter()
+            ->map(fn($id) => ltrim((string) $id, '0'))
             ->unique();
         $votedSet = $votedMemberIds->flip();
 
@@ -977,7 +983,7 @@ class InternalElectionController extends Controller
                 $townStats[$town] = ['permitted' => 0, 'voted' => 0];
             }
             $townStats[$town]['permitted']++;
-            if ($votedSet->has($memberId)) {
+            if ($votedSet->has(ltrim((string) $memberId, '0'))) {
                 $townStats[$town]['voted']++;
             }
         }
