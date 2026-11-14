@@ -28,10 +28,15 @@ class InternalElectionVotesExport implements FromCollection, WithHeadings, WithM
             ->get();
 
         $memberIds = $votes->pluck('user.member_id')->filter()->unique()->values();
-        $fpmUsers = FpmUser::whereIn('MemberId', $memberIds)->get(['MemberId', 'district', 'town'])->keyBy('MemberId');
+        // app_users.member_id can carry a leading 0 that fpm_users.MemberId
+        // doesn't (35 election-2 voters showed a blank district/town). Look up
+        // by both forms and key by the zero-stripped id.
+        $lookupIds = $memberIds->merge($memberIds->map(fn($i) => ltrim((string) $i, '0')))->unique()->values();
+        $fpmUsers = FpmUser::whereIn('MemberId', $lookupIds)->get(['MemberId', 'district', 'town'])
+            ->keyBy(fn($u) => ltrim((string) $u->MemberId, '0'));
 
         return $votes->map(function ($vote) use ($fpmUsers) {
-            $fpmUser = $vote->user ? ($fpmUsers[$vote->user->member_id] ?? null) : null;
+            $fpmUser = $vote->user ? ($fpmUsers[ltrim((string) $vote->user->member_id, '0')] ?? null) : null;
 
             return (object) [
                 'voter_name' => $vote->user->name ?? null,

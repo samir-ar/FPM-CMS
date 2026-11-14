@@ -721,12 +721,17 @@ class InternalElectionController extends Controller
             // relation to FpmUser in this codebase, so it's bulk-fetched and
             // attached here instead.
             $memberIds = $votes->pluck('user.member_id')->filter()->unique();
+            // Leading-zero tolerant (app_users.member_id may have a 0 that
+            // fpm_users.MemberId doesn't): look up both forms, key stripped.
+            $lookupIds = $memberIds->merge($memberIds->map(fn($i) => ltrim((string) $i, '0')))->unique()->values();
             $townByMember = \DB::table('fpm_users')
-                ->whereIn('MemberId', $memberIds)
-                ->pluck('town', 'MemberId');
+                ->whereIn('MemberId', $lookupIds)
+                ->get(['MemberId', 'town'])
+                ->pluck('town', 'MemberId')
+                ->mapWithKeys(fn($town, $mid) => [ltrim((string) $mid, '0') => $town]);
 
             $votes->each(function ($vote) use ($townByMember) {
-                $vote->voter_town = $vote->user ? ($townByMember[$vote->user->member_id] ?? null) : null;
+                $vote->voter_town = $vote->user ? ($townByMember[ltrim((string) $vote->user->member_id, '0')] ?? null) : null;
             });
 
             // Full district scope (before the town filter itself is
