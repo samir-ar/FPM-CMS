@@ -551,8 +551,9 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::post('internal-election-results-otp/verify', 'InternalElectionController@verifyResultsOtp')->name('internal-election.results-otp.verify')->middleware('page-perm:57,view');
     Route::get('internal-election/{id}/progress', 'InternalElectionController@progress')->name('internal-election.progress')->middleware('page-perm:57,view');
     Route::get('internal-election/{id}/progress/towns', 'InternalElectionController@progressTowns')->name('internal-election.progress.towns')->middleware('page-perm:57,view');
-    Route::get('internal-election/{id}/progress/export-by-district', 'InternalElectionController@exportProgressByDistrict')->name('internal-election.progress.export-by-district')->middleware('page-perm:57,view');
-    Route::get('internal-election/{id}/progress/export-by-town', 'InternalElectionController@exportProgressByTown')->name('internal-election.progress.export-by-town')->middleware('page-perm:57,view');
+    Route::get('internal-election/{id}/progress/export-by-district', 'InternalElectionController@exportProgressByDistrict')->name('internal-election.progress.export-by-district')->middleware(['page-perm:57,view', 'ie-results-otp']);
+    Route::get('internal-election/{id}/progress/export-by-town', 'InternalElectionController@exportProgressByTown')->name('internal-election.progress.export-by-town')->middleware(['page-perm:57,view', 'ie-results-otp']);
+    Route::get('internal-election/{id}/candidate-activity', 'InternalElectionController@candidateActivity')->name('internal-election.candidate-activity')->middleware('page-perm:57,view');
     Route::get('internal-election/{id}/district-voting-settings', 'InternalElectionController@districtVotingSettings')->name('internal-election.district-voting-settings')->middleware('page-perm:57,full');
     Route::post('internal-election/{id}/district-voting-settings', 'InternalElectionController@updateDistrictVotingSettings')->name('internal-election.district-voting-settings.update')->middleware('page-perm:57,full');
     Route::get('internal-election-vote/reset', 'InternalElectionController@reset')->name('internal-election-votes.reset')->middleware('page-perm:57,full');

@@ -1079,6 +1079,66 @@ class InternalElectionController extends Controller
             ->with('message', 'District voting settings updated');
     }
 
+    // Candidate Activity: like Results, but never shows a vote count, a
+    // rank, a total or a time - only whether each candidate has received any
+    // vote yet. Safe to show to someone who must not learn the results.
+    // Candidates are always listed in the fixed admin display order (then
+    // family name), never sorted by votes, and only a boolean per candidate
+    // is ever passed to the view, never a number.
+    public function candidateActivity($id){
+        $election = InternalElection::find($id);
+        if(!$election){
+            return redirect(route('admin.internal-election.index'))->withErrors('Election not found');
+        }
+
+        $stateIds = \DB::table('internal_election_candidate_states')
+            ->join('internal_election_candidates', 'internal_election_candidates.id', '=', 'internal_election_candidate_states.candidate_id')
+            ->where('internal_election_candidates.election_id', $election->id)
+            ->distinct()
+            ->pluck('internal_election_candidate_states.election_state_id');
+
+        $allStates = ElectionState::whereIn('id', $stateIds)->orderBy('name')->get();
+
+        $votingDisabledStateIds = InternalElectionDistrictVotingSetting::where('election_id', $election->id)
+            ->where('voting_enabled', false)
+            ->pluck('election_state_id')
+            ->flip();
+
+        // Which candidates have at least one vote - ids only, no counts.
+        $votedCandidateIds = InternalElectionVote::where('internal_election_id', $election->id)
+            ->distinct()
+            ->pluck('candidate_id')
+            ->flip();
+
+        $sections = $allStates->map(function ($state) use ($election, $votingDisabledStateIds, $votedCandidateIds) {
+            $candidates = $election->candidates()
+                ->whereHas('electionStates', function ($q) use ($state) {
+                    $q->where('election_states.id', $state->id);
+                })
+                ->get()
+                ->sort(function ($a, $b) {
+                    $aOrder = $a->display_order !== null ? $a->display_order : PHP_INT_MAX;
+                    $bOrder = $b->display_order !== null ? $b->display_order : PHP_INT_MAX;
+                    if ($aOrder !== $bOrder) {
+                        return $aOrder <=> $bOrder;
+                    }
+                    return strcmp($a->family_name ?? '', $b->family_name ?? '');
+                })->values();
+
+            return [
+                'district' => $state->name,
+                'voting_disabled' => $votingDisabledStateIds->has($state->id),
+                'candidates' => $candidates->map(fn($c) => [
+                    'name' => $c->name,
+                    'has_votes' => $votedCandidateIds->has($c->id),
+                ])->all(),
+            ];
+        })->values();
+
+        return view('internal-election.candidate-activity', compact('election', 'sections'))
+            ->with('pageTitle', 'Candidate Activity - ' . $election->title);
+    }
+
     public function export($id){
         $election = InternalElection::find($id);
         if(!$election){

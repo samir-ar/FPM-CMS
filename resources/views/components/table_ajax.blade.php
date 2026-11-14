@@ -155,6 +155,7 @@
                         <a href='{{route("admin.internal-election.export",request('id'))}}' role="button" class="btn btn-primary">Results</a>
                         <a href='{{route("admin.internal-election.votes",request('id'))}}' role="button" class="btn btn-warning">Vote Dispute Review</a>
                         <a href='{{route("admin.internal-election.progress",request('id'))}}' role="button" class="btn btn-success">Progress</a>
+                        <a href='{{route("admin.internal-election.candidate-activity",request('id'))}}' role="button" class="btn btn-info">Candidate Activity</a>
                     @endif
 
 
