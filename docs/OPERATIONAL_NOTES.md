@@ -173,3 +173,10 @@ Read-only audit of every code path that writes to a votes table, plus production
 ## مخاتير / بلديات lists emptied on production (2026-11-14)
 
 The four signature-only endpoints (`municipalities`, `municipality-members`, `mukhtar-villages`, `mukhtars`) need no login, and their member lists include phone numbers, so the tables were emptied on production: `TRUNCATE TABLE mukhtars` (4,128 rows) and `TRUNCATE TABLE municipality_members` (11,783 rows), run one at a time in DBeaver after exporting both to files. IDs restart at 1. The tables are meant to **stay empty until those endpoints require login** (needs an app release; see the post-election list in project memory). Do not re-run the admin Excel imports for these two pages before then. Import replaces only the districts present in the file (delete-then-import per قضاء).
+
+## AWS network access cleaned up (2026-11-14, election day)
+
+- **EC2 security group `web-001-ec2-sec-group` (sg-08446141ae99f8707), port 22:** tedmob's rule (178.135.53.130/32, "Tedmob Office IP") was deleted; an undescribed `94.187.20.73/32` was changed to the owner's current home IP `94.187.20.233/32`. Remaining SSH sources are all the owner's: Home (94.187.20.233), FPM Azure Server (52.174.140.86), FPM Client IP (89.43.33.123). Ports 80/443 are allowed only from the load balancer group.
+- **RDS security group `fpm-web-rds-sec-group` (sg-0796e95987f0ea7f1), port 3306:** an undescribed `93.19.186.192/32` (an SFR line in France, owner unknown) was revoked. Remaining: the web-001 EC2 group (how the app reaches the database) and `89.43.33.123/32`.
+- **Not yet done:** remove any tedmob public key from `~/.ssh/authorized_keys` for `root` and `fpm` on the server (the security group only blocks the network path); read RDS "Publicly accessible" (expected No); two unnamed Elastic IPs (3.65.119.159, 63.189.171.204) may be idle and billed.
+- Rules can be re-added from EC2, Security Groups, Edit inbound rules if anyone legitimately loses access.
