@@ -28,7 +28,14 @@ class VerifyAppSignature
     // separately) — this is the only thing standing between the
     // مخاتير/بلديات endpoints and rapid-fire requests, since they're
     // unauthenticated and have no member_id to key a limit on.
-    private const MAX_REQUESTS_PER_MINUTE = 20;
+    // Raised from 20 to 6000 on election day (2026-11-14): voters were getting
+    // "you exceeded the allowed number of requests" on the Internal Elections
+    // screen. Many voters share one public IP (mobile-carrier NAT) and, if the
+    // load balancer's address is what Laravel sees as the client IP, ALL voters
+    // share one counter - 20/min is far too low for that. The per-member limits
+    // elsewhere (e.g. district-voters) still apply; the مخاتير/بلديات lists this
+    // used to guard are empty. Revisit when real per-client IPs are confirmed.
+    private const MAX_REQUESTS_PER_MINUTE = 6000;
 
     public function handle(Request $request, Closure $next)
     {
