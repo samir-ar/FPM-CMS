@@ -17,6 +17,9 @@
         .election-progress-track { background-color: #e4e4e4; border: 1px solid #c9c9c9; }
         .top-links { max-width: 1500px; margin: 0 auto 15px; }
         .wrap { max-width: 1500px; margin: 0 auto; }
+        /* Page is dir="rtl", which right-aligned the tile text and put the number on top of
+           the icon. Tiles use the same left-text / right-icon layout as the admin page. */
+        .small-box { direction: ltr; text-align: left; }
         .small-box .icon { overflow: hidden; }
         .small-box .inner { position: relative; z-index: 1; }
     </style>
@@ -212,7 +215,7 @@
                 e.preventDefault();
                 var district = $(this).data('district');
 
-                $('#townDrilldownModalTitle').text('نسبة الاقتراع حسب البلدة — ' + district);
+                $('#townDrilldownModalTitle').text('نسبة الاقتراع حسب البلدة — ' + district + ($(this).data('base') === 'app' ? ' — من المسجلين' : ''));
                 $('#townDrilldownModalBody').html('<tr><td colspan="5" class="text-center text-muted">جارٍ التحميل...</td></tr>');
                 $('#townDrilldownModal').modal('show');
 

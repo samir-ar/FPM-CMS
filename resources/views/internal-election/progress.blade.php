@@ -202,7 +202,7 @@
             e.preventDefault();
             var district = $(this).data('district');
 
-            $('#townDrilldownModalTitle').text('نسبة الاقتراع حسب البلدة — ' + district);
+            $('#townDrilldownModalTitle').text('نسبة الاقتراع حسب البلدة — ' + district + ($(this).data('base') === 'app' ? ' — من المسجلين' : ''));
             $('#townDrilldownModalBody').html('<tr><td colspan="5" class="text-center text-muted">Loading...</td></tr>');
             $('#townDrilldownModal').modal('show');
 
