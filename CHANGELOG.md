@@ -24,6 +24,14 @@ All notable changes to the FPM-CMS (Laravel backend) are documented in this file
 
 ### Fixed
 
+- **Votes Report, its Excel export and the Vote Dispute Review town filter showed a blank District/Town for voters whose `app_users.member_id` has a leading zero (2026-11-14)** — `fpm_users` was matched by exact id (same 35 election-2 voters as the Progress fix below), so they also vanished from district filters. Lookup now tries both the raw and zero-stripped id and keys by the stripped id (`InternalElectionVotesExport`, `votes()`). Display-only.
+
+### Added (Votes Report, 2026-11-14)
+
+- **Candidate filter on the Votes Report page**, next to District and Town (options follow the selected district; filter is by candidate name). The **Export to Excel** button now carries the page's `state_id`/`town`/`candidate` filters, so the download holds only the filtered rows (no filter = every vote, as before). `InternalElectionVotesExport` accepts optional pre-filtered rows. Deployed to production 2026-11-14 (`php -l` clean, `view:clear`, backup `/root/bak-20261114-d/`); commit `eef1787`, local only.
+
+### Fixed
+
 - **Election Progress pages undercounted voters whose `app_users.member_id` has a leading zero (2026-11-14)** — Progress matched voters to the permitted list by exact string, so a member stored as `0100100229` in `app_users` but `100100229` in the permitted list was dropped (election 2: 35 voters, Progress 5,705 vs the real 5,740 shown by Results; no duplicate accounts, no double votes). The voted check now strips leading zeros on both sides (same tolerance `canIVote()` uses) on the admin and standalone progress pages (summary, district table, town drilldown), the "registered and logged in" block, and both progress Excel exports. Display-only; no data touched.
 
 - **A single slow Create Event form submission could fire multiple duplicate events and push notifications** — nothing stopped the form from being submitted more than once (e.g. during a slow page load while a push image was being processed), and each submission independently created a new event row and fired a full push blast. A real incident produced 8 duplicate events and 7 separate push notifications to every targeted member within ~90 seconds. Fixed two ways: a server-side check in `EventsController::store()` rejects a resubmission matching an event created in the last 60 seconds (same name/organizer/dates), and the shared admin form (`components/form.blade.php`, used by nearly every create/edit page) now disables its Submit button on click.
