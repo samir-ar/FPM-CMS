@@ -160,3 +160,12 @@ Read-only audit of every code path that writes to a votes table, plus production
 - Elections other than id 5 on production are test data; scope vote checks to the real election id (5) or the counts mislead.
 
 **Deploy note**: a single-file production deploy (upload to `/tmp`, `md5sum`, `php8.2 -l`, backup with `cp -p`, `cp`, `chown www-data`, `php8.2 artisan view:clear`) was used for `InternalElectionController.php`; `cache:clear` was deliberately skipped in case the file cache holds the results-OTP state.
+
+## Election-day follow-up notes (2026-11-14)
+
+- **Real election id is 5**; other ids on production are tests. Always scope vote/turnout queries to `internal_election_id = 5`. Staging election 1 has 35,085 permitted voters, which is why a screenshot showing "35085" is staging, not production.
+- **Who can follow the day safely**: an admin profile with the Internal Election page set to View only sees Progress and Candidate Activity; Results, Votes Report, Vote Dispute Review and all progress/votes Excel exports require the phone code (`ie-results-otp`). The two blank import templates and the standalone `/election-progress` page have no data export.
+- **Candidate Activity** deliberately shows only a boolean per candidate. Do not add counts, ranking or timestamps to it.
+- **Progress pages "registered and logged in" block**: live verified active `app_users` row holding a token, plus anyone who voted (logout clears the token). 203 (User Activity, البترون) vs 196 (progress) is expected: activity counts anyone seen since Sep 24 in the district regardless of permitted list/token; progress counts permitted voters with a token. They are different definitions, not a bug.
+- **Permitted-voters table search box** (`permittedSearchInput`, "Search by Member ID") is in `getPermittedTable()` and renders on staging, but one user screenshot of the Edit Election page did not show it (cause not found; try Ctrl+F5 / view-source for `permittedSearchInput`). Workaround that always works: append `?permitted_search=<member id>` to the edit page URL, or use the "Show in list / remove" button after the single-voter lookup. Removing a permitted voter does not delete his vote.
+- **Deploy habit that worked**: upload to `/tmp`, `md5sum`, backup with `cp -p`, `cp`, `chown www-data:www-data`, `md5sum` again; for files whose line endings may differ between environments compare `tr -d '' | md5sum`. `routes/web.php` changes need `php8.2 artisan route:clear`.
