@@ -21,7 +21,12 @@ use Illuminate\Support\Facades\RateLimiter;
 // request it covers.
 class VerifyAppSignature
 {
-    private const MAX_CLOCK_SKEW_SECONDS = 120;
+    // Raised from 120s to 14h on election day (2026-11-14): voters abroad (and
+    // phones whose clock/time zone was set by hand) were refused with a 403 and
+    // the election banner silently disappeared. 14h covers any time-zone
+    // mistake (max UTC offset is +14h/-12h). The use-once signature check below
+    // still blocks replays; its cache TTL is derived from this constant.
+    private const MAX_CLOCK_SKEW_SECONDS = 50400;
 
     // Generic per-IP cap on top of whatever each endpoint's own rate
     // limiting does (district-voters has its own member-keyed limit
