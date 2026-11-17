@@ -396,7 +396,7 @@
             { name: 'المكاتب وأخرى', weight: 0, weight_present: 0 }
         ];
         d.groups.forEach(function (g) {
-            var t = g.name === 'الرئيس' ? 0 : g.name.indexOf('نائب') === 0 ? 1 : g.name === 'عضو' ? 2 : g.name.indexOf('انتشار') === 0 ? 3 : 4;
+            var t = g.name === 'الرئيس' ? 0 : g.name === 'نائب' ? 1 : (g.name === 'عضو' || g.name.indexOf('نائب') === 0) ? 2 : g.name.indexOf('انتشار') === 0 ? 3 : 4;
             levels[t].weight += g.weight; levels[t].weight_present += g.weight_present;
         });
         levels = levels.filter(function (l) { return l.weight > 0; });
@@ -423,8 +423,8 @@
             // the council as a tree: president, vice presidents, members, the diaspora, then the offices
             function tierOf(name) {
                 if (name === 'الرئيس') { return 0; }          // الرئيس
-                if (name.indexOf('نائب') === 0) { return 1; }          // نائب...
-                if (name === 'عضو') { return 2; }                           // عضو
+                if (name === 'نائب') { return 1; }                          // نائب
+                if (name === 'عضو' || name.indexOf('نائب') === 0) { return 2; } // عضو + the two vice presidents (نائب الرئيس ...)
                 if (name.indexOf('انتشار') === 0) { return 3; } // انتشار...
                 return 4;
             }
