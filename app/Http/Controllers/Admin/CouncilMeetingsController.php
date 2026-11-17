@@ -183,7 +183,12 @@ class CouncilMeetingsController extends Controller
                 'weight' => (int) $g->sum('weight'),
                 'weight_present' => (int) $g->where('present', true)->sum('weight'),
             ];
-        })->sortByDesc('weight')->values();
+        })->sort(function ($a, $b) {
+            // الرئيس first, then نائب, then عضو, then everything else (heaviest first)
+            $rank = fn($g) => ['الرئيس' => 0, 'نائب' => 1, 'عضو' => 2][$g['name']] ?? 3;
+
+            return [$rank($a), -$a['weight']] <=> [$rank($b), -$b['weight']];
+        })->values();
 
         $recent = $attendance->take(10)->map(function ($a) use ($nameOf, $roster, $photoOf) {
             $role = optional($roster->firstWhere('member_id', $a->member_id))->role;
