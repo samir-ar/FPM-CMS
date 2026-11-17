@@ -429,6 +429,11 @@ class CouncilSessionTest extends CouncilTestCase
         $files = \App\Support\CouncilMemberLookup::repImageFiles([(string) $c]);
         $this->assertSame($file, $files[(string) $c] ?? null, 'matched by name even though the alef is written differently');
         $this->assertNotSame('someone-else.jpg', $files[(string) $c] ?? null);
+
+        // a space inside the name does not matter ("عطا الله" vs "عطالله")
+        $spaced = DB::table('fpm_users')->where('MemberId', $c)->update(['UserFullName' => 'جورج نعيم عطا الله']);
+        DB::table('persons')->where('image', $file)->update(['name' => json_encode(['ar' => 'جورج نعيم عطاالله'], JSON_UNESCAPED_UNICODE)]);
+        $this->assertSame($file, \App\Support\CouncilMemberLookup::repImageFiles([(string) $c])[(string) $c] ?? null);
     }
 
     public function test_logged_in_means_active_since_tracking_began_not_just_having_an_old_account()

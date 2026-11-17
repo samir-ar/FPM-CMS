@@ -47,12 +47,12 @@ class CouncilMemberLookup
     // The picture uploaded on the member's Representatives record (persons.image, kept in S3), as a URL.
     // It is often newer than the photo in the member list, so for the council pages it comes FIRST. Checked
     // once an hour that the file really is there, so a missing S3 file falls back to the member-list photo.
-    // Arabic names compared loosely: أ/إ/آ = ا, ة = ه, ى = ي, extra spaces ignored.
+    // Arabic names compared loosely: أ/إ/آ = ا, ة = ه, ى = ي, and ALL spaces ignored ("عطا الله" = "عطالله").
     private static function normName($s): string
     {
         $s = preg_replace('/[أإآ]/u', 'ا', (string) $s);
 
-        return trim(preg_replace('/\s+/u', ' ', str_replace(['ة', 'ى'], ['ه', 'ي'], $s)));
+        return preg_replace('/[\s\x{0640}]+/u', '', str_replace(['ة', 'ى'], ['ه', 'ي'], $s));
     }
 
     // member id => the image file of his Representatives record. A record linked by member_id wins; most
