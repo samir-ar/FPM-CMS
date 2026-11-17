@@ -143,12 +143,12 @@
     .kpi .hint { margin-top: 9px; font-size: 13px; color: var(--muted); }
 
     /* ---------- bars by sector ---------- */
-    .grp { display: grid; grid-template-columns: minmax(110px, 190px) 1fr auto; gap: 14px; align-items: center; padding: 10px 0; }
-    .grp-name { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .grp-bar { height: 14px; border-radius: 99px; background: rgba(255,255,255,.08); overflow: hidden; }
+    .grp { display: grid; grid-template-columns: minmax(110px, 190px) 1fr auto; gap: 18px; align-items: center; padding: 20px 0; }
+    .grp-name { font-size: 20px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .grp-bar { height: 26px; border-radius: 99px; background: rgba(255,255,255,.08); overflow: hidden; }
     .grp-bar i { display: block; height: 100%; width: 0; border-radius: 99px; background: linear-gradient(90deg, var(--blue), #6fd0ff); transition: width 1.2s cubic-bezier(.2,.8,.2,1); }
     .grp-bar i.full { background: linear-gradient(90deg, #19c58a, var(--green)); }
-    .grp-num { font-size: 13px; color: var(--muted); min-width: 86px; text-align: right; }
+    .grp-num { font-size: 18px; color: var(--muted); min-width: 86px; text-align: right; }
     .grp-num b { color: var(--text); font-weight: 700; }
 
     /* ---------- seat map ---------- */
@@ -387,8 +387,21 @@
     }
 
     function drawGroups(d) {
-        $('grpCount').textContent = d.groups.length + ' groups';
-        $('groupBars').innerHTML = d.groups.slice(0, 10).map(function (g) {
+        // one bar per level of the tree: all the انتشار regions are a single bar, all the offices another
+        var levels = [
+            { name: 'الرئيس', weight: 0, weight_present: 0 },
+            { name: 'نائب', weight: 0, weight_present: 0 },
+            { name: 'عضو', weight: 0, weight_present: 0 },
+            { name: 'انتشار', weight: 0, weight_present: 0 },
+            { name: 'المكاتب وأخرى', weight: 0, weight_present: 0 }
+        ];
+        d.groups.forEach(function (g) {
+            var t = g.name === 'الرئيس' ? 0 : g.name.indexOf('نائب') === 0 ? 1 : g.name === 'عضو' ? 2 : g.name.indexOf('انتشار') === 0 ? 3 : 4;
+            levels[t].weight += g.weight; levels[t].weight_present += g.weight_present;
+        });
+        levels = levels.filter(function (l) { return l.weight > 0; });
+        $('grpCount').textContent = levels.length + ' levels';
+        $('groupBars').innerHTML = levels.map(function (g) {
             var p = g.weight ? Math.round(g.weight_present * 100 / g.weight) : 0;
             return '<div class="grp"><div class="grp-name auto" title="' + esc(g.name) + '">' + esc(g.name) + '</div>' +
                 '<div class="grp-bar"><i class="' + (p >= 100 ? 'full' : '') + '" style="width:' + p + '%"></i></div>' +
