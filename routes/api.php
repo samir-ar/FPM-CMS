@@ -96,6 +96,8 @@ Route::group(['namespace' => 'Api\V2', 'prefix' => 'v2/', 'middleware' => ['lang
         Route::post('news-share', 'ApiController@shareNews');
         Route::post('event-like', 'ApiController@likeEvent');
         Route::post('event-share', 'ApiController@shareEvent');
+        Route::post('upload-profile-photo', 'ApiController@uploadProfilePhoto')->middleware('throttle:12,1');
+        Route::post('remove-profile-photo', 'ApiController@removeProfilePhoto')->middleware('throttle:12,1');
         Route::post('make-favorite', 'ApiController@favoriteMember');
         Route::post('talk-to-us', 'ApiController@userTalk');
         Route::post('logout', 'ApiController@logout');

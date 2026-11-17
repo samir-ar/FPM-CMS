@@ -19,6 +19,9 @@ class AppUser extends Authenticatable
 
     protected $fillable = ['verification_nb'];
 
+    // the member's own photo is only ever sent explicitly (as `image`), never as a second field
+    protected $hidden = ['custom_image'];
+
     public function volunteer()
     {
         return $this->hasMany(Volunteer::class, 'user_id', 'id');

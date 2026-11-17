@@ -186,6 +186,13 @@ class RegistrationController extends Controller
 
         $this->recordUserActivity($user['id']);
 
+        // The row's `image` is overwritten with the party's photo on every login;
+        // when the member chose their own photo, present that one instead (the
+        // model is returned as-is and not saved again, so the stored columns stay).
+        if ($user instanceof \App\V2\AppUser && !empty($user->custom_image)) {
+            $user->setAttribute('image', $user->custom_image);
+        }
+
         return $user;
     }
 

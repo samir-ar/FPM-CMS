@@ -4,6 +4,10 @@ All notable changes to the FPM-CMS (Laravel backend) are documented in this file
 
 ## Unreleased
 
+### Added
+
+- **Members can replace the photo shown in the app** (Settings > Additional information: take a selfie, choose from the gallery, or go back to the original). New `POST upload-profile-photo` (validates it really is an image, re-encodes it server-side as a plain JPEG of at most 512px, white background for transparent PNGs, 12 requests/minute) and `POST remove-profile-photo`. Stored in its own column `app_users.custom_image`, because `app_users.image` is overwritten with the party's photo (`fpm_users.PersonImage`) on every login; the login response (`verify_pin`) hands the app the member's own photo when they set one. The party's own record is never changed (so candidate photos, check-in and TWH data are unaffected). `custom_image` is hidden from model JSON and cleared on account deletion.
+
 ### Added — National Council session (29 Nov 2026)
 
 - **Council roster** (`/admin/council-roster`): the standing list of National Council members and their vote weights. Add one member (search by name / phone / member id), edit, remove, additive Excel import (tolerates spaced card numbers like `26 052 00129`), export. Never replaced wholesale by an upload.

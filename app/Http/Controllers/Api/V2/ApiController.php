@@ -241,6 +241,71 @@ class ApiController extends Controller
 
 
 
+    // Replace the photo shown in the app (selfie / gallery). Stored in its own column so
+    // the next login (which refreshes app_users.image from the party's photo) does not
+    // undo it; the party's own photo (fpm_users.PersonImage) is never touched.
+    public function uploadProfilePhoto(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'image' => 'required|string|max:900000',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->api_error_response('missing_parameters', 101, implode(', ', $validator->messages()->all()));
+        }
+
+        $raw = base64_decode(preg_replace('#^data:image/\w+;base64,#', '', (string) $request->input('image')), true);
+        if ($raw === false || strlen($raw) < 100) {
+            return $this->api_error_response('invalid_image', 101, 'الصورة غير صالحة');
+        }
+
+        $info = @getimagesizefromstring($raw);
+        $allowed = [IMAGETYPE_JPEG, IMAGETYPE_PNG, IMAGETYPE_GIF, IMAGETYPE_WEBP];
+        if (!$info || !in_array($info[2], $allowed, true) || ($info[0] * $info[1]) > 25000000) {
+            return $this->api_error_response('invalid_image', 101, 'الصورة غير صالحة');
+        }
+
+        $src = @imagecreatefromstring($raw);
+        if (!$src) {
+            return $this->api_error_response('invalid_image', 101, 'الصورة غير صالحة');
+        }
+
+        // Re-encode on the server (never store the uploaded bytes as they came): a plain
+        // JPEG, at most 512px on the long side, white background for transparent PNGs.
+        $w = imagesx($src);
+        $h = imagesy($src);
+        $scale = min(1, 512 / max($w, $h));
+        $nw = max(1, (int) round($w * $scale));
+        $nh = max(1, (int) round($h * $scale));
+        $dst = imagecreatetruecolor($nw, $nh);
+        imagefill($dst, 0, 0, imagecolorallocate($dst, 255, 255, 255));
+        imagecopyresampled($dst, $src, 0, 0, 0, 0, $nw, $nh, $w, $h);
+
+        $jpeg = null;
+        foreach ([85, 75, 65, 55] as $quality) {
+            ob_start();
+            imagejpeg($dst, null, $quality);
+            $jpeg = ob_get_clean();
+            if (strlen($jpeg) <= 300000) break;
+        }
+        imagedestroy($src);
+        imagedestroy($dst);
+
+        $encoded = base64_encode($jpeg);
+        \App\V2\AppUser::where('id', $request->user->id)->update(['custom_image' => $encoded]);
+
+        return response()->json(['image' => $encoded]);
+    }
+
+    // Go back to the party's own photo.
+    public function removeProfilePhoto(Request $request)
+    {
+        $id = $request->user->id;
+        \App\V2\AppUser::where('id', $id)->update(['custom_image' => null]);
+
+        return response()->json(['image' => \App\V2\AppUser::where('id', $id)->value('image')]);
+    }
+
     public function likeEvent(Request $request, ApiRepository $repo)
     {
         $user = $request->user;
@@ -2816,6 +2881,7 @@ class ApiController extends Controller
         if ($user->verification_nb == $pin) {
             $user->token = null;
             $user->image = null;
+            $user->custom_image = null;
             $user->phone_number = null;
             $user->member_id = null;
             $user->name = "Deleted Account";
