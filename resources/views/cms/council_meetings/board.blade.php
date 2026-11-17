@@ -152,10 +152,14 @@
     .grp-bar i.full { background: linear-gradient(90deg, #19c58a, var(--green)); }
     .grp-num { font-size: 18px; color: var(--muted); min-width: 86px; text-align: right; }
     .grp-num b { color: var(--text); font-weight: 700; }
-    .grp-num { min-width: 190px; line-height: 1.25; }
-    .gn-count { font-size: 18px; }
-    .gn-count small, .gn-weight { font-size: 12px; letter-spacing: .04em; }
-    .gn-weight b { font-size: 13px; }
+    /* row = members count | role name | bar | weight */
+    .grp, .grp-head { grid-template-columns: 90px minmax(110px, 170px) 1fr 120px; }
+    .grp-head { display: grid; gap: 18px; padding: 0 0 4px; }
+    .gh { font-size: 11px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); }
+    .gh-w { text-align: right; }
+    .grp-count { font-size: 18px; color: var(--muted); text-align: left; }
+    .grp-count b { color: var(--text); font-weight: 700; }
+    .grp-num { font-size: 18px; min-width: 0; }
 
     /* ---------- seat map ---------- */
     .legend { display: flex; gap: 16px; font-size: 11px; letter-spacing: .12em; }
@@ -290,6 +294,7 @@
 
     <section class="card groups">
         <h2>Attendance by role<span id="grpCount" class="num"></span></h2>
+        <div class="grp grp-head"><div class="gh">Members</div><div></div><div></div><div class="gh gh-w">Weight</div></div>
         <div id="groupBars"></div>
     </section>
 
@@ -431,10 +436,10 @@
         $('grpCount').textContent = levels.length + ' levels';
         $('groupBars').innerHTML = levels.map(function (g) {
             var p = g.weight ? Math.round(g.weight_present * 100 / g.weight) : 0;
-            return '<div class="grp"><div class="grp-name auto" title="' + esc(g.name) + '">' + esc(g.name) + '</div>' +
+            return '<div class="grp"><div class="grp-count num"><b>' + g.present + '</b> / ' + g.members + '</div>' +
+                '<div class="grp-name auto" title="' + esc(g.name) + '">' + esc(g.name) + '</div>' +
                 '<div class="grp-bar"><i class="' + (p >= 100 ? 'full' : '') + '" style="width:' + p + '%"></i></div>' +
-                '<div class="grp-num num"><div class="gn-count"><b>' + g.present + '</b> / ' + g.members + ' <small>members</small></div>' +
-                '<div class="gn-weight">weight <b>' + g.weight_present + '</b> / ' + g.weight + '</div></div></div>';
+                '<div class="grp-num num"><b>' + g.weight_present + '</b> / ' + g.weight + '</div></div>';
         }).join('') || '<div class="empty">No members yet</div>';
     }
 
