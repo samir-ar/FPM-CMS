@@ -89,7 +89,6 @@
         display: grid; gap: clamp(14px, 1.3vw, 22px);
         grid-template-columns: repeat(12, 1fr);
         grid-template-rows: auto auto auto 1fr;
-        min-height: calc(100vh - 104px);   /* the bottom row (seat map + arrivals) grows to use the whole screen */
         padding: 0 clamp(18px, 2.4vw, 44px) clamp(18px, 2vw, 32px);
     }
     .card {
@@ -229,6 +228,8 @@
     }
     .toast.show { transform: translate(-50%, 0); opacity: 1; }
 
+    #stage { transform-origin: 0 0; }
+
     #confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 30; }
 
     @media (max-width: 1250px) {
@@ -241,6 +242,7 @@
 </head>
 <body>
 
+<div id="stage">
 <header>
     <div class="brand">
         <div class="mark">
@@ -317,6 +319,7 @@
         <div id="recent"></div>
     </section>
 </main>
+</div>
 
 <canvas id="confetti"></canvas>
 <div class="toast" id="toast"></div>
@@ -549,11 +552,29 @@
     }
 
     // on a projector the board must fit the screen without scrolling: shrink it to fit when it is taller
+    // Scale the whole board so it fills the screen exactly (down on a small screen, up a little on a big one).
+    // The scaled page is laid out at a different width, which changes its height, so measure again after
+    // every step until the scale settles.
     function fit() {
-        document.body.style.zoom = 1;
-        if (window.innerWidth < 1250) { return; }
-        var need = document.documentElement.scrollHeight, have = window.innerHeight;
-        if (need > have) { document.body.style.zoom = Math.max(.55, have / need); }
+        var st = $('stage');
+        if (window.innerWidth < 1250) { st.style.transform = ''; st.style.width = ''; document.body.style.overflow = ''; return; }
+        document.body.style.overflow = 'hidden';
+        var have = window.innerHeight, z = 1;
+        for (var i = 0; i < 8; i++) {
+            st.style.width = (100 / z) + '%';
+            st.style.transform = 'scale(' + z + ')';
+            var nz = Math.min(1.4, Math.max(.5, have / st.offsetHeight));
+            var done = Math.abs(nz - z) < .004;
+            z = nz;
+            if (done) { break; }
+        }
+        // safety: never end up taller than the screen (nudge the scale down until it fits)
+        for (var j = 0; j < 12; j++) {
+            st.style.width = (100 / z) + '%';
+            st.style.transform = 'scale(' + z + ')';
+            if (st.offsetHeight * z <= have - 2) { break; }
+            z *= 0.985;
+        }
     }
 
     function celebrate(text) {
@@ -589,7 +610,10 @@
         else { document.exitFullscreen(); }
     });
     document.addEventListener('keydown', function (e) { if (e.key === 'f' || e.key === 'F') { $('fs').click(); } });
-    document.addEventListener('fullscreenchange', function () { $('fs').textContent = document.fullscreenElement ? 'Exit full screen' : 'Full screen'; });
+    document.addEventListener('fullscreenchange', function () {
+        $('fs').textContent = document.fullscreenElement ? 'Exit full screen' : 'Full screen';
+        setTimeout(fit, 120);   // the window size settles a moment after the switch
+    });
 
     render(window.BOARD);
     setTimeout(fit, 150);
