@@ -1,0 +1,307 @@
+<?php
+
+namespace Tests\Feature\NationalCouncil;
+
+use App\Exceptions\InvalidVotersFileException;
+use App\Http\Controllers\Admin\CouncilMeetingsController;
+use App\Http\Controllers\Admin\CouncilRosterController;
+use App\Http\Controllers\Admin\SpecialMembersController;
+use App\Imports\CouncilRosterImport;
+use App\Support\CouncilMemberLookup;
+use App\V2\CouncilMeeting;
+use App\V2\CouncilMeetingAttendance;
+use App\V2\CouncilRosterMember;
+use App\V2\SpecialMember;
+use Illuminate\Database\QueryException;
+use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
+
+class CouncilSessionTest extends CouncilTestCase
+{
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        auth('admin')->setUser($this->adminUser());
+        // start every test from "no official quorum base" so the roster fallback is what is exercised;
+        // the base itself has its own tests below
+        DB::table('settings')->update(['council_quorum_total_weight' => null, 'council_quorum_member_count' => null]);
+    }
+
+    private function ajax(array $data = []): Request
+    {
+        return Request::create('/x', 'POST', $data, [], [], ['HTTP_X_REQUESTED_WITH' => 'XMLHttpRequest']);
+    }
+
+    // ---- quorum maths ----
+
+    public function test_quorum_figures_for_755_and_756()
+    {
+        $this->assertSame(378, CouncilMeeting::majorityOf(755));
+        $this->assertSame(504, CouncilMeeting::twoThirdsOf(755));
+        $this->assertSame(379, CouncilMeeting::majorityOf(756));
+        $this->assertSame(504, CouncilMeeting::twoThirdsOf(756));
+        $this->assertSame(378, CouncilMeeting::majorityOf(754));
+        $this->assertSame(503, CouncilMeeting::twoThirdsOf(754));
+    }
+
+    // ---- roster import ----
+
+    public function test_roster_import_normalises_spaced_and_zero_padded_ids_and_skips_header_and_blank_rows()
+    {
+        [$a, $b] = $this->sampleMemberIds(2);
+        $spaced = substr($a, 0, 2) . ' ' . substr($a, 2, 3) . ' ' . substr($a, 5);
+
+        $import = new CouncilRosterImport();
+        $import->collection(collect([
+            ['member_id', 'weight', 'role'],
+            [$spaced, '4', 'Test role'],
+            ['0' . $b, '2', ''],
+            ['', '', ''],
+        ]));
+
+        $this->assertSame(2, $import->added);
+        $this->assertSame(2, $import->skipped);
+        $this->assertTrue(CouncilRosterMember::where('member_id', $a)->where('weight', 4)->exists());
+        $this->assertTrue(CouncilRosterMember::where('member_id', $b)->exists(), 'a leading zero must be stripped');
+    }
+
+    public function test_roster_import_updates_existing_rows_and_never_removes_anyone()
+    {
+        [$a, $b] = $this->sampleMemberIds(2);
+        CouncilRosterMember::create(['member_id' => $a, 'weight' => 1]);
+        CouncilRosterMember::create(['member_id' => $b, 'weight' => 1]);
+
+        $import = new CouncilRosterImport();
+        $import->collection(collect([[$a, '5', '']]));
+
+        $this->assertSame(1, $import->updated);
+        $this->assertSame(5, (int) CouncilRosterMember::where('member_id', $a)->value('weight'));
+        $this->assertTrue(CouncilRosterMember::where('member_id', $b)->exists());
+    }
+
+    public function test_roster_import_refuses_a_row_without_a_weight()
+    {
+        [$a] = $this->sampleMemberIds(1);
+
+        $this->expectException(InvalidVotersFileException::class);
+        (new CouncilRosterImport())->collection(collect([[$a, '', '']]));
+    }
+
+    public function test_member_id_normaliser()
+    {
+        $this->assertSame('100100235', CouncilMemberLookup::normalizeMemberId('01 00100235'));
+        $this->assertSame('2605200129', CouncilMemberLookup::normalizeMemberId('26 052 00129'));
+        $this->assertSame('', CouncilMemberLookup::normalizeMemberId(''));
+    }
+
+    // ---- meetings + attendance ----
+
+    private function rosterOf3(): array
+    {
+        [$a, $b, $c] = $this->sampleMemberIds(3);
+        CouncilRosterMember::create(['member_id' => $a, 'weight' => 4]);
+        CouncilRosterMember::create(['member_id' => $b, 'weight' => 5]);
+        CouncilRosterMember::create(['member_id' => $c, 'weight' => 1]);
+        CouncilRosterMember::whereNotIn('member_id', [$a, $b, $c])->delete();
+
+        return [$a, $b, $c];
+    }
+
+    private function newMeeting(string $title = 'T meeting'): CouncilMeeting
+    {
+        app(CouncilMeetingsController::class)->store(Request::create('/x', 'POST', ['title' => $title]));
+
+        return CouncilMeeting::where('title', $title)->firstOrFail();
+    }
+
+    public function test_a_meeting_freezes_its_quorum_from_the_roster_when_no_base_is_set()
+    {
+        $this->rosterOf3();
+        $m = $this->newMeeting();
+
+        $this->assertSame(3, $m->member_count);
+        $this->assertSame(10, $m->total_weight);
+        $this->assertSame(6, $m->quorum_majority);
+        $this->assertSame(7, $m->quorum_two_thirds);
+    }
+
+    public function test_the_official_quorum_base_wins_over_the_live_roster()
+    {
+        $this->rosterOf3();
+        $rc = app(CouncilRosterController::class);
+        $rc->updateQuorumBase(Request::create('/x', 'POST', ['council_quorum_total_weight' => 755, 'council_quorum_member_count' => 105]));
+
+        $m = $this->newMeeting('T base meeting');
+
+        $this->assertSame(755, $m->total_weight);
+        $this->assertSame(105, $m->member_count);
+        $this->assertSame(378, $m->quorum_majority);
+        $this->assertSame(504, $m->quorum_two_thirds);
+    }
+
+    public function test_changing_the_base_and_refreshing_a_meeting_updates_its_quorum()
+    {
+        $this->rosterOf3();
+        $rc = app(CouncilRosterController::class);
+        $rc->updateQuorumBase(Request::create('/x', 'POST', ['council_quorum_total_weight' => 755, 'council_quorum_member_count' => 105]));
+        $m = $this->newMeeting('T base meeting');
+
+        $rc->updateQuorumBase(Request::create('/x', 'POST', ['council_quorum_total_weight' => 756, 'council_quorum_member_count' => 106]));
+        $m->freezeFromRoster();
+        $m->save();
+
+        $this->assertSame(379, $m->fresh()->quorum_majority);
+        $this->assertSame(504, $m->fresh()->quorum_two_thirds);
+    }
+
+    public function test_adding_to_the_roster_later_does_not_change_an_existing_meeting_until_refreshed()
+    {
+        $this->rosterOf3();
+        $m = $this->newMeeting();
+
+        CouncilRosterMember::create(['member_id' => '99999999990', 'weight' => 1]);
+        $this->assertSame(10, $m->fresh()->stats()['total_weight']);
+
+        $m->freezeFromRoster();
+        $m->save();
+        $this->assertSame(11, $m->fresh()->total_weight);
+    }
+
+    public function test_attendance_rules()
+    {
+        [$a, $b, , ] = array_pad($this->rosterOf3(), 4, null);
+        [, , , $outsider] = array_pad($this->sampleMemberIds(4), 4, null);
+        $m = $this->newMeeting();
+        $ctrl = app(CouncilMeetingsController::class);
+        $add = fn($memberId) => $ctrl->storeAttendance($this->ajax(['member_id' => $memberId]), $m->id);
+
+        $this->assertSame(200, $add($a)->getStatusCode(), 'roster member is marked present');
+        $this->assertEquals(4, $m->attendance()->where('member_id', $a)->value('weight'));
+
+        $this->assertSame(422, $add($a)->getStatusCode(), 'the same member twice is refused');
+        $this->assertSame(1, $m->attendance()->count());
+
+        $this->assertSame(422, $add($outsider)->getStatusCode(), 'a non-roster member is refused');
+        $this->assertSame(1, $m->attendance()->count());
+
+        $add($b);
+        $stats = $m->fresh()->stats();
+        $this->assertSame(9, $stats['present_weight']);
+        $this->assertTrue($stats['majority_reached']);
+        $this->assertTrue($stats['two_thirds_reached']);
+    }
+
+    public function test_the_database_unique_key_blocks_a_raced_attendance_duplicate()
+    {
+        [$a] = $this->rosterOf3();
+        $m = $this->newMeeting();
+        CouncilMeetingAttendance::create(['meeting_id' => $m->id, 'member_id' => $a, 'weight' => 4, 'checked_in_at' => now()]);
+
+        $this->expectException(QueryException::class);
+        CouncilMeetingAttendance::create(['meeting_id' => $m->id, 'member_id' => $a, 'weight' => 4, 'checked_in_at' => now()]);
+    }
+
+    public function test_a_closed_meeting_refuses_attendance()
+    {
+        [$a] = $this->rosterOf3();
+        $m = $this->newMeeting();
+        $m->update(['is_active' => false]);
+
+        $r = app(CouncilMeetingsController::class)->storeAttendance($this->ajax(['member_id' => $a]), $m->id);
+
+        $this->assertSame(422, $r->getStatusCode());
+    }
+
+    // ---- special members ----
+
+    private function bigNoisyJpeg(): UploadedFile
+    {
+        $im = imagecreatetruecolor(1800, 1800);
+        for ($i = 0; $i < 4000; $i++) {
+            imagefilledrectangle($im, rand(0, 1700), rand(0, 1700), rand(0, 1800), rand(0, 1800), imagecolorallocate($im, rand(0, 255), rand(0, 255), rand(0, 255)));
+        }
+        $tmp = sys_get_temp_dir() . '/council_test_photo_' . uniqid() . '.jpg';
+        imagejpeg($im, $tmp, 95);
+
+        return new UploadedFile($tmp, 'photo.jpg', 'image/jpeg', null, true);
+    }
+
+    private function createSpecial(array $data, ?UploadedFile $photo = null): void
+    {
+        $req = Request::create('/x', 'POST', $data, [], $photo ? ['photo' => $photo] : []);
+        $req->setLaravelSession(app('session.store'));
+        app(SpecialMembersController::class)->store($req);
+    }
+
+    public function test_a_special_member_gets_a_reserved_id_a_login_row_and_a_small_photo()
+    {
+        $photo = $this->bigNoisyJpeg();
+        $original = filesize($photo->getRealPath());
+        $this->assertGreaterThan(60000, $original);
+
+        $this->createSpecial(['full_name' => 'ايلي فريد المر', 'phone' => '+1 5122990023', 'sector' => 'مدن الولايات المتحدة الأميركية'], $photo);
+
+        $sm = SpecialMember::where('full_name', 'ايلي فريد المر')->firstOrFail();
+        $this->assertSame(13, strlen((string) $sm->member_id));
+        $this->assertStringStartsWith('99', (string) $sm->member_id);
+
+        $fpm = DB::table('fpm_users')->where('MemberId', $sm->member_id)->first();
+        $this->assertNotNull($fpm);
+        $this->assertSame('15122990023', $fpm->MobileNumber);
+        $this->assertSame(1, (int) $fpm->member_status);
+        $this->assertGreaterThan(0, strlen($fpm->PersonImage));
+        $this->assertLessThanOrEqual(60000, strlen($fpm->PersonImage));
+
+        // the lookup the app's login does
+        $this->assertNotNull(\App\V2\FpmUser::where([['MemberId', $sm->member_id], ['MobileNumber', '15122990023']])->first());
+    }
+
+    public function test_special_member_ids_are_sequential_and_a_duplicate_phone_is_refused()
+    {
+        $this->createSpecial(['full_name' => 'T First', 'phone' => '+44 7000000001']);
+        $this->createSpecial(['full_name' => 'T Second', 'phone' => '+44 7000000002']);
+        $this->createSpecial(['full_name' => 'T Dup phone', 'phone' => '447000000001']);
+
+        $first = SpecialMember::where('full_name', 'T First')->firstOrFail();
+        $second = SpecialMember::where('full_name', 'T Second')->firstOrFail();
+
+        $this->assertSame((int) $first->member_id + 1, (int) $second->member_id);
+        $this->assertFalse(SpecialMember::where('full_name', 'T Dup phone')->exists());
+    }
+
+    public function test_a_removed_fpm_row_can_be_restored_and_the_member_added_to_the_roster()
+    {
+        $this->createSpecial(['full_name' => 'T Restore', 'phone' => '+44 7000000009']);
+        $sm = SpecialMember::where('full_name', 'T Restore')->firstOrFail();
+
+        DB::table('fpm_users')->where('MemberId', $sm->member_id)->delete();
+        app(SpecialMembersController::class)->restore($sm->id);
+        $this->assertTrue(DB::table('fpm_users')->where('MemberId', $sm->member_id)->exists());
+
+        $r = app(CouncilRosterController::class)->store($this->ajax(['member_id' => $sm->member_id, 'weight' => 3, 'role' => 'x']));
+        $this->assertSame(200, $r->getStatusCode());
+        $this->assertEquals(3, CouncilRosterMember::where('member_id', (string) $sm->member_id)->value('weight'));
+    }
+
+    // ---- the admin pages render ----
+
+    public function test_the_council_admin_pages_render()
+    {
+        $this->rosterOf3();
+        $m = $this->newMeeting();
+        $admin = $this->adminUser();
+
+        foreach ([
+            route('admin.council-roster.index', [], false),
+            route('admin.council-meetings.index', [], false),
+            route('admin.council-meetings.create', [], false),
+            route('admin.council-meetings.show', $m->id, false),
+            route('admin.special-members.index', [], false),
+        ] as $url) {
+            $resp = $this->actingAs($admin, 'admin')->get($url);
+            $this->assertSame(200, $resp->getStatusCode(), $url . ' -> ' . $resp->getStatusCode());
+        }
+    }
+}
