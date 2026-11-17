@@ -142,7 +142,8 @@
     .kpi { position: relative; overflow: hidden; padding: clamp(14px, 1.2vw, 20px); border-radius: var(--radius); background: var(--card); border: 1px solid var(--line); box-shadow: 0 18px 40px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.06); }
     .kpi::after { content: ''; position: absolute; right: -30px; top: -30px; width: 110px; height: 110px; border-radius: 50%; background: var(--accent, var(--orange)); opacity: .16; filter: blur(8px); }
     .kpi .label { font-size: 11px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); }
-    .kpi .value { margin-top: 6px; font-size: clamp(26px, 2.4vw, 40px); font-weight: 800; line-height: 1; }
+    .kpi .value { display: inline-block; margin-top: 6px; font-size: clamp(26px, 2.4vw, 40px); font-weight: 800; line-height: 1; }
+    .kpi .hint { display: inline-block; margin: 0 0 0 10px !important; }   /* the small caption sits beside the number, not under it */
     .kpi .value small { font-size: .42em; font-weight: 600; color: var(--muted); margin-left: 4px; }
     .kpi .hint { margin-top: 9px; font-size: 13px; color: var(--muted); }
 
@@ -202,13 +203,15 @@
     .row { flex: 1 1 0; min-width: 0; display: flex; gap: 10px; align-items: center; padding: 4px 12px; border-left: 1px solid rgba(255,255,255,.08); }
     .row:first-child { border-left: 0; }
     .row .who { flex: 1; }
-    .row .r { display: flex; align-items: center; gap: 6px; margin-top: 3px; }
-    .row .t { display: inline; margin: 0; }
-    .row .w { padding: 1px 7px; font-size: 11px; }
-    .av { flex: 0 0 auto; width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; color: #2b1500; background: linear-gradient(145deg, #ffd08a, var(--orange)); }
+    .row { gap: 12px; padding: 6px 12px; }
+    .row .r { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+    .row .role { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+    .row .t { display: inline; margin: 0; font-size: 12px; }
+    .row .w { padding: 1px 8px; font-size: 12px; }
+    .av { flex: 0 0 auto; width: 64px; height: 64px; font-size: 24px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; color: #2b1500; background: linear-gradient(145deg, #ffd08a, var(--orange)); }
     .who { min-width: 0; }
     .who .n, .who .r { text-align: left; }
-    .who .n { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .who .n { font-size: 17px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .who .r { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .meta { text-align: right; }
     .w { display: inline-block; padding: 3px 10px; border-radius: 99px; font-size: 12px; font-weight: 800; color: var(--gold); background: rgba(247,142,30,.16); border: 1px solid rgba(247,142,30,.35); }
@@ -519,7 +522,7 @@
         $('recent').innerHTML = d.recent.slice(0, 10).map(function (r) {
             var fresh = !state.first && !state.seen[r.id];
             return '<div class="row' + (fresh ? ' fresh' : '') + '"><div class="av' + (r.photo ? ' ph' : '') + '"' + (r.photo ? ' style="background-image:url(&quot;' + esc(r.photo) + '&quot;)"' : '') + '>' + (r.photo ? '' : esc((r.name || '?').trim().charAt(0))) + '</div>' +
-                '<div class="who" title="' + esc(r.role) + '"><div class="n auto">' + esc(r.name) + '</div>' +
+                '<div class="who"><div class="n auto">' + esc(r.name) + '</div><div class="role auto">' + esc(r.role === 'عضو' ? 'مجلس قضاء' : r.role) + '</div>' +
                 '<div class="r"><span class="w num">+' + r.weight + '</span><span class="t num">' + esc(r.at) + '</span></div></div></div>';
         }).join('');
         d.recent.forEach(function (r) { state.seen[r.id] = true; });
