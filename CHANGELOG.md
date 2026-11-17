@@ -4,7 +4,22 @@ All notable changes to the FPM-CMS (Laravel backend) are documented in this file
 
 ## Unreleased
 
+### Added — National Council session (29 Nov 2026)
+
+- **Council roster** (`/admin/council-roster`): the standing list of National Council members and their vote weights. Add one member (search by name / phone / member id), edit, remove, additive Excel import (tolerates spaced card numbers like `26 052 00129`), export. Never replaced wholesale by an upload.
+- **Council meetings + attendance** (`/admin/council-meetings`): a meeting freezes its quorum from the roster when created (755 -> 378 / 504, 756 -> 379 / 504), attendance by QR scan in the app or manual search restricted to the roster, live quorum bar, absent list, "not yet logged in to the app" readiness list with export, attendance export. Attendance never blocks voting; it only feeds the quorum. A meeting may have no poll at all.
+- **Special members** (`/admin/special-members`): for people with no official TWH member id (first user: the North-America diaspora representative). Generates a member id from a reserved 13-digit range starting `99` (real ids are at most 12 digits), checked against fpm_users, app_users, roster and every poll/election permission table; creates the fpm_users row so login (member id + phone) works; shrinks the photo under 60 KB; keeps its own copy so the fpm_users row can be restored if the TWH sync removes it.
+- **National Council polls:** add one voter / remove a voter (refused once they have voted) / "add missing members from the council roster" (additive only); optional link to a meeting; ranked weighted results per question with votes count, % of weight, optional top-N highlight and a tie-at-cutoff warning.
+- New API: `POST council-meeting-checkin`; `checkin-events` also returns open `council_meetings`.
+- New permission page "Council Meetings" (view / full + grantable actions `attendance.store`, `attendance.export`) and "Special Members" (full only); ids resolved by `url`, not hard-coded.
+
 ### Security
+
+- **National Council poll voting hardened** (previously: no unique key, "already voted" check not atomic, poll_id trusted from the request): votes are tied to the MEMBER (`member_id`) with a unique `(poll_id, question_id, member_id)` key, so a second app account or a parallel request cannot vote twice; the poll voted on is chosen by the server, every answer must belong to a question of that poll, a question can be answered once, and all rows are written in one transaction. `device_id` and `voted_at` are stored. The migration refuses to run over existing double votes.
+- National Council endpoints now sit behind the app-signature middleware and a separate `national_council_min_build` setting (CMS Settings page, blank = no restriction; set it only after the new app is live in both stores).
+- "Delete all data" is refused on a published poll and a poll that already has votes cannot be deleted.
+
+### Security (election hardening, earlier in this release)
 
 - **Internal Election results tally, Votes Report, and Vote Dispute Review now require a one-time phone code on top of the normal admin login+permission check** — found that any account with view-level access to the Internal Election page (in practice only the shared Super Admin login) could see live results and the full per-voter "who voted for whom" list with no restriction on whether the election was even still open. A new `ie-results-otp` middleware (`EnsureInternalElectionResultsOtp`) now sits on top of all three routes — the 6-digit code is sent only to one fixed, configured phone number (`INTERNAL_ELECTION_RESULTS_OTP_PHONE` in `.env`), stored encrypted at rest (never in plain text), and must be re-entered every 5 minutes per browser session.
 - **New standalone turnout-monitoring page** (`/election-progress`) — lets a trusted non-admin person watch live voting turnout without creating them a CMS admin account or sharing the admin password. Fully separate login (username/password, bcrypt-hashed, configured via `ELECTION_PROGRESS_USERNAME`/`ELECTION_PROGRESS_PASSWORD_HASH`), zero admin-panel permissions involved — a visitor here has no admin account to escalate from even if they guess another admin URL. Visually matches the admin's own Election Progress page (stat tiles, hourly chart, per-district/town turnout drilldown).
