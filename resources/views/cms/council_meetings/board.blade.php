@@ -9,15 +9,15 @@
 @verbatim
 <style>
     :root {
-        /* the app's own palette: orange #F78E1E, deep blue #035A8B, warm off-white #F7F5F0 */
-        --bg1: #01283f;
-        --bg2: #035a8b;
+        /* the party logo's colours: blue #004E7C, orange #F48D24, with a warm off-white */
+        --bg1: #00243a;
+        --bg2: #004e7c;
         --card: rgba(247, 245, 240, .07);
         --card-strong: rgba(247, 245, 240, .11);
         --line: rgba(247, 245, 240, .16);
         --text: #f7f5f0;
         --muted: #b3c9d9;
-        --orange: #f78e1e;
+        --orange: #f48d24;
         --gold: #ffc66e;
         --blue: #1f86bd;
         --green: #34e0a0;
@@ -31,7 +31,7 @@
         color: var(--text);
         background:
             radial-gradient(1200px 700px at 12% -10%, rgba(247, 142, 30, .16), transparent 60%),
-            radial-gradient(1000px 800px at 105% 10%, rgba(3, 90, 139, .55), transparent 55%),
+            radial-gradient(1000px 800px at 105% 10%, rgba(0, 78, 124, .6), transparent 55%),
             linear-gradient(160deg, var(--bg2), var(--bg1) 70%);
         background-attachment: fixed;
         overflow-x: hidden;
@@ -53,13 +53,10 @@
         padding: clamp(14px, 1.6vw, 26px) clamp(18px, 2.4vw, 44px);
     }
     .brand { display: flex; align-items: center; gap: 18px; min-width: 0; }
-    .mark {
-        flex: none; width: 58px; height: 58px; border-radius: 50%;
-        background: linear-gradient(145deg, #ffa83d, #f77f00);
-        display: grid; place-items: center;
-        box-shadow: 0 10px 30px rgba(247, 142, 30, .45), inset 0 2px 0 rgba(255,255,255,.35);
-    }
-    .mark svg { width: 34px; height: 34px; }
+    /* the party logo: blue square with the orange check, top left */
+    .mark { flex: none; width: 76px; height: 76px; border-radius: 18px; overflow: hidden; background: #004e7c;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, .4), 0 0 0 3px rgba(247, 245, 240, .55); }
+    .mark img { display: block; width: 100%; height: 100%; transform: scale(1.35); }
     .kicker { font-size: 12px; font-weight: 600; letter-spacing: .32em; text-transform: uppercase; color: var(--gold); }
     h1 { font-size: clamp(22px, 2.4vw, 40px); font-weight: 800; line-height: 1.1; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .sub { color: var(--muted); font-size: 14px; margin-top: 4px; }
@@ -246,7 +243,7 @@
 <header>
     <div class="brand">
         <div class="mark">
-            <svg viewBox="0 0 64 64" aria-hidden="true"><path d="M8 33c9-1 17 3 22 12C38 28 49 14 62 6c-8 12-15 25-20 52C37 47 24 38 8 33z" fill="#fff"/></svg>
+            <img src="{{ asset('council-board/fpm-logo.png') }}" alt="">
         </div>
         <div style="min-width:0">
             <div class="kicker">National Council &middot; Live attendance</div>
