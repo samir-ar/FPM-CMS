@@ -87,7 +87,8 @@
         position: relative; z-index: 1;
         display: grid; gap: clamp(14px, 1.3vw, 22px);
         grid-template-columns: repeat(12, 1fr);
-        grid-template-rows: auto 1fr auto;
+        grid-template-rows: auto auto 1fr;
+        min-height: calc(100vh - 104px);   /* the bottom row (seat map + arrivals) grows to use the whole screen */
         padding: 0 clamp(18px, 2.4vw, 44px) clamp(18px, 2vw, 32px);
     }
     .card {
@@ -100,7 +101,8 @@
     .hero { grid-column: span 5; grid-row: span 2; display: flex; flex-direction: column; align-items: center; }
     .kpis { grid-column: span 7; align-self: start; display: grid; grid-template-columns: repeat(4, 1fr); gap: clamp(10px, 1vw, 16px); }
     .groups { grid-column: span 7; }
-    .seats { grid-column: span 8; }
+    .seats { grid-column: span 8; display: flex; flex-direction: column; }
+    .seats #seatMap { flex: 1; justify-content: space-evenly; }
     .ticker { grid-column: span 4; }
 
     /* ---------- the gauge ---------- */
@@ -493,7 +495,7 @@
 
     function drawRecent(d) {
         if (!d.recent.length) { $('recent').innerHTML = '<div class="empty">Waiting for the first arrival&hellip;</div>'; return; }
-        $('recent').innerHTML = d.recent.slice(0, 6).map(function (r) {
+        $('recent').innerHTML = d.recent.slice(0, 10).map(function (r) {
             var fresh = !state.first && !state.seen[r.id];
             return '<div class="row' + (fresh ? ' fresh' : '') + '"><div class="av' + (r.photo ? ' ph' : '') + '"' + (r.photo ? ' style="background-image:url(&quot;' + esc(r.photo) + '&quot;)"' : '') + '>' + (r.photo ? '' : esc((r.name || '?').trim().charAt(0))) + '</div>' +
                 '<div class="who"><div class="n auto">' + esc(r.name) + '</div><div class="r auto">' + esc(r.role) + '</div></div>' +
