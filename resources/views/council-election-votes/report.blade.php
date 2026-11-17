@@ -45,6 +45,31 @@
             </div>
         </div>
 
+        <div class="row px-2 mt-2">
+            <div class="col-3">
+                <span>مجموع أوزان الناخبين:</span>
+                <span>{{$totalWeight}}</span>
+            </div>
+            <div class="col-3">
+                <span>الوزن المصوِّت:</span>
+                <span>{{$votedWeight}}</span>
+            </div>
+            @if($meetingStats)
+            <div class="col-6">
+                <span>الاجتماع:</span>
+                <span>{{$poll->meeting->title}}</span>
+                <span>— الحضور: {{$meetingStats['present_count']}} / {{$meetingStats['member_count']}}
+                    (وزن {{$meetingStats['present_weight']}} من {{$meetingStats['total_weight']}})</span>
+            </div>
+            @endif
+        </div>
+        <form method="GET" class="px-2 mt-3">
+            <label>إبراز أول</label>
+            <input type="number" name="top" min="0" value="{{$top ?: ''}}" style="width:70px;" placeholder="مثلاً 6">
+            <button type="submit">عرض</button>
+            <small>(لانتخاب عدة مقاعد: يُظهر الفائزين حسب الوزن)</small>
+        </form>
+
         <br>
         <br>
         <br>
@@ -57,25 +82,34 @@
           <div class="px-2">
               <span>السؤال:</span>
               <span>{{$question->question}}</span>
+              <span>— مجموع الأوزان المصوّتة: {{$ranking[$question->id]['cast_weight']}}</span>
           </div>
         <br>
+
+            @if($ranking[$question->id]['tie_at_cutoff'])
+                <div class="alert alert-warning mx-2">تعادل في الوزن عند حد الفوز (المركز {{$top}} والذي يليه)، يلزم قرار.</div>
+            @endif
 
             <table class="table" dir="rtl">
                 <thead>
                     <tr>
-                        @foreach($question->answers as $answer)
-                            <th scope="col">{{$answer->answer}}</th>
-                        @endforeach
+                        <th scope="col">#</th>
+                        <th scope="col">الخيار / المرشح</th>
+                        <th scope="col">الوزن</th>
+                        <th scope="col">عدد الأصوات</th>
+                        <th scope="col">النسبة من الوزن</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <tr>
-                        @foreach($question->answers as $answer)
-                            <td>
-                                {{$votes->where('answer_id',$answer->id)->sum('weight')}}
-                            </td>
-                        @endforeach
-                    </tr>
+                    @foreach($ranking[$question->id]['rows'] as $row)
+                        <tr @if($top && $row['rank'] <= $top) style="background:#e6f4ea; font-weight:bold;" @endif>
+                            <td>{{$row['rank']}}</td>
+                            <td>{{$row['answer']}}</td>
+                            <td>{{$row['weight']}}</td>
+                            <td>{{$row['votes']}}</td>
+                            <td>{{$row['pct']}}%</td>
+                        </tr>
+                    @endforeach
                 </tbody>
             </table>
         @endforeach

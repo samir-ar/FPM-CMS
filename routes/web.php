@@ -610,6 +610,10 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::get('national-council-poll/{id}/clear', 'NationalCouncilPollController@clear')->name('national-council-poll.clear')->middleware('page-perm:58,full');
     Route::get('national-council-poll/{id}/results', 'NationalCouncilPollController@results')->name('national-council-poll.results')->middleware('page-perm:58,view');
     Route::get('national-council-poll-voters-template', 'NationalCouncilPollController@downloadVotersTemplate')->name('national-council-poll.voters-template')->middleware('page-perm:58,view');
+    Route::get('national-council-poll/{id}/voters/search', 'NationalCouncilPollController@searchVoters')->name('national-council-poll.voters.search')->middleware('page-perm:58,full');
+    Route::post('national-council-poll/{id}/voters/add-one', 'NationalCouncilPollController@addVoter')->name('national-council-poll.voters.add-one')->middleware('page-perm:58,full');
+    Route::post('national-council-poll/{id}/voters/sync-roster', 'NationalCouncilPollController@syncVotersFromRoster')->name('national-council-poll.voters.sync-roster')->middleware('page-perm:58,full');
+    Route::delete('national-council-poll/{id}/voters/{permissionId}', 'NationalCouncilPollController@removeVoter')->name('national-council-poll.voters.remove')->middleware('page-perm:58,full');
     Route::resource('national-council-poll', 'NationalCouncilPollController')->except(['index', 'show'])->middleware('page-perm:58,full');
     Route::resource('national-council-poll', 'NationalCouncilPollController')->only(['index', 'show'])->middleware('page-perm:58,view');
 
