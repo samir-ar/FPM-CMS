@@ -175,6 +175,18 @@ class CouncilPollAdminTest extends CouncilTestCase
         // the page shows the picker and the corrected button label
         $create = $this->get(route('admin.national-council-poll.questions.create', $poll->id, false))->assertOk()->getContent();
         $this->assertStringContainsString('candSearchInput', $create);
+
+        // jQuery is loaded at the bottom of the layout, so the picker's script must come AFTER it and must not
+        // be an inline <script> in the form (it would run before $ exists and the Search button would do nothing)
+        $jq = strpos($create, 'jquery.min.js');
+        $js = strpos($create, 'council-poll-candidates.js');
+        $this->assertNotFalse($js, 'the picker script is loaded on the Add Question page');
+        $this->assertGreaterThan($jq, $js, 'and it is loaded after jQuery');
+        $picker = substr($create, strpos($create, 'id="candPicker"'), 1500);
+        $this->assertStringNotContainsString('<script>', substr($picker, 0, strpos($picker, 'Picking a member') ?: 1500), 'no inline script inside the picker markup');
+        $this->assertStringContainsString('data-search-url="', $create);
+        $this->get(route('admin.national-council-poll.questions.create', $poll->id, false));   // (same page again, no state)
+
         $index = $this->get(route('admin.national-council-poll.questions.index', $poll->id, false))->assertOk()->getContent();
         $this->assertStringContainsString('>Add Question<', $index);
         $this->assertStringNotContainsString('Add National Council Poll', $index);
