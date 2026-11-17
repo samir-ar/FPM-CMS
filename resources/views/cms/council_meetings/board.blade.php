@@ -157,9 +157,15 @@
     .legend i { width: 12px; height: 12px; border-radius: 50%; }
     .legend .on { background: var(--orange); box-shadow: 0 0 10px rgba(247,142,30,.8); }
     .legend .off { border: 1.5px solid rgba(255,255,255,.3); }
-    #seatMap { display: flex; flex-wrap: wrap; gap: 18px 38px; align-items: flex-start; }
+    /* the seat map is a tree: one centred row per level, joined by a thin line */
+    #seatMap { display: flex; flex-direction: column; align-items: stretch; gap: 22px; }
+    .tier { position: relative; display: flex; flex-wrap: wrap; justify-content: center; gap: 14px 40px; }
+    .tier + .tier::before { content: ''; position: absolute; top: -22px; left: 50%; height: 22px; width: 1px; background: linear-gradient(rgba(247,142,30,.0), rgba(247,142,30,.55)); }
+    .tier.t0 .seat { width: 44px; height: 44px; }
     .sgroup { flex: 0 1 auto; max-width: 100%; }
-    .sgroup.wide { flex: 1 1 100%; }
+    .sgroup .sg-head { justify-content: center; }
+    .sg-grid { justify-content: center; }
+    .tier.t2 .sgroup { max-width: 1100px; }
     .sg-head { display: flex; justify-content: space-between; gap: 14px; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 8px; }
     .sg-head b { color: var(--text); }
     .sg-grid { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -396,10 +402,23 @@
             var byGroup = {};
             d.members.forEach(function (m) { (byGroup[m.sector] = byGroup[m.sector] || []).push(m); });
             var order = d.groups.map(function (g) { return g.name; });
-            map.innerHTML = order.map(function (name) {
-                var list = byGroup[name] || [];
-                return '<div class="sgroup' + (list.length > 24 ? ' wide' : '') + '" data-g="' + esc(name) + '"><div class="sg-head"><span class="auto">' + esc(name) + '</span><span class="num"><b data-c="' + esc(name) + '">0</b> / ' + list.length + '</span></div><div class="sg-grid">' +
-                    list.map(function (m) { return '<i class="seat" id="s' + esc(m.id) + '"></i>'; }).join('') + '</div></div>';
+            // the council as a tree: president, vice presidents, members, the diaspora, then the offices
+            function tierOf(name) {
+                if (name === 'الرئيس') { return 0; }          // الرئيس
+                if (name.indexOf('نائب') === 0) { return 1; }          // نائب...
+                if (name === 'عضو') { return 2; }                           // عضو
+                if (name.indexOf('انتشار') === 0) { return 3; } // انتشار...
+                return 4;
+            }
+            var tiers = [[], [], [], [], []];
+            order.forEach(function (name) { tiers[tierOf(name)].push(name); });
+            map.innerHTML = tiers.map(function (names, t) {
+                if (!names.length) { return ''; }
+                return '<div class="tier t' + t + '">' + names.map(function (name) {
+                    var list = byGroup[name] || [];
+                    return '<div class="sgroup" data-g="' + esc(name) + '"><div class="sg-head"><span class="auto">' + esc(name) + '</span><span class="num"><b data-c="' + esc(name) + '">0</b> / ' + list.length + '</span></div><div class="sg-grid">' +
+                        list.map(function (m) { return '<i class="seat" id="s' + esc(m.id) + '"></i>'; }).join('') + '</div></div>';
+                }).join('') + '</div>';
             }).join('');
             map.setAttribute('data-built', '1');
         }
