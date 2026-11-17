@@ -56,12 +56,13 @@ class CouncilMemberLookup
         return $overrides[(string) $memberId] ?? $memberListName;
     }
 
-    // Arabic names compared loosely: أ/إ/آ = ا, ة = ه, ى = ي, and ALL spaces ignored ("عطا الله" = "عطالله").
+    // Arabic full names compared loosely: أ/إ/آ = ا, ة = ه, ى = ي, and spaces and alefs are ignored, so
+    // "عطا الله", "عطاالله" and "عطالله" are all the same name. Only used on complete names.
     private static function normName($s): string
     {
-        $s = preg_replace('/[أإآ]/u', 'ا', (string) $s);
+        $s = str_replace(['ة', 'ى'], ['ه', 'ي'], preg_replace('/[أإآٱ]/u', 'ا', (string) $s));
 
-        return preg_replace('/[\s\x{0640}]+/u', '', str_replace(['ة', 'ى'], ['ه', 'ي'], $s));
+        return preg_replace('/[\s\x{0640}ا]+/u', '', $s);
     }
 
     // member id => the image file of his Representatives record. A record linked by member_id wins; most

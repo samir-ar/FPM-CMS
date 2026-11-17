@@ -435,6 +435,12 @@ class CouncilSessionTest extends CouncilTestCase
         DB::table('persons')->where('image', $file)->update(['name' => json_encode(['ar' => 'جورج نعيم عطاالله'], JSON_UNESCAPED_UNICODE)]);
         $this->assertSame($file, \App\Support\CouncilMemberLookup::repImageFiles([(string) $c])[(string) $c] ?? null);
 
+        // all three spellings of Atallah are the same name: "عطا الله", "عطاالله", "عطالله"
+        foreach (['جورج نعيم عطا الله', 'جورج نعيم عطاالله', 'جورج نعيم عطالله'] as $spelling) {
+            DB::table('fpm_users')->where('MemberId', $c)->update(['UserFullName' => $spelling]);
+            $this->assertSame($file, \App\Support\CouncilMemberLookup::repImageFiles([(string) $c])[(string) $c] ?? null, $spelling);
+        }
+
         // a member written differently in the member list: the council-only display name finds the record
         DB::table('fpm_users')->where('MemberId', $c)->update(['UserFullName' => 'اسم مختلف في قائمة الاعضاء']);
         $this->assertNull(\App\Support\CouncilMemberLookup::repImageFiles([(string) $c])[(string) $c] ?? null);
