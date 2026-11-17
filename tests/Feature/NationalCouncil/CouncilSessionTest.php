@@ -334,6 +334,33 @@ class CouncilSessionTest extends CouncilTestCase
         $this->assertNotEmpty($d['groups']);
     }
 
+    public function test_the_board_serves_council_members_photos_only()
+    {
+        [$a, $b, $c] = $this->rosterOf3();
+        $m = $this->newMeeting('T board photo');
+        $admin = $this->adminUser();
+        $jpeg = "\xFF\xD8\xFF\xE0" . str_repeat('x', 200);
+
+        DB::table('fpm_users')->where('MemberId', $a)->update(['PersonImage' => $jpeg]);
+        DB::table('fpm_users')->where('MemberId', $b)->update(['PersonImage' => base64_encode($jpeg)]);
+        DB::table('fpm_users')->where('MemberId', $c)->update(['PersonImage' => '']);
+        $outsider = $this->sampleMemberIds(4)[3];
+        DB::table('fpm_users')->where('MemberId', $outsider)->update(['PersonImage' => $jpeg]);
+
+        $url = fn($id) => route('admin.council-meetings.photo', [$m->id, $id], false);
+
+        $r = $this->actingAs($admin, 'admin')->get($url($a))->assertOk();
+        $this->assertSame('image/jpeg', $r->headers->get('Content-Type'));
+        $this->assertSame($jpeg, $r->getContent(), 'raw bytes are served as they are');
+        $this->assertSame($jpeg, $this->get($url($b))->assertOk()->getContent(), 'base64 text is decoded');
+        $this->get($url($outsider))->assertNotFound();
+
+        $d = $this->getJson(route('admin.council-meetings.board-data', $m->id, false))->json();
+        $byId = collect($d['members'])->keyBy('id');
+        $this->assertSame($url($a), $byId[(string) $a]['photo']);
+        $this->assertNull($byId[(string) $c]['photo'] ?? null, 'no photo on file means no photo url (the board falls back to the letter)');
+    }
+
     public function test_the_live_board_is_not_open_to_the_public()
     {
         $this->rosterOf3();

@@ -164,12 +164,17 @@
     .sg-head b { color: var(--text); }
     .sg-grid { display: flex; flex-wrap: wrap; gap: 6px; }
     .seat {
-        width: 27px; height: 27px; border-radius: 50%; display: grid; place-items: center;
+        width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center;
         font-size: 11px; font-weight: 700; color: rgba(255,255,255,.45);
         border: 1.5px solid rgba(255,255,255,.22); background: rgba(255,255,255,.03);
         transition: all .5s cubic-bezier(.2,.8,.2,1);
     }
     .seat.on { color: #2b1500; border-color: transparent; background: radial-gradient(circle at 30% 25%, #ffd08a, var(--orange)); box-shadow: 0 0 14px rgba(247,142,30,.75); transform: scale(1.04); }
+    /* photo seats: absent = dim black-and-white, present = full colour inside an orange ring */
+    .seat.ph { overflow: hidden; background-size: cover; background-position: center top; background-repeat: no-repeat; color: transparent; }
+    .seat.ph:not(.on) { filter: grayscale(1) brightness(.55); border-color: rgba(255,255,255,.18); }
+    .seat.ph.on { border: 2px solid var(--orange); background-color: transparent; }
+    .av.ph { background-size: cover; background-position: center top; color: transparent; border: 2px solid var(--orange); }
     .seat.pop { animation: pop .9s cubic-bezier(.2,1.6,.3,1); }
     @keyframes pop { 0% { transform: scale(.4); box-shadow: 0 0 0 0 rgba(255,198,110,.9); } 60% { transform: scale(1.5); } 100% { transform: scale(1.04); box-shadow: 0 0 14px rgba(247,142,30,.75); } }
 
@@ -402,7 +407,18 @@
             var el = document.getElementById('s' + m.id);
             if (!el) { return; }
             el.title = m.name + (m.role ? ' — ' + m.role : '') + ' (weight ' + m.weight + ')' + (m.at ? ' · ' + m.at : '');
-            el.textContent = (m.name || '?').trim().charAt(0);
+            if (m.photo) {
+                // the picture replaces the letter; if it cannot be loaded the letter comes back
+                if (!el.getAttribute('data-ph')) {
+                    el.setAttribute('data-ph', '1');
+                    var probe = new Image();
+                    probe.onload = function () { el.style.backgroundImage = 'url("' + m.photo + '")'; el.classList.add('ph'); el.textContent = ''; };
+                    probe.onerror = function () { el.textContent = (m.name || '?').trim().charAt(0); };
+                    probe.src = m.photo;
+                }
+            } else {
+                el.textContent = (m.name || '?').trim().charAt(0);
+            }
             var was = !!state.presentIds[m.id];
             if (m.present && !was) {
                 el.classList.add('on');
@@ -421,7 +437,7 @@
         if (!d.recent.length) { $('recent').innerHTML = '<div class="empty">Waiting for the first arrival&hellip;</div>'; return; }
         $('recent').innerHTML = d.recent.slice(0, 6).map(function (r) {
             var fresh = !state.first && !state.seen[r.id];
-            return '<div class="row' + (fresh ? ' fresh' : '') + '"><div class="av">' + esc((r.name || '?').trim().charAt(0)) + '</div>' +
+            return '<div class="row' + (fresh ? ' fresh' : '') + '"><div class="av' + (r.photo ? ' ph' : '') + '"' + (r.photo ? ' style="background-image:url(&quot;' + esc(r.photo) + '&quot;)"' : '') + '>' + (r.photo ? '' : esc((r.name || '?').trim().charAt(0))) + '</div>' +
                 '<div class="who"><div class="n auto">' + esc(r.name) + '</div><div class="r auto">' + esc(r.role) + '</div></div>' +
                 '<div class="meta"><span class="w num">+' + r.weight + '</span><span class="t num">' + esc(r.at) + '</span></div></div>';
         }).join('');

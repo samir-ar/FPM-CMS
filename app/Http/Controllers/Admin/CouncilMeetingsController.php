@@ -118,6 +118,28 @@ class CouncilMeetingsController extends Controller
         return response()->json($this->boardPayload(CouncilMeeting::findOrFail($id)));
     }
 
+    // A council member's photo for the board (admin only, council members only). Photos are
+    // stored in fpm_users.PersonImage, normally as raw JPEG bytes but sometimes as base64 text.
+    public function photo($id, $memberId)
+    {
+        CouncilMeeting::findOrFail($id);
+        abort_unless(CouncilRosterMember::where('member_id', (string) $memberId)->exists(), 404);
+
+        $bytes = \DB::table('fpm_users')->where('MemberId', $memberId)->value('PersonImage');
+        abort_if(empty($bytes), 404);
+
+        if (strncmp($bytes, "\xFF\xD8", 2) !== 0 && strncmp($bytes, "\x89PNG", 4) !== 0) {
+            $text = preg_replace('#^data:image/[a-z]+;base64,#i', '', trim($bytes));
+            $decoded = base64_decode($text, true);
+            abort_if($decoded === false || $decoded === '', 404);
+            $bytes = $decoded;
+        }
+
+        return response($bytes, 200)
+            ->header('Content-Type', strncmp($bytes, "\x89PNG", 4) === 0 ? 'image/png' : 'image/jpeg')
+            ->header('Cache-Control', 'private, max-age=3600');
+    }
+
     // Everything the board draws: the quorum numbers, every roster member with whether
     // they are present, the groups (by sector) with their totals, and the latest arrivals.
     private function boardPayload(CouncilMeeting $meeting): array
@@ -130,11 +152,18 @@ class CouncilMeetingsController extends Controller
         $details = CouncilMemberLookup::detailsFor($ids);
         $nameOf = fn($memberId) => $details[$memberId]->UserFullName ?? (string) $memberId;
 
-        $members = $roster->map(function ($m) use ($byMember, $nameOf) {
+        // who has a photo on file (length only - the pictures themselves load one by one)
+        $withPhoto = \DB::table('fpm_users')->whereIn('MemberId', $ids)
+            ->whereRaw('LENGTH(PersonImage) > 100')->pluck('MemberId')->map(fn($i) => (string) $i)->flip();
+        $photoOf = fn($memberId) => isset($withPhoto[(string) $memberId])
+            ? route('admin.council-meetings.photo', [$meeting->id, $memberId], false) : null;
+
+        $members = $roster->map(function ($m) use ($byMember, $nameOf, $photoOf) {
             $a = $byMember->get($m->member_id);
 
             return [
                 'id' => (string) $m->member_id,
+                'photo' => $photoOf($m->member_id),
                 'name' => $nameOf($m->member_id),
                 'role' => trim((string) $m->role),
                 'sector' => trim((string) $m->sector) ?: 'Other',
@@ -155,11 +184,12 @@ class CouncilMeetingsController extends Controller
             ];
         })->sortByDesc('weight')->values();
 
-        $recent = $attendance->take(10)->map(function ($a) use ($nameOf, $roster) {
+        $recent = $attendance->take(10)->map(function ($a) use ($nameOf, $roster, $photoOf) {
             $role = optional($roster->firstWhere('member_id', $a->member_id))->role;
 
             return [
                 'id' => (string) $a->member_id,
+                'photo' => $photoOf($a->member_id),
                 'name' => $nameOf($a->member_id),
                 'role' => trim((string) $role),
                 'weight' => (int) $a->weight,
