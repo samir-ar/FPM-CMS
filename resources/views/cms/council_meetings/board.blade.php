@@ -101,11 +101,10 @@
     .hero { grid-column: span 5; grid-row: span 2; display: flex; flex-direction: column; align-items: center; }
     .kpis { grid-column: span 7; align-self: start; display: grid; grid-template-columns: repeat(4, 1fr); gap: clamp(10px, 1vw, 16px); }
     .groups { grid-column: span 7; }
-    .seats { grid-column: span 12; display: flex; flex-direction: column; }
+    .seats { grid-column: span 9; display: flex; flex-direction: column; }
     .seats #seatMap { flex: 1; justify-content: space-evenly; }
-    .ticker { grid-column: span 12; display: flex; align-items: center; gap: 22px; padding-top: 12px; padding-bottom: 12px; }
-    .ticker h2 { margin: 0; flex: 0 0 auto; }
-    #recent { flex: 1; min-width: 0; display: flex; }
+    .ticker { grid-column: span 3; }
+    #recent { min-width: 0; }
 
     /* ---------- the gauge ---------- */
     .gauge { position: relative; width: min(100%, 300px); aspect-ratio: 1; margin: 2px auto 6px; }
@@ -200,18 +199,17 @@
 
     /* ---------- arrivals ticker ---------- */
     /* the last 10 arrivals as a slim strip: face + name + weight and time */
-    .row { flex: 1 1 0; min-width: 0; display: flex; gap: 10px; align-items: center; padding: 4px 12px; border-left: 1px solid rgba(255,255,255,.08); }
-    .row:first-child { border-left: 0; }
-    .row .who { flex: 1; }
-    .row { gap: 12px; padding: 6px 12px; }
-    .row .r { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
-    .row .role { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+    .row { display: flex; gap: 12px; align-items: center; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,.06); }
+    .row:last-child { border-bottom: 0; }
+    .row .who { flex: 1; min-width: 0; }
+    .row .r { display: flex; align-items: center; gap: 6px; margin-top: 3px; }
+    .row .role { text-align: left; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
     .row .t { display: inline; margin: 0; font-size: 12px; }
     .row .w { padding: 1px 8px; font-size: 12px; }
-    .av { flex: 0 0 auto; width: 64px; height: 64px; font-size: 24px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; color: #2b1500; background: linear-gradient(145deg, #ffd08a, var(--orange)); }
+    .av { flex: 0 0 auto; width: 46px; height: 46px; font-size: 18px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; color: #2b1500; background: linear-gradient(145deg, #ffd08a, var(--orange)); }
     .who { min-width: 0; }
     .who .n, .who .r { text-align: left; }
-    .who .n { font-size: 17px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .who .n { font-size: 16px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .who .r { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .meta { text-align: right; }
     .w { display: inline-block; padding: 3px 10px; border-radius: 99px; font-size: 12px; font-weight: 800; color: var(--gold); background: rgba(247,142,30,.16); border: 1px solid rgba(247,142,30,.35); }
@@ -308,14 +306,14 @@
         <div id="groupBars"></div>
     </section>
 
-    <section class="card ticker">
-        <h2>Latest arrivals</h2>
-        <div id="recent"></div>
-    </section>
-
     <section class="card seats">
         <h2>Seat map <span class="legend"><span><i class="on"></i>PRESENT</span><span><i class="off"></i>ABSENT</span></span></h2>
         <div id="seatMap"></div>
+    </section>
+
+    <section class="card ticker">
+        <h2>Latest arrivals</h2>
+        <div id="recent"></div>
     </section>
 </main>
 
