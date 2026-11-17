@@ -242,7 +242,6 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::get('council-roster/search', 'CouncilRosterController@search')->name('council-roster.search')->middleware(pagePermByUrl('admin.council-meetings.index', 'full'));
     Route::get('council-roster/export', 'CouncilRosterController@export')->name('council-roster.export')->middleware(pagePermByUrl('admin.council-meetings.index', 'view'));
     Route::get('council-roster/template', 'CouncilRosterController@template')->name('council-roster.template')->middleware(pagePermByUrl('admin.council-meetings.index', 'view'));
-    Route::post('council-roster/quorum-base', 'CouncilRosterController@updateQuorumBase')->name('council-roster.quorum-base')->middleware(pagePermByUrl('admin.council-meetings.index', 'full'));
     Route::post('council-roster/import', 'CouncilRosterController@import')->name('council-roster.import')->middleware(pagePermByUrl('admin.council-meetings.index', 'full'));
     Route::post('council-roster', 'CouncilRosterController@store')->name('council-roster.store')->middleware(pagePermByUrl('admin.council-meetings.index', 'full'));
     Route::put('council-roster/{id}', 'CouncilRosterController@update')->name('council-roster.update')->middleware(pagePermByUrl('admin.council-meetings.index', 'full'));

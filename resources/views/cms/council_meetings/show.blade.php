@@ -110,7 +110,7 @@
             <div id="sBar" class="progress-bar progress-bar-success" style="width: {{ $pct }}%; line-height:22px;">{{ $pct }}%</div>
         </div>
 
-        @if(!$quorumBaseSet && ($rosterTotalNow != $stats['total_weight'] || $rosterCountNow != $stats['member_count']))
+        @if($rosterTotalNow != $stats['total_weight'] || $rosterCountNow != $stats['member_count'])
             <div class="alert alert-warning">
                 لائحة المجلس تغيّرت منذ إنشاء الاجتماع (الآن {{ $rosterCountNow }} عضواً، مجموع الأوزان {{ $rosterTotalNow }}).
                 نصاب هذا الاجتماع ما زال مثبتاً على {{ $stats['member_count'] }} عضواً / {{ $stats['total_weight'] }}.

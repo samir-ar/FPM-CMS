@@ -24,9 +24,6 @@ class CouncilSessionTest extends CouncilTestCase
         parent::setUp();
 
         auth('admin')->setUser($this->adminUser());
-        // start every test from "no official quorum base" so the roster fallback is what is exercised;
-        // the base itself has its own tests below
-        DB::table('settings')->update(['council_quorum_total_weight' => null, 'council_quorum_member_count' => null]);
     }
 
     private function ajax(array $data = []): Request
@@ -116,7 +113,7 @@ class CouncilSessionTest extends CouncilTestCase
         return CouncilMeeting::where('title', $title)->firstOrFail();
     }
 
-    public function test_a_meeting_freezes_its_quorum_from_the_roster_when_no_base_is_set()
+    public function test_a_meeting_freezes_its_quorum_from_the_roster_when_it_is_created()
     {
         $this->rosterOf3();
         $m = $this->newMeeting();
@@ -127,33 +124,35 @@ class CouncilSessionTest extends CouncilTestCase
         $this->assertSame(7, $m->quorum_two_thirds);
     }
 
-    public function test_the_official_quorum_base_wins_over_the_live_roster()
+    public function test_the_quorum_follows_whatever_the_roster_adds_up_to()
     {
-        $this->rosterOf3();
-        $rc = app(CouncilRosterController::class);
-        $rc->updateQuorumBase(Request::create('/x', 'POST', ['council_quorum_total_weight' => 755, 'council_quorum_member_count' => 105]));
+        // 754 = the 104 named members of the council sheet, 755 once the women's representative (weight 1) joins
+        CouncilRosterMember::whereNotNull('id')->delete();
+        $this->bulkRoster(104, 754);
+        $before = $this->newMeeting('T before');
 
-        $m = $this->newMeeting('T base meeting');
+        $this->assertSame(104, $before->member_count);
+        $this->assertSame(754, $before->total_weight);
+        $this->assertSame(378, $before->quorum_majority);
+        $this->assertSame(503, $before->quorum_two_thirds);
 
-        $this->assertSame(755, $m->total_weight);
-        $this->assertSame(105, $m->member_count);
-        $this->assertSame(378, $m->quorum_majority);
-        $this->assertSame(504, $m->quorum_two_thirds);
+        CouncilRosterMember::create(['member_id' => '99999999991', 'weight' => 1]);
+        $after = $this->newMeeting('T after');
+
+        $this->assertSame(105, $after->member_count);
+        $this->assertSame(755, $after->total_weight);
+        $this->assertSame(378, $after->quorum_majority);
+        $this->assertSame(504, $after->quorum_two_thirds);
     }
 
-    public function test_changing_the_base_and_refreshing_a_meeting_updates_its_quorum()
+    // $count members whose weights add up to exactly $totalWeight
+    private function bulkRoster(int $count, int $totalWeight): void
     {
-        $this->rosterOf3();
-        $rc = app(CouncilRosterController::class);
-        $rc->updateQuorumBase(Request::create('/x', 'POST', ['council_quorum_total_weight' => 755, 'council_quorum_member_count' => 105]));
-        $m = $this->newMeeting('T base meeting');
-
-        $rc->updateQuorumBase(Request::create('/x', 'POST', ['council_quorum_total_weight' => 756, 'council_quorum_member_count' => 106]));
-        $m->freezeFromRoster();
-        $m->save();
-
-        $this->assertSame(379, $m->fresh()->quorum_majority);
-        $this->assertSame(504, $m->fresh()->quorum_two_thirds);
+        $each = intdiv($totalWeight, $count);
+        $extra = $totalWeight - $each * $count;
+        for ($i = 0; $i < $count; $i++) {
+            CouncilRosterMember::create(['member_id' => '9990000' . str_pad((string) $i, 4, '0', STR_PAD_LEFT), 'weight' => $each + ($i < $extra ? 1 : 0)]);
+        }
     }
 
     public function test_adding_to_the_roster_later_does_not_change_an_existing_meeting_until_refreshed()

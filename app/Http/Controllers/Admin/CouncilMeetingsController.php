@@ -32,12 +32,11 @@ class CouncilMeetingsController extends Controller
     public function create()
     {
         $roster = CouncilRosterMember::active();
-        $base = CouncilMeeting::quorumBase();
-        $total = $base['total_weight'] ?? (int) (clone $roster)->sum('weight');
+        $total = (int) (clone $roster)->sum('weight');
 
         return view('cms.council_meetings.create')->with([
             'layout' => 'layouts.cms',
-            'memberCount' => $base['member_count'] ?? (clone $roster)->count(),
+            'memberCount' => (clone $roster)->count(),
             'totalWeight' => $total,
             'majority' => CouncilMeeting::majorityOf($total),
             'twoThirds' => CouncilMeeting::twoThirdsOf($total),
@@ -93,7 +92,6 @@ class CouncilMeetingsController extends Controller
             'loggedInCount' => $roster->count() - $notLoggedIn->count(),
             'rosterTotalNow' => (int) $roster->sum('weight'),
             'rosterCountNow' => $roster->count(),
-            'quorumBaseSet' => (bool) CouncilMeeting::quorumBase()['total_weight'],
             'canAdd' => $this->canAction('attendance.store'),
             'canExport' => $this->canAction('attendance.export'),
             'canManage' => $this->canManage(),
