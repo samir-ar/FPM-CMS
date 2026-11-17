@@ -303,4 +303,33 @@ class CouncilSessionTest extends CouncilTestCase
             $this->assertSame(200, $resp->getStatusCode(), $url . ' -> ' . $resp->getStatusCode());
         }
     }
+
+    public function test_the_roster_page_has_role_sector_district_filters_built_from_the_data()
+    {
+        [$a, $b, $c] = $this->sampleMemberIds(3);
+        CouncilRosterMember::whereNotNull('id')->delete();
+        CouncilRosterMember::create(['member_id' => $a, 'weight' => 1, 'role' => 'نائب', 'sector' => 'مجلس وطني', 'district' => 'فئة 1']);
+        CouncilRosterMember::create(['member_id' => $b, 'weight' => 2, 'role' => 'عضو', 'sector' => 'مجلس قضاء', 'district' => 'راشيا']);
+        CouncilRosterMember::create(['member_id' => $c, 'weight' => 3, 'role' => 'عضو', 'sector' => 'مجلس قضاء', 'district' => 'زحلة']);
+
+        $html = $this->actingAs($this->adminUser(), 'admin')->get(route('admin.council-roster.index', [], false))->assertOk()->getContent();
+
+        // the three dropdowns + the text search exist
+        foreach (['id="filterRole"', 'id="filterSector"', 'id="filterDistrict"', 'id="filterText"', 'id="filterClear"'] as $needle) {
+            $this->assertStringContainsString($needle, $html);
+        }
+
+        // options come from the roster itself, each value once ("عضو" is used by two members)
+        $this->assertSame(1, substr_count($html, '<option value="عضو">'));
+        $this->assertSame(1, substr_count($html, '<option value="نائب">'));
+        $this->assertStringContainsString('<option value="راشيا">', $html);
+        $this->assertStringContainsString('<option value="زحلة">', $html);
+        $this->assertStringContainsString('<option value="فئة 1">', $html);
+
+        // every row carries what the filters compare against
+        $this->assertSame(3, substr_count($html, 'data-role="'));
+        $this->assertStringContainsString('data-district="راشيا"', $html);
+        $this->assertStringContainsString('data-sector="مجلس قضاء"', $html);
+        $this->assertSame(3, substr_count($html, 'data-search="'));
+    }
 }

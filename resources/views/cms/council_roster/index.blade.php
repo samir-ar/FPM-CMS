@@ -59,6 +59,36 @@
             }).done(function (r) { flash(true, r.message); setTimeout(function () { location.reload(); }, 600); })
               .fail(function (xhr) { flash(false, (xhr.responseJSON && xhr.responseJSON.message) || 'Something went wrong'); });
         });
+        // ---- filters: role / sector / district / free text, all combined ----
+        function applyFilters() {
+            var role = $('#filterRole').val(), sector = $('#filterSector').val(), district = $('#filterDistrict').val();
+            var text = $.trim($('#filterText').val()).toLowerCase();
+            var shown = 0, weight = 0, total = 0;
+
+            $('#rosterTable tbody tr').each(function () {
+                var tr = $(this);
+                total++;
+                var ok = (!role || tr.attr('data-role') === role)
+                      && (!sector || tr.attr('data-sector') === sector)
+                      && (!district || tr.attr('data-district') === district)
+                      && (!text || String(tr.attr('data-search')).indexOf(text) !== -1);
+                tr.toggle(ok);
+                if (ok) { shown++; weight += parseInt(tr.find('.f-weight').val(), 10) || 0; }
+            });
+
+            var filtering = role || sector || district || text;
+            $('#filterSummary').text(filtering
+                ? 'Showing ' + shown + ' of ' + total + ' members (total weight ' + weight + ')'
+                : '');
+        }
+        $('#filterRole, #filterSector, #filterDistrict').on('change', applyFilters);
+        $('#filterText').on('input', applyFilters);
+        $('#filterClear').on('click', function () {
+            $('#filterRole, #filterSector, #filterDistrict').val('');
+            $('#filterText').val('');
+            applyFilters();
+        });
+
         $(document).on('click', '.remove-row', function () {
             var tr = $(this).closest('tr');
             if (!confirm('Remove ' + tr.data('name') + ' from the council roster?')) return;
@@ -119,7 +149,43 @@
             <small class="text-muted">Columns: member ID | weight | role | sector | district</small>
         </form>
 
-        <table class="table table-bordered table-striped">
+        @php($roleOptions = $members->pluck('role')->map(fn($v) => trim((string) $v))->filter()->unique()->sort()->values())
+        @php($districtOptions = $members->pluck('district')->map(fn($v) => trim((string) $v))->filter()->unique()->sort()->values())
+        @php($sectorOptions = $members->pluck('sector')->map(fn($v) => trim((string) $v))->filter()->unique()->sort()->values())
+
+        <div id="rosterFilters" style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; margin:5px 0 10px;">
+            <div>
+                <label>Role</label>
+                <select id="filterRole" class="form-control" style="width:220px;" dir="auto">
+                    <option value="">All roles</option>
+                    @foreach($roleOptions as $opt)<option value="{{ $opt }}">{{ $opt }}</option>@endforeach
+                </select>
+            </div>
+            <div>
+                <label>Sector</label>
+                <select id="filterSector" class="form-control" style="width:180px;" dir="auto">
+                    <option value="">All sectors</option>
+                    @foreach($sectorOptions as $opt)<option value="{{ $opt }}">{{ $opt }}</option>@endforeach
+                </select>
+            </div>
+            <div>
+                <label>District</label>
+                <select id="filterDistrict" class="form-control" style="width:220px;" dir="auto">
+                    <option value="">All districts</option>
+                    @foreach($districtOptions as $opt)<option value="{{ $opt }}">{{ $opt }}</option>@endforeach
+                </select>
+            </div>
+            <div>
+                <label>Search the list</label>
+                <input type="text" id="filterText" class="form-control" style="width:220px;" dir="auto" placeholder="Name, member ID or phone">
+            </div>
+            <div>
+                <button type="button" id="filterClear" class="btn btn-default">Clear filters</button>
+            </div>
+            <div id="filterSummary" class="text-muted" style="padding-bottom:7px;"></div>
+        </div>
+
+        <table class="table table-bordered table-striped" id="rosterTable">
             <thead>
                 <tr>
                     <th>#</th>
@@ -139,6 +205,8 @@
             @foreach($members as $i => $m)
                 @php($d = $details[$m->member_id] ?? null)
                 <tr data-url="{{ route('admin.council-roster.update', $m->id) }}" data-name="{{ $d->UserFullName ?? $m->member_id }}"
+                    data-role="{{ trim((string) $m->role) }}" data-sector="{{ trim((string) $m->sector) }}" data-district="{{ trim((string) $m->district) }}"
+                    data-search="{{ mb_strtolower(($d->UserFullName ?? '') . ' ' . $m->member_id . ' ' . ($d->MobileNumber ?? '')) }}"
                     @if(!$m->is_active) style="opacity:.5" @endif>
                     <td>{{ $i + 1 }}</td>
                     <td>{{ $m->member_id }}</td>
