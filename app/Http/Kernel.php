@@ -67,6 +67,7 @@ class Kernel extends HttpKernel
         'fpm-auth' => \App\Http\Middleware\FpmCheckToken::class,
         'not-required-token' => \App\Http\Middleware\TokenNotRequired::class,
         'page-perm' => \App\Http\Middleware\CheckPagePermission::class,
+        'any-full' => \App\Http\Middleware\RequireAnyFullPermission::class,
         'app-signature' => \App\Http\Middleware\VerifyAppSignature::class,
         'ie-results-otp' => \App\Http\Middleware\EnsureInternalElectionResultsOtp::class,
     ];

@@ -407,11 +407,16 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::resource('groups', 'GroupsController')->except(['index', 'show'])->middleware('page-perm:7,full');
     Route::resource('groups', 'GroupsController')->only(['index', 'show'])->middleware('page-perm:7,view');
 
-    //UserPolls — no corresponding sidebar page exists; not tagged
-    Route::resource('userPolls', 'UserPollsController');
+    // UserPolls (who answered which in-app poll) is the "Answers" drill-down of
+    // the Polls page, so it follows that page's permission. Resolved by url
+    // because page ids drift between environments.
+    Route::resource('userPolls', 'UserPollsController')->except(['index', 'show'])->middleware(pagePermByUrl('admin.polls.index', 'full'));
+    Route::resource('userPolls', 'UserPollsController')->only(['index', 'show'])->middleware(pagePermByUrl('admin.polls.index', 'view'));
 
-    //userVolunteer — no corresponding sidebar page exists; not tagged
-    Route::resource('volunteerUsers', 'VolunteerUsersController');
+    // volunteerUsers (who signed up for a volunteer listing) is the "Users"
+    // drill-down of the Volunteers page.
+    Route::resource('volunteerUsers', 'VolunteerUsersController')->except(['index', 'show'])->middleware(pagePermByUrl('admin.volunteers.index', 'full'));
+    Route::resource('volunteerUsers', 'VolunteerUsersController')->only(['index', 'show'])->middleware(pagePermByUrl('admin.volunteers.index', 'view'));
 
 
     //Transactions — page 1
@@ -472,8 +477,10 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     //Route::post('media-update','MediaController@update');
     // NOT tagged to page 43 — these 2 are a generic rich-text-editor image
     // upload/delete helper used across many admin forms, not Archive-specific.
-    Route::post('delete-image', 'MediaController@deleteImage')->name('image.delete');
-    Route::post('upload-image', 'MediaController@uploadImage')->name('image.upload');
+    // Gated by "Full control of at least one page" (see RequireAnyFullPermission):
+    // before this any logged-in admin, even View-only, could upload and delete files.
+    Route::post('delete-image', 'MediaController@deleteImage')->name('image.delete')->middleware('any-full');
+    Route::post('upload-image', 'MediaController@uploadImage')->name('image.upload')->middleware('any-full');
 
     // NOT tagged — MediaController has no upload() method, this route 404s
     // regardless (pre-existing dead route, left as-is).
