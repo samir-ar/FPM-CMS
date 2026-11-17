@@ -384,6 +384,36 @@ class CouncilSessionTest extends CouncilTestCase
         $this->assertStringContainsString('/photo/' . $a, $show);
     }
 
+    public function test_a_representatives_upload_beats_the_member_list_photo_when_it_exists()
+    {
+        [$a, $b] = $this->rosterOf3();
+        $jpeg = "\xFF\xD8\xFF\xE0" . str_repeat('x', 200);
+        DB::table('fpm_users')->where('MemberId', $a)->update(['PersonImage' => $jpeg]);
+        DB::table('fpm_users')->where('MemberId', $b)->update(['PersonImage' => $jpeg]);
+
+        $fileA = 'test-rep-' . uniqid() . '.jpg';
+        $fileB = 'test-rep-' . uniqid() . '.jpg';
+        $cat = DB::table('dynamic_representatives')->insertGetId(['title' => '{}', 'text' => '{}', 'order' => 999, 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('persons')->insert([
+            ['name' => 'T rep A', 'member_id' => $a, 'image' => $fileA, 'dynamic_representative_id' => $cat, 'order' => 0, 'created_at' => now(), 'updated_at' => now()],
+            ['name' => 'T rep B', 'member_id' => $b, 'image' => $fileB, 'dynamic_representative_id' => $cat, 'order' => 0, 'created_at' => now(), 'updated_at' => now()],
+        ]);
+
+        // S3 has A's file but not B's
+        \Illuminate\Support\Facades\Http::fake(fn($req) => \Illuminate\Support\Facades\Http::response('', str_contains($req->url(), $fileA) ? 200 : 404));
+
+        $this->actingAs($this->adminUser(), 'admin');
+        $ra = $this->get(route('admin.council-roster.photo', $a, false));
+        $ra->assertRedirect();
+        $this->assertStringContainsString($fileA, $ra->headers->get('Location'), 'the Representatives upload wins');
+
+        $rb = $this->get(route('admin.council-roster.photo', $b, false));
+        $rb->assertOk();
+        $this->assertSame($jpeg, $rb->getContent(), 'a missing S3 file falls back to the member-list photo');
+
+        $this->assertContains((string) $a, \App\Support\CouncilMemberLookup::idsWithPhoto([(string) $a]));
+    }
+
     public function test_logged_in_means_active_since_tracking_began_not_just_having_an_old_account()
     {
         [$a, $b, $c] = $this->rosterOf3();

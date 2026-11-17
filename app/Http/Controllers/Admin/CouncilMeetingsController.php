@@ -141,8 +141,7 @@ class CouncilMeetingsController extends Controller
         $nameOf = fn($memberId) => $details[$memberId]->UserFullName ?? (string) $memberId;
 
         // who has a photo on file (length only - the pictures themselves load one by one)
-        $withPhoto = \DB::table('fpm_users')->whereIn('MemberId', $ids)
-            ->whereRaw('LENGTH(PersonImage) > 100')->pluck('MemberId')->map(fn($i) => (string) $i)->flip();
+        $withPhoto = array_flip(CouncilMemberLookup::idsWithPhoto(array_map('strval', $ids)));
         $photoOf = fn($memberId) => isset($withPhoto[(string) $memberId])
             ? route('admin.council-meetings.photo', [$meeting->id, $memberId], false) : null;
 

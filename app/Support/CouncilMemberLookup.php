@@ -44,12 +44,56 @@ class CouncilMemberLookup
         return ['since' => $since, 'last_seen' => $last];
     }
 
+    // The picture uploaded on the member's Representatives record (persons.image, kept in S3), as a URL.
+    // It is often newer than the photo in the member list, so for the council pages it comes FIRST. Checked
+    // once an hour that the file really is there, so a missing S3 file falls back to the member-list photo.
+    public static function repImageUrl($memberId): ?string
+    {
+        $image = DB::table('persons')->where('member_id', (string) $memberId)
+            ->whereNotNull('image')->where('image', '!=', '')->orderByDesc('id')->value('image');
+        if (!$image) {
+            return null;
+        }
+
+        $url = \Illuminate\Support\Facades\Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/storage/images/representatives/' . $image);
+
+        $ok = \Illuminate\Support\Facades\Cache::remember('council_rep_img_ok:' . md5($url), 3600, function () use ($url) {
+            try {
+                return \Illuminate\Support\Facades\Http::timeout(4)->head($url)->successful();
+            } catch (\Throwable $e) {
+                return false;
+            }
+        });
+
+        return $ok ? $url : null;
+    }
+
+    // Member ids (as strings) among $memberIds that have a photo of either kind: a Representatives
+    // upload or a member-list photo.
+    public static function idsWithPhoto(array $memberIds): array
+    {
+        if (!$memberIds) {
+            return [];
+        }
+
+        $fromMembers = DB::table('fpm_users')->whereIn('MemberId', $memberIds)
+            ->whereRaw('LENGTH(PersonImage) > 100')->pluck('MemberId');
+        $fromReps = DB::table('persons')->whereIn('member_id', $memberIds)
+            ->whereNotNull('image')->where('image', '!=', '')->pluck('member_id');
+
+        return $fromMembers->merge($fromReps)->map(fn($i) => (string) $i)->unique()->values()->all();
+    }
+
     // The photo of a COUNCIL member as an image response (404 when he is not on the roster or has no
-    // photo). For the admin pages only. fpm_users.PersonImage normally holds raw JPEG/PNG bytes, sometimes
-    // base64 text.
+    // photo). For the admin pages only. Order: the Representatives upload (usually the newer one), then
+    // fpm_users.PersonImage, which normally holds raw JPEG/PNG bytes, sometimes base64 text.
     public static function photoResponse($memberId)
     {
         abort_unless(\App\V2\CouncilRosterMember::where('member_id', (string) $memberId)->exists(), 404);
+
+        if ($url = self::repImageUrl($memberId)) {
+            return redirect()->away($url)->header('Cache-Control', 'private, max-age=600');
+        }
 
         $bytes = DB::table('fpm_users')->where('MemberId', $memberId)->value('PersonImage');
         abort_if(empty($bytes), 404);
