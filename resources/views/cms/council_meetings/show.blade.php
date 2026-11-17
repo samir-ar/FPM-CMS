@@ -140,7 +140,7 @@
         <h4>Present ({{ $present->count() }})</h4>
         <table class="table table-bordered table-striped">
             <thead>
-                <tr><th>#</th><th>Member ID</th><th>Name</th><th>Role</th><th>Weight</th><th>Time</th><th>Method</th>@if($canManage)<th></th>@endif</tr>
+                <tr><th>#</th><th>Member ID</th><th>Name</th><th>Role</th><th>District</th><th>Weight</th><th>Time</th><th>Method</th>@if($canManage)<th></th>@endif</tr>
             </thead>
             <tbody>
             @forelse($present as $i => $a)
@@ -150,6 +150,7 @@
                     <td>{{ $a->member_id }}</td>
                     <td dir="auto">{{ $d->UserFullName ?? '' }}</td>
                     <td dir="auto">{{ $roster[$a->member_id]->role ?? '' }}</td>
+                    <td dir="auto">{{ $roster[$a->member_id]->district ?? '' }}</td>
                     <td>{{ $a->weight }}</td>
                     <td>{{ optional($a->checked_in_at)->format('H:i:s') }}</td>
                     <td>{{ $a->scanned_by_app_user_id ? 'QR scan' : 'Manual' }}</td>
@@ -159,14 +160,14 @@
                     @endif
                 </tr>
             @empty
-                <tr><td colspan="8" class="text-center">Nobody has been marked present yet.</td></tr>
+                <tr><td colspan="9" class="text-center">Nobody has been marked present yet.</td></tr>
             @endforelse
             </tbody>
         </table>
 
         <h4 style="margin-top:30px;">Absent ({{ $absent->count() }})</h4>
         <table class="table table-bordered table-striped">
-            <thead><tr><th>Member ID</th><th>Name</th><th>Phone</th><th>Role</th><th>Weight</th>@if($canAdd && $meeting->is_active)<th></th>@endif</tr></thead>
+            <thead><tr><th>Member ID</th><th>Name</th><th>Phone</th><th>Role</th><th>District</th><th>Weight</th>@if($canAdd && $meeting->is_active)<th></th>@endif</tr></thead>
             <tbody>
             @foreach($absent as $m)
                 @php($d = $details[$m->member_id] ?? null)
@@ -175,6 +176,7 @@
                     <td dir="auto">{{ $d->UserFullName ?? '' }}</td>
                     <td>{{ $d->MobileNumber ?? '' }}</td>
                     <td dir="auto">{{ $m->role }}</td>
+                    <td dir="auto">{{ $m->district }}</td>
                     <td>{{ $m->weight }}</td>
                     @if($canAdd && $meeting->is_active)
                     <td><button class="btn btn-xs btn-success mark-present" data-id="{{ $m->member_id }}">Present</button></td>
