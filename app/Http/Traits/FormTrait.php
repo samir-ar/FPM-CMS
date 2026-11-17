@@ -305,14 +305,18 @@ trait FormTrait
 
 
         if($type == 'small_text'){
-            $field = "<input class='form-control' type='text' name='" . $name . "' value='" . ($default ?: '') . "' placeholder='" .
-                ($placeholder ?:'') . "' />";
+            $field = "<input class='form-control' type='text' name='" . $name . "' value='" . e((string) ($default ?: '')) . "' placeholder='" .
+                e((string) ($placeholder ?: '')) . "' />";
         }
         return $field;
     }
 
 
 
+    // NOTE on text / number / hidden inputs below: the saved value and the placeholder are HTML-escaped.
+    // They used to be pasted raw inside value='...' - a title with an apostrophe (Monaco's, L'Orient)
+    // ended the attribute early, so the edit form showed it cut at the apostrophe and saving the form
+    // wrote the CUT title back to the database.
     public function drawHtml($type, $label, $name, $default = null, $options= null, $placeholder = null, $class=null,$arabicOnly=null){
         $text = "";
 
@@ -377,8 +381,8 @@ trait FormTrait
             $text = "<div class='form-group ". ($class?:'') . "'>".
                 "<label>" . $label . "</label>";
 
-            $text .= "<input class='form-control' type='text' name='" . $name . "' value='" . ($default ?: '') . "' placeholder='" .
-                ($placeholder ?:'') . "' />";
+            $text .= "<input class='form-control' type='text' name='" . $name . "' value='" . e((string) ($default ?: '')) . "' placeholder='" .
+                e((string) ($placeholder ?: '')) . "' />";
 
             $text .= "</div>";
         }
@@ -387,15 +391,15 @@ trait FormTrait
             $text = "<div class='form-group ". ($class?:'') . "'>".
                 "<label>" . $label . "</label>";
 
-            $text .= "<input class='form-control' type='number' name='" . $name . "' value='" . ($default ?: '') . "' placeholder='" .
-                ($placeholder ?:'') . "' />";
+            $text .= "<input class='form-control' type='number' name='" . $name . "' value='" . e((string) ($default ?: '')) . "' placeholder='" .
+                e((string) ($placeholder ?: '')) . "' />";
 
             $text .= "</div>";
         }
 
         elseif($type == 'hidden'){
-            $text .= "<input class='form-control' type='hidden' name='" . $name . "' value='" . ($default ?: '') . "' placeholder='" .
-                ($placeholder ?:'') . "' />";
+            $text .= "<input class='form-control' type='hidden' name='" . $name . "' value='" . e((string) ($default ?: '')) . "' placeholder='" .
+                e((string) ($placeholder ?: '')) . "' />";
         }
 
         else if($type == 'date-picker'){
