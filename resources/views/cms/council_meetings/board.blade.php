@@ -9,16 +9,17 @@
 @verbatim
 <style>
     :root {
-        --bg1: #040c1a;
-        --bg2: #0b2748;
-        --card: rgba(255, 255, 255, .055);
-        --card-strong: rgba(255, 255, 255, .09);
-        --line: rgba(255, 255, 255, .11);
-        --text: #eef4fb;
-        --muted: #8ea6c3;
+        /* the app's own palette: orange #F78E1E, deep blue #035A8B, warm off-white #F7F5F0 */
+        --bg1: #01283f;
+        --bg2: #035a8b;
+        --card: rgba(247, 245, 240, .07);
+        --card-strong: rgba(247, 245, 240, .11);
+        --line: rgba(247, 245, 240, .16);
+        --text: #f7f5f0;
+        --muted: #b3c9d9;
         --orange: #f78e1e;
         --gold: #ffc66e;
-        --blue: #2aa5e0;
+        --blue: #1f86bd;
         --green: #34e0a0;
         --red: #ff7a7a;
         --radius: 22px;
@@ -30,7 +31,7 @@
         color: var(--text);
         background:
             radial-gradient(1200px 700px at 12% -10%, rgba(247, 142, 30, .16), transparent 60%),
-            radial-gradient(1000px 800px at 105% 10%, rgba(42, 165, 224, .18), transparent 55%),
+            radial-gradient(1000px 800px at 105% 10%, rgba(3, 90, 139, .55), transparent 55%),
             linear-gradient(160deg, var(--bg2), var(--bg1) 70%);
         background-attachment: fixed;
         overflow-x: hidden;
@@ -150,7 +151,7 @@
     .grp { display: grid; grid-template-columns: minmax(110px, 190px) 1fr auto; gap: 18px; align-items: center; padding: 7px 0; }
     .grp-name { font-size: 18px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .grp-bar { height: 20px; border-radius: 99px; background: rgba(255,255,255,.08); overflow: hidden; }
-    .grp-bar i { display: block; height: 100%; width: 0; border-radius: 99px; background: linear-gradient(90deg, var(--blue), #6fd0ff); transition: width 1.2s cubic-bezier(.2,.8,.2,1); }
+    .grp-bar i { display: block; height: 100%; width: 0; border-radius: 99px; background: linear-gradient(90deg, var(--blue), #5fbbe6); transition: width 1.2s cubic-bezier(.2,.8,.2,1); }
     .grp-bar i.full { background: linear-gradient(90deg, #19c58a, var(--green)); }
     .grp-num { font-size: 18px; color: var(--muted); min-width: 86px; text-align: right; }
     .grp-num b { color: var(--text); font-weight: 700; }
@@ -530,7 +531,7 @@
     function confetti() {
         var cv = $('confetti'), ctx = cv.getContext('2d');
         cv.width = window.innerWidth; cv.height = window.innerHeight;
-        var colors = ['#f78e1e', '#ffc66e', '#34e0a0', '#2aa5e0', '#ffffff'];
+        var colors = ['#f78e1e', '#ffc66e', '#34e0a0', '#1f86bd', '#f7f5f0'];
         var bits = [];
         for (var i = 0; i < 160; i++) {
             bits.push({ x: cv.width / 2 + (Math.random() - .5) * 240, y: cv.height * .18, vx: (Math.random() - .5) * 16, vy: Math.random() * -13 - 3,
