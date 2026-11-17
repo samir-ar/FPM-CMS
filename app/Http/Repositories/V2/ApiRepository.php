@@ -116,12 +116,19 @@ class ApiRepository
         })->first()) ? $poll->poll : null;
     }
 
-    public function getNewsByGroups($groups_ids)
+    public function getNewsByGroups($groups_ids, $guestOnly = false)
     {
         $groups_ids = $groups_ids ?? [];
-        return News::with("images")->whereHas('groups', function ($q) use ($groups_ids) {
+        $query = News::with("images")->whereHas('groups', function ($q) use ($groups_ids) {
             return $q->whereIn('group_id', $groups_ids)->orWhere('group_id', 81)->orWhere('group_id', 82);
-        })->orderBy('date', 'desc')->limit(200);
+        });
+
+        // A guest only gets the news ticked "Public" in the news form.
+        if ($guestOnly) {
+            $query->where('show_for_guest', true);
+        }
+
+        return $query->orderBy('date', 'desc')->limit(200);
     }
 
     public function skipModeNews()

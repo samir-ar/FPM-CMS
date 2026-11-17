@@ -127,6 +127,9 @@ class NewsController extends Controller
                     'box-header' => 'Permissions',
                     'form_fields' => [
                         $this->drawHtml('multiple-select-box', 'Groups', 'groups[]', $request->old('groups'), $groups, '', 'col-md-12 '),
+                        // one tick decides who can read the news outside the member groups: ticked = guests in the app
+                        // AND anyone opening a shared link on the web; unticked = members only. New news starts ticked.
+                        $this->drawHtml('checkbox', 'Public - visible to guests too, and to anyone with the shared link (untick for members only)', 'show_for_guest', session()->hasOldInput() ? $request->old('show_for_guest') : true, '1', '', 'col-md-12 '),
                         //$this->drawHtml('checkbox', 'All Groups', 'all_groups', $request->old('all_groups') , null, '', 'col-md-12 '),
                         $this->drawHtml('checkbox', 'Send Push Notification', 'push_notification', $request->old('push_notification'), null, '', 'col-md-12 '),
                     ]
@@ -216,6 +219,7 @@ class NewsController extends Controller
         $news->date = Carbon::parse(request('date'))->toDateTimeString();
 
         $news->strict_lang = request('strict_lang');
+        $news->show_for_guest = $request->boolean('show_for_guest');
 
         if (request('video')) {
             $news->file = $this->moveFile(request('video'), 'news/videos');
@@ -426,6 +430,7 @@ class NewsController extends Controller
                     'box-header' => 'Permissions',
                     'form_fields' => [
                         $this->drawHtml('multiple-select-box', 'Groups', 'groups[]', $default_groups, $groups, '', 'col-md-12 '),
+                        $this->drawHtml('checkbox', 'Public - visible to guests too, and to anyone with the shared link (untick for members only)', 'show_for_guest', (bool) $news->show_for_guest, '1', '', 'col-md-12 '),
                     ]
                 ],
 
@@ -466,6 +471,7 @@ class NewsController extends Controller
         $news->date = Carbon::parse(request('date'))->toDateTimeString();
 
         $news->strict_lang = request('strict_lang');
+        $news->show_for_guest = $request->boolean('show_for_guest');
 
         if (request('video')) {
             $this->removeFile($news->file);

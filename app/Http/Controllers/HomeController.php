@@ -60,7 +60,11 @@ class HomeController extends Controller
 
         $snippet = \Illuminate\Support\Str::limit(html_entity_decode(strip_tags($news->details ?? '')), 200);
 
-        return view('news-public', compact('news', 'imageUrl', 'snippet'));
+        // only news ticked "Public" in the news form shows its content on the web; a members-only
+        // item shows just the download page (ids are sequential, so nothing may be shown by default)
+        $isPublic = (bool) $news->show_for_guest;
+
+        return view('news-public', compact('news', 'imageUrl', 'snippet', 'isPublic'));
     }
 
     /**

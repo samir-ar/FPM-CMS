@@ -186,4 +186,86 @@ class PublicSharePagesTest extends CouncilTestCase
         $memberEvents = collect($member['data'])->where('item_type', 'EVENT')->pluck('id')->all();
         $this->assertContains($private, $memberEvents, 'members still see it');
     }
+
+    // ---- the same tick on NEWS ----
+
+    private function makeNews(bool $public): int
+    {
+        $id = DB::table('news')->insertGetId([
+            'title' => json_encode(['ar' => 'خبر تجريبي للضيوف', 'en' => 'T news'], JSON_UNESCAPED_UNICODE),
+            'source' => json_encode(['ar' => 'مصدر', 'en' => 'src'], JSON_UNESCAPED_UNICODE),
+            'details' => json_encode(['ar' => '<p>نص الخبر الكامل</p>', 'en' => '<p>full text</p>'], JSON_UNESCAPED_UNICODE),
+            'date' => now(),
+            'show_for_guest' => $public ? 1 : 0,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('groups_news')->insert(['news_id' => $id, 'group_group_id' => 81, 'created_at' => now(), 'updated_at' => now()]);
+
+        return $id;
+    }
+
+    public function test_a_public_news_link_shows_the_article_and_a_members_only_one_does_not()
+    {
+        $public = $this->makeNews(true);
+        $private = $this->makeNews(false);
+
+        $open = $this->get('/news/' . $public)->assertOk()->getContent();
+        $this->assertStringContainsString('نص الخبر الكامل', $open);
+        $this->assertStringContainsString('id="get-app"', $open);
+
+        $closed = $this->get('/news/' . $private)->assertOk()->getContent();
+        $this->assertStringNotContainsString('خبر تجريبي للضيوف', $closed);
+        $this->assertStringNotContainsString('نص الخبر الكامل', $closed);
+        $this->assertStringNotContainsString('property="og:image"', $closed);
+        $this->assertStringContainsString('id="get-app"', $closed, 'still sends them to download the app');
+    }
+
+    public function test_the_guest_home_feed_only_shows_public_news_but_members_still_see_all()
+    {
+        $public = $this->makeNews(true);
+        $private = $this->makeNews(false);
+        $ctrl = app(\App\Http\Controllers\Api\V2\ApiController::class);
+        $repo = app(\App\Http\Repositories\V2\ApiRepository::class);
+
+        $ids = fn($feed) => collect($feed['data'])->where('item_type', 'NEWS')->pluck('id')->all();
+
+        $guest = json_decode($ctrl->getWallFeed(\Illuminate\Http\Request::create('/x', 'POST', ['page' => 1]), $repo)->getContent(), true);
+        $this->assertContains($public, $ids($guest));
+        $this->assertNotContains($private, $ids($guest), 'members-only news must not reach the guest Home feed');
+
+        $user = \App\V2\AppUser::find($this->makeAppUser('T member', '99900000092'));
+        $req = \Illuminate\Http\Request::create('/x', 'POST', ['page' => 1]);
+        $req->merge(['user' => $user]);
+        $member = json_decode($ctrl->getWallFeed($req, $repo)->getContent(), true);
+        $this->assertContains($private, $ids($member), 'members still see it');
+    }
+
+    public function test_the_news_form_has_the_tick_new_news_starts_ticked_and_it_saves_and_clears()
+    {
+        $id = $this->makeNews(false);
+        $admin = $this->adminUser();
+
+        $create = $this->actingAs($admin, 'admin')->get(route('admin.news.create', [], false))->assertOk()->getContent();
+        $this->assertStringContainsString('name="show_for_guest" class="minimal" checked', $create, 'a new news item starts public');
+
+        $edit = $this->actingAs($admin, 'admin')->get(route('admin.news.edit', $id, false))->assertOk()->getContent();
+        $this->assertStringContainsString('name="show_for_guest"', $edit);
+        $this->assertStringNotContainsString('name="show_for_guest" class="minimal" checked', $edit, 'unticked for a members-only item');
+
+        $payload = ['title' => 'T', 'title_ar' => 'ع', 'source' => 's', 'source_ar' => 'م', 'details' => 'd', 'details_ar' => 'ت',
+                    'date' => now()->format('Y-m-d H:i'), 'strict_lang' => 'ar', 'groups' => [81]];
+
+        $this->actingAs($admin, 'admin')->put(route('admin.news.update', $id, false), $payload + ['show_for_guest' => '1']);
+        $this->assertSame(1, (int) DB::table('news')->where('id', $id)->value('show_for_guest'));
+
+        $this->actingAs($admin, 'admin')->put(route('admin.news.update', $id, false), $payload);
+        $this->assertSame(0, (int) DB::table('news')->where('id', $id)->value('show_for_guest'), 'unticking makes it members only');
+    }
+
+    public function test_every_news_item_that_existed_before_the_tick_is_public()
+    {
+        // the migration ticked them all once; the seed rows of the test database must not contradict it
+        $this->assertSame(0, DB::table('news')->whereNull('deleted_at')->where('show_for_guest', 0)->count(), 'no existing news may be left members-only by the migration');
+    }
 }

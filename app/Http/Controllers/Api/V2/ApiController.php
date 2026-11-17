@@ -684,7 +684,7 @@ class ApiController extends Controller
             $merged->push(['type' => 'EVENT', 'created_at' => $event->created_at, 'model' => $event]);
         }
 
-        foreach ($apiRepository->getNewsByGroups(request('groups'))->get() as $n) {
+        foreach ($apiRepository->getNewsByGroups(request('groups'), !$user)->get() as $n) {
             $merged->push(['type' => 'NEWS', 'created_at' => $n->created_at, 'model' => $n]);
         }
 
