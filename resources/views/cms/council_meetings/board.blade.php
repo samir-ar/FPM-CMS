@@ -425,7 +425,7 @@
             { name: 'نائب الرئيس', weight: 0, weight_present: 0 },
             { name: 'مجلس قضاء', weight: 0, weight_present: 0 },   // the عضو role is shown as "مجلس قضاء"
             { name: 'انتشار', weight: 0, weight_present: 0 },
-            { name: 'المكاتب وأخرى', weight: 0, weight_present: 0 }
+            { name: 'القطاعات والمكاتب', weight: 0, weight_present: 0 }
         ];
         d.groups.forEach(function (g) {
             var t = tierOf(g.name);
