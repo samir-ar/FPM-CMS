@@ -304,6 +304,46 @@ class CouncilSessionTest extends CouncilTestCase
         }
     }
 
+    // ---- live display board ----
+
+    public function test_the_live_board_page_and_its_data_feed_follow_the_attendance()
+    {
+        [$a, $b, $c] = $this->rosterOf3();
+        $m = $this->newMeeting('T board');
+        $admin = $this->adminUser();
+
+        $html = $this->actingAs($admin, 'admin')->get(route('admin.council-meetings.board', $m->id, false))->assertOk()->getContent();
+        $this->assertStringContainsString('window.BOARD', $html);
+        $this->assertStringContainsString('window.BOARD_URL', $html);
+
+        $feed = route('admin.council-meetings.board-data', $m->id, false);
+        $d = $this->actingAs($admin, 'admin')->getJson($feed)->assertOk()->json();
+        $this->assertSame(0, $d['stats']['present_count']);
+        $this->assertSame(3, $d['stats']['absent_count']);
+        $this->assertCount(0, $d['recent']);
+
+        app(CouncilMeetingsController::class)->storeAttendance($this->ajax(['member_id' => $b]), $m->id);
+
+        $d = $this->actingAs($admin, 'admin')->getJson($feed)->assertOk()->json();
+        $this->assertSame(1, $d['stats']['present_count']);
+        $this->assertSame(5, $d['stats']['present_weight']);
+        $this->assertSame(2, $d['stats']['absent_count']);
+        $this->assertCount(3, $d['members']);
+        $this->assertCount(1, $d['recent']);
+        $this->assertSame((string) $b, (string) $d['recent'][0]['id']);
+        $this->assertNotEmpty($d['groups']);
+    }
+
+    public function test_the_live_board_is_not_open_to_the_public()
+    {
+        $this->rosterOf3();
+        $m = $this->newMeeting('T board guest');
+
+        auth('admin')->forgetUser(); // setUp() had logged an admin in
+        $status = $this->get(route('admin.council-meetings.board-data', $m->id, false))->getStatusCode();
+        $this->assertContains($status, [301, 302, 401, 403], 'a visitor who is not logged in must not get the feed');
+    }
+
     public function test_the_roster_page_has_role_sector_district_filters_built_from_the_data()
     {
         [$a, $b, $c] = $this->sampleMemberIds(3);

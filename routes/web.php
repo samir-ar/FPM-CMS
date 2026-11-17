@@ -251,6 +251,8 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::get('council-meetings/create', 'CouncilMeetingsController@create')->name('council-meetings.create')->middleware(pagePermByUrl('admin.council-meetings.index', 'full'));
     Route::post('council-meetings', 'CouncilMeetingsController@store')->name('council-meetings.store')->middleware(pagePermByUrl('admin.council-meetings.index', 'full'));
     Route::get('council-meetings/{id}', 'CouncilMeetingsController@show')->name('council-meetings.show')->middleware(pagePermByUrl('admin.council-meetings.index', 'view'));
+    Route::get('council-meetings/{id}/board', 'CouncilMeetingsController@board')->name('council-meetings.board')->middleware(pagePermByUrl('admin.council-meetings.index', 'view'));
+    Route::get('council-meetings/{id}/board-data', 'CouncilMeetingsController@boardData')->name('council-meetings.board-data')->middleware(pagePermByUrl('admin.council-meetings.index', 'view'));
     Route::get('council-meetings/{id}/stats', 'CouncilMeetingsController@stats')->name('council-meetings.stats')->middleware(pagePermByUrl('admin.council-meetings.index', 'view'));
     Route::get('council-meetings/{id}/search', 'CouncilMeetingsController@searchMembers')->name('council-meetings.search')->middleware(pagePermByUrl('admin.council-meetings.index', 'action:attendance.store'));
     Route::post('council-meetings/{id}/attendance', 'CouncilMeetingsController@storeAttendance')->name('council-meetings.attendance.store')->middleware(pagePermByUrl('admin.council-meetings.index', 'action:attendance.store'));

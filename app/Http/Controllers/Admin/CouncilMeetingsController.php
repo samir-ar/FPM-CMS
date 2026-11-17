@@ -98,6 +98,91 @@ class CouncilMeetingsController extends Controller
         ]);
     }
 
+    // The live attendance board: a full-screen presentation page for the meeting room.
+    // It starts with the data already inside the page (no flash of empty content) and
+    // then refreshes itself from boardData().
+    public function board($id)
+    {
+        $meeting = CouncilMeeting::findOrFail($id);
+
+        return view('cms.council_meetings.board')->with([
+            'meeting' => $meeting,
+            'payload' => $this->boardPayload($meeting),
+            'dataUrl' => route('admin.council-meetings.board-data', $meeting->id),
+            'backUrl' => route('admin.council-meetings.show', $meeting->id),
+        ]);
+    }
+
+    public function boardData($id)
+    {
+        return response()->json($this->boardPayload(CouncilMeeting::findOrFail($id)));
+    }
+
+    // Everything the board draws: the quorum numbers, every roster member with whether
+    // they are present, the groups (by sector) with their totals, and the latest arrivals.
+    private function boardPayload(CouncilMeeting $meeting): array
+    {
+        $roster = CouncilRosterMember::active()->orderBy('id')->get();
+        $attendance = $meeting->attendance()->orderByDesc('checked_in_at')->get();
+        $byMember = $attendance->keyBy('member_id');
+
+        $ids = $roster->pluck('member_id')->merge($attendance->pluck('member_id'))->unique()->all();
+        $details = CouncilMemberLookup::detailsFor($ids);
+        $nameOf = fn($memberId) => $details[$memberId]->UserFullName ?? (string) $memberId;
+
+        $members = $roster->map(function ($m) use ($byMember, $nameOf) {
+            $a = $byMember->get($m->member_id);
+
+            return [
+                'id' => (string) $m->member_id,
+                'name' => $nameOf($m->member_id),
+                'role' => trim((string) $m->role),
+                'sector' => trim((string) $m->sector) ?: 'Other',
+                'district' => trim((string) $m->district),
+                'weight' => (int) $m->weight,
+                'present' => (bool) $a,
+                'at' => $a ? optional($a->checked_in_at)->format('H:i') : null,
+            ];
+        })->values();
+
+        $groups = $members->groupBy('sector')->map(function ($g, $name) {
+            return [
+                'name' => $name,
+                'members' => $g->count(),
+                'present' => $g->where('present', true)->count(),
+                'weight' => (int) $g->sum('weight'),
+                'weight_present' => (int) $g->where('present', true)->sum('weight'),
+            ];
+        })->sortByDesc('weight')->values();
+
+        $recent = $attendance->take(10)->map(function ($a) use ($nameOf, $roster) {
+            $role = optional($roster->firstWhere('member_id', $a->member_id))->role;
+
+            return [
+                'id' => (string) $a->member_id,
+                'name' => $nameOf($a->member_id),
+                'role' => trim((string) $role),
+                'weight' => (int) $a->weight,
+                'at' => optional($a->checked_in_at)->format('H:i:s'),
+            ];
+        })->values();
+
+        $stats = $meeting->stats();
+
+        return [
+            'meeting' => [
+                'title' => $meeting->title,
+                'date' => optional($meeting->meeting_date)->format('d M Y'),
+                'is_active' => (bool) $meeting->is_active,
+            ],
+            'stats' => $stats + ['absent_count' => max(0, $stats['member_count'] - $stats['present_count'])],
+            'members' => $members,
+            'groups' => $groups,
+            'recent' => $recent,
+            'server_time' => now()->format('H:i:s'),
+        ];
+    }
+
     public function stats($id)
     {
         return response()->json(CouncilMeeting::findOrFail($id)->stats());

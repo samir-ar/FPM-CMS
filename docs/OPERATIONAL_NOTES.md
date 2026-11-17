@@ -15,6 +15,7 @@ Practical, non-obvious knowledge about how this CMS actually behaves — things 
 - **`fpm_users.PersonImage` is now MEDIUMBLOB** (was TEXT/BLOB, capped at 64KB, which silently truncated bigger member photos). The migration relaxes `sql_mode` for its own session because some rows hold `0000-00-00` as date_of_birth, and rewriting the table re-validates every row; it **locked the table for ~15s on staging (40,500 rows)** - run it off-hours. Photos already cut off stay broken until the TWH sync resends them.
 - **`GET /api/v2/member-photo/{id}` only serves representatives (`persons.member_id`) and election candidates (`internal_election_candidates.member_id`)**; anything else is a 404. The admin "search members to add as a candidate" preview is therefore blank for members who are not yet candidates.
 - **"Delete all data" on a National Council poll is refused while it is published, and a poll that already has votes cannot be deleted.**
+- **The live attendance board (`council-meetings/{id}/board`) is a standalone page that polls `board-data` every 4 s.** It needs the admin login session, so open it on the projector machine while logged in. Quorum numbers come from the meeting's frozen values, same as the meeting page. If the connection drops the pill turns to RECONNECTING and recovers on its own. Its CSS/JS sit inside `@verbatim` and the initial data is injected with `json_encode` (not `@json`, which truncates inline arrays).
 
 ## Shared news / event links (added 2026-11-17)
 

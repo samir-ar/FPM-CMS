@@ -86,6 +86,7 @@
     <div class="box-header with-border">
         <h3 class="box-title" dir="auto">{{ $meeting->title }} @if(!$meeting->is_active) <span class="label label-warning">Closed</span> @endif</h3>
         <a href="{{ route('admin.council-meetings.index') }}" class="btn btn-default pull-right" style="margin-left:4px;">Back</a>
+        <a href="{{ route('admin.council-meetings.board', $meeting->id) }}" target="_blank" class="btn btn-primary pull-right" style="margin-left:4px;"><i class="fa fa-television"></i> Live display</a>
         @if($canExport)
             <a href="{{ route('admin.council-meetings.attendance.export', $meeting->id) }}" class="btn btn-success pull-right" style="margin-left:4px;">Export attendance</a>
         @endif
