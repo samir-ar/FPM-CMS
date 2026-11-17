@@ -45,8 +45,15 @@ class NationalCouncilPollController extends Controller
 
 
                 ->addColumn('is_published', function($row){
+                    $url = route('admin.national-council-poll.toggle-publish', $row->id);
 
-                    return ($row->is_published)?"<span class='text-success'>Published</span>":"<span class='text-warning'>Not Published</span>";
+                    if ($row->is_published) {
+                        return "<span class='text-success'>Published</span> " .
+                            "<a href='{$url}' class='btn btn-xs btn-warning' style='margin-left:6px;' onclick=\"return confirm('Unpublish this poll? Members will no longer see it.');\">Unpublish</a>";
+                    }
+
+                    return "<span class='text-warning'>Not Published</span> " .
+                        "<a href='{$url}' class='btn btn-xs btn-success' style='margin-left:6px;' onclick=\"return confirm('Publish this poll now? Members will be able to see and vote in it.');\">Publish</a>";
                 })
 
                 ->addColumn('questions', function($row){
@@ -114,7 +121,9 @@ class NationalCouncilPollController extends Controller
                     'box-header' => 'Info',
                     'form_fields' => [
                         $this->drawHtml('small_text', 'Title', 'title', $poll->title, null, '', 'col-md-6 required'),
-                        $this->drawHtml('checkbox', 'Publish', 'is_published', $poll->is_published, $poll->is_published, '', 'col-md-6'),
+                        // the 5th argument is the value the tickbox SENDS; it used to be the poll's current state
+                        // (0 when unpublished), so ticking Publish sent "0" and the poll stayed unpublished
+                        $this->drawHtml('checkbox', 'Publish', 'is_published', $poll->is_published, '1', '', 'col-md-6'),
                         $this->drawHtml('select-box', 'Council meeting (optional)', 'meeting_id', (string) $poll->meeting_id, $this->meetingOptions(), null, 'col-md-6'),
                            ],
                 ],
@@ -161,7 +170,7 @@ class NationalCouncilPollController extends Controller
                         'box-header' => 'Info',
                         'form_fields' => [
                             $this->drawHtml('small_text', 'Title', 'title', '', null, '', 'col-md-6 required'),
-                            $this->drawHtml('checkbox', 'Publish', 'is_published', null, '', '', 'col-md-6'),
+                            $this->drawHtml('checkbox', 'Publish', 'is_published', null, '1', '', 'col-md-6'),
                             $this->drawHtml('select-box', 'Council meeting (optional)', 'meeting_id', '', $this->meetingOptions(), null, 'col-md-6'),
                             $this->drawHtml('checkbox', 'Load the voter list from the council roster', 'from_roster', null, '1', '', 'col-md-6'),
                         ],
@@ -306,6 +315,26 @@ HTML;
 
         $html .= "</table>";
         return $html;
+    }
+
+    // One click Publish / Unpublish from the polls list. A poll with no question cannot be published (members
+    // would see an empty poll); unpublishing is always allowed.
+    public function togglePublish($id)
+    {
+        $poll = CouncilNationalPoll::findOrFail($id);
+
+        if (!$poll->is_published) {
+            if (!$poll->questions()->exists()) {
+                return redirect()->route('admin.national-council-poll.index')
+                    ->withErrors('"' . $poll->title . '" has no question yet. Add the question and its candidates first, then publish it.');
+            }
+        }
+
+        $poll->is_published = !$poll->is_published;
+        $poll->save();
+
+        return redirect()->route('admin.national-council-poll.index')
+            ->with('message', '"' . $poll->title . '" is now ' . ($poll->is_published ? 'published' : 'unpublished') . '.');
     }
 
     public function update($id, Request $request)

@@ -620,7 +620,8 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
 
     //National Council Poll — page 58, covers its Questions sub-feature too
     Route::get('national-council-poll/{id}/clear', 'NationalCouncilPollController@clear')->name('national-council-poll.clear')->middleware('page-perm:58,full');
-    Route::get('national-council-poll/{id}/results', 'NationalCouncilPollController@results')->name('national-council-poll.results')->middleware('page-perm:58,view');
+    Route::get('national-council-poll/{id}/toggle-publish', 'NationalCouncilPollController@togglePublish')->name('national-council-poll.toggle-publish')->middleware('page-perm:58,full');
+    Route::get('national-council-poll/{id}/results','NationalCouncilPollController@results')->name('national-council-poll.results')->middleware('page-perm:58,view');
     Route::get('national-council-poll-voters-template', 'NationalCouncilPollController@downloadVotersTemplate')->name('national-council-poll.voters-template')->middleware('page-perm:58,view');
     Route::get('national-council-poll/{id}/candidates/search', 'NationalCouncilPollQuestionsController@searchCandidates')->name('national-council-poll.candidates.search')->middleware('page-perm:58,full');
     Route::get('national-council-poll/{id}/candidates/photo/{memberId}', 'NationalCouncilPollQuestionsController@candidatePhoto')->name('national-council-poll.candidates.photo')->middleware('page-perm:58,full');

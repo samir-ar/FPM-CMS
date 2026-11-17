@@ -164,6 +164,63 @@ class CouncilPollAdminTest extends CouncilTestCase
         $this->assertStringContainsString('from_roster', $create->getContent());
     }
 
+    // what the Publish tickbox in the rendered form would send when ticked
+    private function publishTickValue(string $html): string
+    {
+        preg_match('#<input\s+type="checkbox" name="is_published"[^>]*value="([^"]*)"#', $html, $m);
+
+        return $m[1] ?? 'MISSING';
+    }
+
+    public function test_ticking_publish_on_the_create_and_edit_forms_really_publishes()
+    {
+        $poll = $this->pollFromRoster();
+        DB::table('council_national_polls')->where('id', $poll->id)->update(['is_published' => 0]);
+        $admin = $this->adminUser();
+        $this->actingAs($admin, 'admin');
+
+        // the tickbox must send a truthy value, not the poll's old state ("0") or an empty string
+        $create = $this->get(route('admin.national-council-poll.create', [], false))->assertOk()->getContent();
+        $this->assertSame('1', $this->publishTickValue($create), 'create form');
+        $edit = $this->get(route('admin.national-council-poll.edit', $poll->id, false))->assertOk()->getContent();
+        $this->assertSame('1', $this->publishTickValue($edit), 'edit form of an UNPUBLISHED poll');
+
+        // saving the edit form with the box ticked publishes the poll; leaving it unticked unpublishes it
+        $this->put(route('admin.national-council-poll.update', $poll->id, false), ['title' => 'T election', 'is_published' => $this->publishTickValue($edit)])->assertRedirect();
+        $this->assertSame(1, (int) DB::table('council_national_polls')->where('id', $poll->id)->value('is_published'));
+        $this->put(route('admin.national-council-poll.update', $poll->id, false), ['title' => 'T election'])->assertRedirect();
+        $this->assertSame(0, (int) DB::table('council_national_polls')->where('id', $poll->id)->value('is_published'));
+
+        // creating a poll with the box ticked publishes it
+        $this->post(route('admin.national-council-poll.store', [], false), ['title' => 'T created published', 'is_published' => $this->publishTickValue($create)])->assertRedirect();
+        $this->assertSame(1, (int) DB::table('council_national_polls')->where('title', 'T created published')->value('is_published'));
+    }
+
+    public function test_the_polls_list_has_a_publish_and_unpublish_button()
+    {
+        $poll = $this->pollFromRoster();
+        DB::table('council_national_polls')->where('id', $poll->id)->update(['is_published' => 0]);
+        $this->actingAs($this->adminUser(), 'admin');
+        $toggle = route('admin.national-council-poll.toggle-publish', $poll->id, false);
+
+        // an unpublished poll shows "Publish" in the list
+        $row = collect($this->getJson(route('admin.national-council-poll.index', [], false), ['X-Requested-With' => 'XMLHttpRequest'])->assertOk()->json('data'))->firstWhere('id', $poll->id);
+        $this->assertStringContainsString('>Publish</a>', $row['is_published']);
+
+        // a poll with no question cannot be published
+        $this->get($toggle)->assertRedirect();
+        $this->assertSame(0, (int) DB::table('council_national_polls')->where('id', $poll->id)->value('is_published'));
+
+        // with a question it can, and the button flips to Unpublish; one more click unpublishes it again
+        DB::table('council_national_poll_questions')->insert(['poll_id' => $poll->id, 'question' => 'T q', 'created_at' => now(), 'updated_at' => now()]);
+        $this->get($toggle)->assertRedirect();
+        $this->assertSame(1, (int) DB::table('council_national_polls')->where('id', $poll->id)->value('is_published'));
+        $row = collect($this->getJson(route('admin.national-council-poll.index', [], false), ['X-Requested-With' => 'XMLHttpRequest'])->assertOk()->json('data'))->firstWhere('id', $poll->id);
+        $this->assertStringContainsString('>Unpublish</a>', $row['is_published']);
+        $this->get($toggle)->assertRedirect();
+        $this->assertSame(0, (int) DB::table('council_national_polls')->where('id', $poll->id)->value('is_published'));
+    }
+
     public function test_a_question_can_take_candidates_picked_from_the_member_list()
     {
         $poll = $this->pollFromRoster();
