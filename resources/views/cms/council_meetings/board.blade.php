@@ -10,15 +10,15 @@
 <style>
     :root {
         /* the party logo's colours: blue #004E7C, orange #F48D24, with a warm off-white */
-        --bg1: #00243a;
+        --bg1: #004a76;
         --bg2: #004e7c;
-        --card: rgba(247, 245, 240, .07);
-        --card-strong: rgba(247, 245, 240, .11);
-        --line: rgba(247, 245, 240, .16);
+        --card: rgba(0, 24, 42, .14);          /* panels are a touch darker than the page, never lighter: keeps the blue true */
+        --card-strong: rgba(0, 24, 42, .24);
+        --line: rgba(247, 245, 240, .2);
         --text: #f7f5f0;
         --muted: #b3c9d9;
         --orange: #f48d24;
-        --gold: #ffc66e;
+        --gold: #f48d24;
         --blue: #1f86bd;
         --green: #34e0a0;
         --red: #ff7a7a;
@@ -30,7 +30,7 @@
         font-family: 'Inter', 'Tajawal', 'Segoe UI', system-ui, sans-serif;
         color: var(--text);
         background:
-            radial-gradient(1200px 700px at 12% -10%, rgba(247, 142, 30, .16), transparent 60%),
+            radial-gradient(1200px 700px at 12% -10%, rgba(244, 141, 36, .06), transparent 60%),
             radial-gradient(1000px 800px at 105% 10%, rgba(0, 78, 124, .6), transparent 55%),
             linear-gradient(160deg, var(--bg2), var(--bg1) 70%);
         background-attachment: fixed;
@@ -129,7 +129,7 @@
     .ms-bar i, .grp-bar i { position: relative; overflow: hidden; }
     .ms-bar i::after, .grp-bar i::after { content: ''; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, rgba(255,255,255,.45) 50%, transparent 70%); transform: translateX(-100%); animation: sweep 3.2s ease-in-out infinite; }
     @keyframes sweep { 0%, 55% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
-    .ms-bar i { display: block; height: 100%; width: 0; border-radius: 99px; background: linear-gradient(90deg, var(--orange), var(--gold)); transition: width 1.2s cubic-bezier(.2,.8,.2,1); }
+    .ms-bar i { display: block; height: 100%; width: 0; border-radius: 99px; background: var(--orange); transition: width 1.2s cubic-bezier(.2,.8,.2,1); }
     .ms.reached { background: rgba(52, 224, 160, .09); border-color: rgba(52, 224, 160, .45); }
     .ms.reached .ms-state { color: var(--green); }
     .ms.reached .ms-bar i { background: linear-gradient(90deg, #19c58a, var(--green)); }
@@ -265,7 +265,7 @@
         <div class="gauge">
             <svg viewBox="0 0 520 520" aria-hidden="true">
                 <defs>
-                    <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffb457"/><stop offset="1" stop-color="#f77f00"/></linearGradient>
+                    <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f48d24"/><stop offset="1" stop-color="#f48d24"/></linearGradient>
                     <linearGradient id="g2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#34e0a0"/><stop offset="1" stop-color="#19b57f"/></linearGradient>
                 </defs>
                 <g transform="rotate(-90 260 260)">
