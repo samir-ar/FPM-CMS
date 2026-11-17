@@ -53,6 +53,7 @@ Route::get('/', function () {
 });
 
 Route::get('/news/{id}', 'HomeController@showNews')->name('news.show');
+Route::get('/events/{id}', 'HomeController@showEvent')->name('events.show');
 
 // Served as explicit routes (not static files) so this works regardless of
 // whether the webserver's config blocks dotfile paths like .well-known —
@@ -80,7 +81,7 @@ Route::get('/.well-known/apple-app-site-association', function () {
             'details' => [
                 [
                     'appID' => 'Q9F8568DCD.com.microbits.fpm',
-                    'paths' => ['/news/*'],
+                    'paths' => ['/news/*', '/events/*'],
                 ],
             ],
         ],

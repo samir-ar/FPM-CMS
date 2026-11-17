@@ -62,4 +62,50 @@ class HomeController extends Controller
 
         return view('news-public', compact('news', 'imageUrl', 'snippet'));
     }
+
+    /**
+     * Public (no-auth) single-event page - the web fallback for a shared event
+     * link, and the App Link / Universal Link target the app intercepts when it
+     * is installed. Only an event flagged `public` shows its content here; a
+     * member-only event shows just the "download the app" page, so a shared link
+     * can never leak it to the web.
+     */
+    public function showEvent($id)
+    {
+        $event = \App\V2\Event::find($id);
+
+        if (!$event) {
+            abort(404);
+        }
+
+        $isPublic = (bool) $event->public;
+
+        // preferred language first, then the other one: many events only have an
+        // English (or only an Arabic) version of the text
+        $order = ($event->strict_lang && $event->strict_lang == 'en') ? ['en', 'ar'] : ['ar', 'en'];
+        $pick = function ($field) use ($event, $order) {
+            foreach ($order as $lang) {
+                $value = trim((string) $event->getTranslation($field, $lang));
+                if ($value !== '') {
+                    return $value;
+                }
+            }
+            return '';
+        };
+        $name = $pick('name');
+        $details = $pick('details');
+
+        $imageUrl = $event->image
+            ? \Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/storage/images/events/' . $event->image)
+            : null;
+
+        $snippet = \Illuminate\Support\Str::limit(html_entity_decode(strip_tags((string) $details)), 200);
+
+        $when = null;
+        if ($event->from_date) {
+            $when = \Carbon\Carbon::parse($event->from_date)->format('Y-m-d H:i');
+        }
+
+        return view('event-public', compact('event', 'isPublic', 'name', 'details', 'imageUrl', 'snippet', 'when'));
+    }
 }

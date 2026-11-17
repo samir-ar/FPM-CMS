@@ -9,6 +9,7 @@
     <meta property="og:description" content="{{ $snippet }}">
     @if($imageUrl)
     <meta property="og:image" content="{{ $imageUrl }}">
+    <meta name="twitter:card" content="summary_large_image">
     @endif
     <meta property="og:type" content="article">
     <meta name="apple-itunes-app" content="app-id=1083351430">
@@ -21,21 +22,6 @@
         .image { width: 100%; border-radius: 8px; margin-bottom: 20px; }
         h1 { font-size: 24px; margin-bottom: 12px; }
         .details { font-size: 17px; line-height: 1.8; margin-bottom: 28px; }
-        .open-app {
-            display: block;
-            background-color: #f68f1f;
-            color: #fff;
-            text-align: center;
-            padding: 14px;
-            border-radius: 6px;
-            font-size: 16px;
-            font-weight: bold;
-            text-decoration: none;
-            margin-bottom: 16px;
-        }
-        .stores { display: flex; gap: 12px; justify-content: center; }
-        .stores a { display: block; }
-        .stores img { height: 44px; }
     </style>
 </head>
 <body>
@@ -48,10 +34,6 @@
     <h1>{{ $news->title }}</h1>
     <div class="details">{!! $news->details !!}</div>
 
-    <a class="open-app" href="https://fpmmobile.com/news/{{ $news->id }}">افتح في تطبيق التيار الوطني الحر</a>
-    <div class="stores">
-        <a href="https://play.google.com/store/apps/details?id=com.microbits.fpm">Google Play</a>
-        <a href="https://apps.apple.com/app/id1083351430">App Store</a>
-    </div>
+    @include('partials.store-buttons')
 </body>
 </html>
