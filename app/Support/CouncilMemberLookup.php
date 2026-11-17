@@ -21,6 +21,27 @@ class CouncilMemberLookup
         return $digits === '' ? '' : (ltrim($digits, '0') === '' ? '0' : ltrim($digits, '0'));
     }
 
+    // The photo of a COUNCIL member as an image response (404 when he is not on the roster or has no
+    // photo). For the admin pages only. fpm_users.PersonImage normally holds raw JPEG/PNG bytes, sometimes
+    // base64 text.
+    public static function photoResponse($memberId)
+    {
+        abort_unless(\App\V2\CouncilRosterMember::where('member_id', (string) $memberId)->exists(), 404);
+
+        $bytes = DB::table('fpm_users')->where('MemberId', $memberId)->value('PersonImage');
+        abort_if(empty($bytes), 404);
+
+        if (strncmp($bytes, "\xFF\xD8", 2) !== 0 && strncmp($bytes, "\x89PNG", 4) !== 0) {
+            $decoded = base64_decode(preg_replace('#^data:image/[a-z]+;base64,#i', '', trim($bytes)), true);
+            abort_if($decoded === false || $decoded === '', 404);
+            $bytes = $decoded;
+        }
+
+        return response($bytes, 200)
+            ->header('Content-Type', strncmp($bytes, "\x89PNG", 4) === 0 ? 'image/png' : 'image/jpeg')
+            ->header('Cache-Control', 'private, max-age=3600');
+    }
+
     public static function search(string $q, ?array $onlyMemberIds = null, int $limit = 10): array
     {
         $q = trim($q);

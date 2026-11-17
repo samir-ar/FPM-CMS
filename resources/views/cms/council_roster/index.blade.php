@@ -101,6 +101,7 @@
 @endsection
 
 @section('content')
+@include('cms.council_meetings._member_photo_style')
 <div class="box box-default">
     <div class="box-header with-border">
         <h3 class="box-title">National Council members</h3>
@@ -189,6 +190,7 @@
             <thead>
                 <tr>
                     <th>#</th>
+                    <th>Photo</th>
                     <th>Member ID</th>
                     <th>Name</th>
                     <th>Phone</th>
@@ -209,6 +211,7 @@
                     data-search="{{ mb_strtolower(($d->UserFullName ?? '') . ' ' . $m->member_id . ' ' . ($d->MobileNumber ?? '')) }}"
                     @if(!$m->is_active) style="opacity:.5" @endif>
                     <td>{{ $i + 1 }}</td>
+                    <td><img class="mphoto" loading="lazy" alt="" src="{{ route('admin.council-roster.photo', $m->member_id) }}" onerror="this.onerror=null;this.src=window.MPH"></td>
                     <td>{{ $m->member_id }}</td>
                     <td dir="auto">{{ $d->UserFullName ?? '— not found in the member list —' }}</td>
                     <td>{{ $d->MobileNumber ?? '' }}</td>

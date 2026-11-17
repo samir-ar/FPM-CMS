@@ -130,6 +130,12 @@ class CouncilRosterController extends Controller
         ), 'council_roster_template.xlsx');
     }
 
+    // A council member's photo for the admin pages (council members only; 404 when there is none).
+    public function photo($memberId)
+    {
+        return CouncilMemberLookup::photoResponse($memberId);
+    }
+
     public function export()
     {
         $members = CouncilRosterMember::orderBy('id')->get();

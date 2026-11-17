@@ -123,21 +123,8 @@ class CouncilMeetingsController extends Controller
     public function photo($id, $memberId)
     {
         CouncilMeeting::findOrFail($id);
-        abort_unless(CouncilRosterMember::where('member_id', (string) $memberId)->exists(), 404);
 
-        $bytes = \DB::table('fpm_users')->where('MemberId', $memberId)->value('PersonImage');
-        abort_if(empty($bytes), 404);
-
-        if (strncmp($bytes, "\xFF\xD8", 2) !== 0 && strncmp($bytes, "\x89PNG", 4) !== 0) {
-            $text = preg_replace('#^data:image/[a-z]+;base64,#i', '', trim($bytes));
-            $decoded = base64_decode($text, true);
-            abort_if($decoded === false || $decoded === '', 404);
-            $bytes = $decoded;
-        }
-
-        return response($bytes, 200)
-            ->header('Content-Type', strncmp($bytes, "\x89PNG", 4) === 0 ? 'image/png' : 'image/jpeg')
-            ->header('Cache-Control', 'private, max-age=3600');
+        return CouncilMemberLookup::photoResponse($memberId);
     }
 
     // Everything the board draws: the quorum numbers, every roster member with whether

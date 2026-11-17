@@ -361,6 +361,29 @@ class CouncilSessionTest extends CouncilTestCase
         $this->assertNull($byId[(string) $c]['photo'] ?? null, 'no photo on file means no photo url (the board falls back to the letter)');
     }
 
+    public function test_the_roster_and_meeting_pages_show_member_photos()
+    {
+        [$a, $b, $c] = $this->rosterOf3();
+        $m = $this->newMeeting('T photos');
+        $admin = $this->adminUser();
+        $jpeg = "\xFF\xD8\xFF\xE0" . str_repeat('x', 200);
+        DB::table('fpm_users')->where('MemberId', $a)->update(['PersonImage' => $jpeg]);
+        $outsider = $this->sampleMemberIds(4)[3];
+        DB::table('fpm_users')->where('MemberId', $outsider)->update(['PersonImage' => $jpeg]);
+
+        // the roster page's own photo route: council members only
+        $this->actingAs($admin, 'admin')->get(route('admin.council-roster.photo', $a, false))->assertOk();
+        $this->get(route('admin.council-roster.photo', $outsider, false))->assertNotFound();
+
+        // both pages carry a photo for every row (present and absent tables on the meeting page)
+        app(CouncilMeetingsController::class)->storeAttendance($this->ajax(['member_id' => $a]), $m->id);
+        $roster = $this->get(route('admin.council-roster.index', [], false))->assertOk()->getContent();
+        $this->assertSame(3, substr_count($roster, 'class="mphoto"'));
+        $show = $this->get(route('admin.council-meetings.show', $m->id, false))->assertOk()->getContent();
+        $this->assertSame(3, substr_count($show, 'class="mphoto"'), '1 present + 2 absent');
+        $this->assertStringContainsString('/photo/' . $a, $show);
+    }
+
     public function test_the_live_board_is_not_open_to_the_public()
     {
         $this->rosterOf3();

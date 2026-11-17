@@ -82,6 +82,7 @@
 @endsection
 
 @section('content')
+@include('cms.council_meetings._member_photo_style')
 <div class="box box-default">
     <div class="box-header with-border">
         <h3 class="box-title" dir="auto">{{ $meeting->title }} @if(!$meeting->is_active) <span class="label label-warning">Closed</span> @endif</h3>
@@ -140,13 +141,14 @@
         <h4>Present ({{ $present->count() }})</h4>
         <table class="table table-bordered table-striped">
             <thead>
-                <tr><th>#</th><th>Member ID</th><th>Name</th><th>Role</th><th>District</th><th>Weight</th><th>Time</th><th>Method</th>@if($canManage)<th></th>@endif</tr>
+                <tr><th>#</th><th>Photo</th><th>Member ID</th><th>Name</th><th>Role</th><th>District</th><th>Weight</th><th>Time</th><th>Method</th>@if($canManage)<th></th>@endif</tr>
             </thead>
             <tbody>
             @forelse($present as $i => $a)
                 @php($d = $details[$a->member_id] ?? null)
                 <tr>
                     <td>{{ $present->count() - $i }}</td>
+                    <td><img class="mphoto" loading="lazy" alt="" src="{{ route('admin.council-meetings.photo', [$meeting->id, $a->member_id]) }}" onerror="this.onerror=null;this.src=window.MPH"></td>
                     <td>{{ $a->member_id }}</td>
                     <td dir="auto">{{ $d->UserFullName ?? '' }}</td>
                     <td dir="auto">{{ $roster[$a->member_id]->role ?? '' }}</td>
@@ -160,18 +162,19 @@
                     @endif
                 </tr>
             @empty
-                <tr><td colspan="9" class="text-center">Nobody has been marked present yet.</td></tr>
+                <tr><td colspan="10" class="text-center">Nobody has been marked present yet.</td></tr>
             @endforelse
             </tbody>
         </table>
 
         <h4 style="margin-top:30px;">Absent ({{ $absent->count() }})</h4>
         <table class="table table-bordered table-striped">
-            <thead><tr><th>Member ID</th><th>Name</th><th>Phone</th><th>Role</th><th>District</th><th>Weight</th>@if($canAdd && $meeting->is_active)<th></th>@endif</tr></thead>
+            <thead><tr><th>Photo</th><th>Member ID</th><th>Name</th><th>Phone</th><th>Role</th><th>District</th><th>Weight</th>@if($canAdd && $meeting->is_active)<th></th>@endif</tr></thead>
             <tbody>
             @foreach($absent as $m)
                 @php($d = $details[$m->member_id] ?? null)
                 <tr>
+                    <td><img class="mphoto" loading="lazy" alt="" src="{{ route('admin.council-meetings.photo', [$meeting->id, $m->member_id]) }}" onerror="this.onerror=null;this.src=window.MPH"></td>
                     <td>{{ $m->member_id }}</td>
                     <td dir="auto">{{ $d->UserFullName ?? '' }}</td>
                     <td>{{ $d->MobileNumber ?? '' }}</td>

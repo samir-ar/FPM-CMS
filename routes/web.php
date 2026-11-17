@@ -239,7 +239,8 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     // National Council session: roster, meetings + attendance, special members.
     // Page ids are resolved by url (pagePermByUrl) because ids drift per env.
     Route::get('council-roster', 'CouncilRosterController@index')->name('council-roster.index')->middleware(pagePermByUrl('admin.council-meetings.index', 'view'));
-    Route::get('council-roster/search', 'CouncilRosterController@search')->name('council-roster.search')->middleware(pagePermByUrl('admin.council-meetings.index', 'full'));
+    Route::get('council-roster/photo/{memberId}', 'CouncilRosterController@photo')->name('council-roster.photo')->middleware(pagePermByUrl('admin.council-meetings.index', 'view'));
+    Route::get('council-roster/search','CouncilRosterController@search')->name('council-roster.search')->middleware(pagePermByUrl('admin.council-meetings.index', 'full'));
     Route::get('council-roster/export', 'CouncilRosterController@export')->name('council-roster.export')->middleware(pagePermByUrl('admin.council-meetings.index', 'view'));
     Route::get('council-roster/template', 'CouncilRosterController@template')->name('council-roster.template')->middleware(pagePermByUrl('admin.council-meetings.index', 'view'));
     Route::post('council-roster/import', 'CouncilRosterController@import')->name('council-roster.import')->middleware(pagePermByUrl('admin.council-meetings.index', 'full'));
