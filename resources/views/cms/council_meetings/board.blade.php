@@ -400,7 +400,7 @@
     function tierOf(name) {
         if (name === 'الرئيس') { return 0; }
         if (name === 'نائب') { return 1; }
-        if (name.indexOf('نائب') === 0 || officeIndex(name) > -1) { return 2; }
+        if (name.indexOf('نائب') === 0) { return 2; }
         if (name === 'عضو') { return 3; }
         if (name.indexOf('انتشار') === 0) { return 4; }
         return 5;
@@ -444,13 +444,13 @@
             // the council as a tree: president, نائب, vice presidents + offices, members, the diaspora, then the rest
             var tiers = [[], [], [], [], [], []];
             order.forEach(function (name) { tiers[tierOf(name)].push(name); });
-            // third row: the vice presidents first, then the four offices in their fixed order (a placeholder when nobody holds one)
-            var vps = tiers[2].filter(function (n) { return officeIndex(n) < 0; });
+            // last row: the other offices first, then the four fixed offices at the very end (a placeholder when nobody holds one)
+            var others = tiers[5].filter(function (n) { return officeIndex(n) < 0; });
             var offices = VP_OFFICES.map(function (canon) {
-                var found = tiers[2].filter(function (n) { return norm(n) === norm(canon); })[0];
+                var found = tiers[5].filter(function (n) { return norm(n) === norm(canon); })[0];
                 return found || canon;
             });
-            tiers[2] = vps.concat(offices);
+            tiers[5] = others.concat(offices);
             map.innerHTML = tiers.map(function (names, t) {
                 if (!names.length) { return ''; }
                 return '<div class="tier t' + t + '">' + names.map(function (name) {
