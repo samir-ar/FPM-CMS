@@ -45,9 +45,17 @@ Route::group(['namespace' => 'Api\V2', 'prefix' => 'v2/', 'middleware' => ['lang
         Route::post('members', 'ApiController@getMembers');
         Route::post('favorite-members', 'ApiController@getFavorites');
 
-        Route::post('national-council-poll-can-i-vote', 'ApiController@canIVoteToNationalCouncilPollMessage');
-        Route::post('national-council-poll-get', 'ApiController@getLatestNationalCouncilPoll');
-        Route::post('national-council-poll-vote', 'ApiController@voteToNationalPoll');
+        // Signed (app-signature) on top of the normal login, same as the
+        // Internal Election: proves the request came from the real app, not
+        // a script reusing a captured token. The app attaches the signature
+        // headers to every request, so no client change is needed to be
+        // accepted here (the vote body's nested answers list is excluded
+        // from signing on both sides - see app_signature_interceptor.dart).
+        Route::group(['middleware' => ['app-signature']], function () {
+            Route::post('national-council-poll-can-i-vote', 'ApiController@canIVoteToNationalCouncilPollMessage');
+            Route::post('national-council-poll-get', 'ApiController@getLatestNationalCouncilPoll');
+            Route::post('national-council-poll-vote', 'ApiController@voteToNationalPoll');
+        });
 
 
         /////////////////𝕀𝕟𝕥𝕖𝕣𝕟𝕒𝕝 𝔼𝕝𝕖𝕔𝕥𝕚𝕠𝕟/////////////////////

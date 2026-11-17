@@ -40,6 +40,7 @@ class AppVersionsController extends Controller
                         $this->drawHtml('checkbox', 'Android Force Update', 'force_update_android', $settings->force_update_android, null, '', 'col-md-6'),
                         $this->drawHtml('checkbox', 'IOS Force Update', 'force_update_ios', $settings->force_update_ios, null, '', 'col-md-6'),
                         $this->drawHtml('small_text', 'Internal Election Minimum Build Number (leave blank for no restriction — same number applies to both Android and iOS, since they share one build-number sequence)', 'internal_election_min_build', $settings->internal_election_min_build, null, '', 'col-md-12'),
+                        $this->drawHtml('small_text', 'National Council Poll Minimum Build Number (leave blank for no restriction — set only AFTER the new app release is live in both stores, same number for Android and iOS)', 'national_council_min_build', $settings->national_council_min_build, null, '', 'col-md-12'),
 
                     ]
                     ],[
@@ -88,7 +89,10 @@ class AppVersionsController extends Controller
             ? (int) request('internal_election_min_build')
             : null;
 
-        
+        $settings->national_council_min_build = request('national_council_min_build') !== null && request('national_council_min_build') !== ''
+            ? (int) request('national_council_min_build')
+            : null;
+
         $settings->save();
 
         return redirect()->back()->with('message', "Updated successfully");

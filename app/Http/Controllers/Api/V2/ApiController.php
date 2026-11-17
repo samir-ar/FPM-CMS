@@ -763,6 +763,12 @@ class ApiController extends Controller
             'message' => null
         ];
 
+        if (!$this->meetsNationalCouncilMinBuild()) {
+            $response['message'] = 'يرجى تحديث التطبيق للمشاركة في التصويت';
+            $response['status'] = 404;
+            return response()->json($response);
+        }
+
         //No poll available
         if ($statusCode == 404) {
             $response['message'] = 'ليس هنالك أية فرصة متاحة للتصويت أو انك غير مصرّح لك بالتصويت';
@@ -790,27 +796,55 @@ class ApiController extends Controller
         }
     }
 
+    // Separate from the Internal Election's minimum build: each is raised on
+    // its own once its own app release is live in both stores.
+    private function meetsNationalCouncilMinBuild()
+    {
+        $min = Setting::first()->national_council_min_build ?? null;
+        if (!$min) return true;
+
+        return (int) request('build_number', 0) >= $min;
+    }
+
+    // "Already voted" is decided per MEMBER, not per app account: a member
+    // holding two app_users rows must not be able to vote once from each.
+    // The user_id arm only keeps rows written before member_id existed working.
+    private function nationalCouncilVoteExists($pollId, $user)
+    {
+        return CouncilNationalPollVote::where('poll_id', $pollId)
+            ->where(function ($q) use ($user) {
+                $q->where('user_id', $user->id);
+                if (!empty($user->member_id)) {
+                    $q->orWhere('member_id', $user->member_id);
+                }
+            })
+            ->exists();
+    }
+
     public function canIVoteToNationalCouncilPoll($request, ApiRepository $apiRepository, $withPolls = false)
     {
         $user = $request->user;
 
         //Check if there is a poll and the user is authorised to vote
-        //$poll = $apiRepository->getNationalCouncilByGroup(request('groups'))->first();
         $poll = $apiRepository->getNationalCouncil($user);
         if (!$poll) return 404;
 
-        //Check if the user has voted or not
-        $vote = CouncilNationalPollVote::where('poll_id', $poll->id)->where('user_id', $user->id)->first();
+        //Check if the member has voted or not
+        $voted = $this->nationalCouncilVoteExists($poll->id, $user);
 
-        if (!$vote && $withPolls) return $poll;
+        if (!$voted && $withPolls) return $poll;
 
-        if (!$vote) return 200;
+        if (!$voted) return 200;
 
         return 401;
     }
 
     public function getLatestNationalCouncilPoll(Request $request, ApiRepository $apiRepository)
     {
+        if (!$this->meetsNationalCouncilMinBuild()) {
+            return $this->api_error_response('app_update_required', 101, 'يرجى تحديث التطبيق للمشاركة في التصويت');
+        }
+
         //Return a poll
         $statusCodeOrPoll = $this->canIVoteToNationalCouncilPoll($request, $apiRepository, true);
 
@@ -826,40 +860,86 @@ class ApiController extends Controller
     //////////////////////////////////
     public function voteToNationalPoll(Request $request, ApiRepository  $apiRepository)
     {
-        $validator = Validator::make($request->all(), [
-            'poll_id' => 'required|exists:council_national_polls,id',
-            'answers.*.question_id' => 'required',
-            'answers.*.answer_id' => 'required'
-        ]);
+        if (!$this->meetsNationalCouncilMinBuild()) {
+            return $this->api_error_response('app_update_required', 101, 'يرجى تحديث التطبيق للمشاركة في التصويت');
+        }
 
-        $statusCode = $this->canIVoteToNationalCouncilPoll($request, $apiRepository);
-        if ($statusCode != 200) return $this->api_error_response('can_vote', 101, implode(', ', ['message' => 'لا يمكنك التصويت']));
+        $validator = Validator::make($request->all(), [
+            'poll_id' => 'required|integer|exists:council_national_polls,id',
+            'answers' => 'required|array|min:1',
+            'answers.*.question_id' => 'required|integer',
+            'answers.*.answer_id' => 'required|integer',
+            'device_id' => 'nullable|string|max:191',
+        ]);
 
         if ($validator->fails()) {
             return $this->api_error_response('missing_parameters', 101, implode(', ', $validator->messages()->all()));
         }
 
+        $user = $request->user;
 
-        $poll  = CouncilNationalPoll::find($request->poll_id);
+        // The poll being voted on is decided by the server (the one published
+        // poll this member is permitted for), never trusted from the request:
+        // previously poll_id was taken from the request and could point at
+        // any poll, including an unpublished one or one the member isn't in.
+        $poll = $apiRepository->getNationalCouncil($user);
+        if (!$poll || (int) $poll->id !== (int) $request->poll_id) {
+            return $this->api_error_response('can_vote', 101, 'لا يمكنك التصويت');
+        }
 
-        //$weight = App\V2\CouncilNationalPollPermission::where('poll_id', $poll->id)->where('user_id', $request->user->id)->first()->vote_weight;
-        $permission = App\V2\CouncilNationalPollPermission::where('poll_id', $poll->id)->where('member_id', $request->user->member_id)->first();
+        if ($this->nationalCouncilVoteExists($poll->id, $user)) {
+            return $this->api_error_response('can_vote', 101, 'لا يمكنك التصويت');
+        }
+
+        $permission = App\V2\CouncilNationalPollPermission::where('poll_id', $poll->id)->where('member_id', $user->member_id)->first();
         if (!$permission) {
             return $this->api_error_response('can_vote', 101, 'لا يمكنك التصويت');
         }
         $weight = $permission->vote_weight;
 
-        foreach ($request->answers as $answer) {
+        // Every answer must belong to a question of THIS poll, and be one of
+        // that question's own answers; a question may be answered only once.
+        $answers = collect($request->answers);
+        if ($answers->pluck('question_id')->unique()->count() !== $answers->count()) {
+            return $this->api_error_response('missing_parameters', 101, 'لا يمكن الإجابة على السؤال أكثر من مرة');
+        }
 
-            App\V2\CouncilNationalPollVote::create(
-                [
-                    'user_id' => $request->user->id,
-                    'question_id' => $answer['question_id'],
-                    'answer_id' => $answer['answer_id'],
-                    'poll_id' => $request['poll_id'],
-                    'weight' => $weight
-                ]
-            );
+        $pollQuestionIds = $poll->questions()->pluck('id')->map(fn($id) => (int) $id)->all();
+        foreach ($answers as $answer) {
+            $questionId = (int) $answer['question_id'];
+            $answerId = (int) $answer['answer_id'];
+
+            $valid = in_array($questionId, $pollQuestionIds, true)
+                && App\V2\AnswerCouncilNationalPoll::where('id', $answerId)->where('question_id', $questionId)->exists();
+
+            if (!$valid) {
+                return $this->api_error_response('missing_parameters', 101, 'الإجابة غير صالحة');
+            }
+        }
+
+        // All-or-nothing, and backed by the unique (poll, question, member)
+        // key: two parallel requests (double tap, retry, two sessions) can
+        // both pass the checks above, but only one can ever insert.
+        try {
+            \DB::transaction(function () use ($answers, $poll, $user, $weight, $request) {
+                foreach ($answers as $answer) {
+                    CouncilNationalPollVote::create([
+                        'user_id' => $user->id,
+                        'member_id' => $user->member_id,
+                        'poll_id' => $poll->id,
+                        'question_id' => (int) $answer['question_id'],
+                        'answer_id' => (int) $answer['answer_id'],
+                        'weight' => $weight,
+                        'device_id' => $request->input('device_id'),
+                        'voted_at' => now(),
+                    ]);
+                }
+            });
+        } catch (QueryException $e) {
+            if ($e->getCode() === '23000') {
+                return $this->api_error_response('can_vote', 101, 'لا يمكنك التصويت');
+            }
+            throw $e;
         }
 
         return response()->json(['message' => 'لقد تم التصويت بنجاح']);
