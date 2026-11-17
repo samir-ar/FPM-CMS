@@ -276,7 +276,7 @@
     </section>
 
     <section class="card groups">
-        <h2>Attendance by sector <span id="grpCount" class="num"></span></h2>
+        <h2>Attendance by role<span id="grpCount" class="num"></span></h2>
         <div id="groupBars"></div>
     </section>
 

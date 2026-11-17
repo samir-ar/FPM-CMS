@@ -166,7 +166,8 @@ class CouncilMeetingsController extends Controller
                 'photo' => $photoOf($m->member_id),
                 'name' => $nameOf($m->member_id),
                 'role' => trim((string) $m->role),
-                'sector' => trim((string) $m->sector) ?: 'Other',
+                // the board groups by role (every member belongs to the national council, so the sector says nothing)
+                'sector' => trim((string) $m->role) ?: 'Other',
                 'district' => trim((string) $m->district),
                 'weight' => (int) $m->weight,
                 'present' => (bool) $a,
