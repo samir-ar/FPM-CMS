@@ -15,6 +15,17 @@ All notable changes to the FPM-CMS (Laravel backend) are documented in this file
 
 ### Security
 
+- **`GET /api/v2/member-photo/{memberId}` now only serves the photo of a representative (`persons.member_id`) or an election candidate (`internal_election_candidates.member_id`)**; any other member id returns 404 (it used to return any member's real photo, with no login). Side effect, accepted earlier: the admin "search members to add as a candidate" preview is blank for members who are not yet candidates.
+- **`userPolls` and `volunteerUsers` admin resources now follow the Polls / Volunteers page permission** (they had no permission check at all - any logged-in admin could open them). Resolved by page `url`, view for list/show, full for the rest.
+- **Shared upload/delete helpers (`upload-image`, `delete-image`) now require Full control of at least one page** (new `any-full` middleware); a View-only admin or one with no Profile can no longer upload or delete files.
+- Session tokens (`generate_token`) and the 4-digit SMS codes (`generatePIN`) now come from `random_bytes` / `random_int` instead of `mt_rand`.
+
+### Fixed
+
+- **`fpm_users.PersonImage` widened to MEDIUMBLOB** (it was a TEXT/BLOB capped at 65,535 bytes, which silently cut every larger member photo mid-file; 658 of 40,500 staging rows are exactly 65,535 bytes). Migration is idempotent, relaxes `sql_mode` for its own session only (some rows hold an invalid `0000-00-00` date_of_birth that strict mode refuses mid-ALTER), and keeps every byte. Photos already truncated stay truncated until the TWH sync sends them again.
+
+### Security (continued)
+
 - **National Council poll voting hardened** (previously: no unique key, "already voted" check not atomic, poll_id trusted from the request): votes are tied to the MEMBER (`member_id`) with a unique `(poll_id, question_id, member_id)` key, so a second app account or a parallel request cannot vote twice; the poll voted on is chosen by the server, every answer must belong to a question of that poll, a question can be answered once, and all rows are written in one transaction. `device_id` and `voted_at` are stored. The migration refuses to run over existing double votes.
 - National Council endpoints now sit behind the app-signature middleware and a separate `national_council_min_build` setting (CMS Settings page, blank = no restriction; set it only after the new app is live in both stores).
 - "Delete all data" is refused on a published poll and a poll that already has votes cannot be deleted.
