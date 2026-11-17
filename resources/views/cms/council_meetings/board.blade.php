@@ -87,7 +87,7 @@
         position: relative; z-index: 1;
         display: grid; gap: clamp(14px, 1.3vw, 22px);
         grid-template-columns: repeat(12, 1fr);
-        grid-template-rows: auto auto 1fr;
+        grid-template-rows: auto auto auto 1fr;
         min-height: calc(100vh - 104px);   /* the bottom row (seat map + arrivals) grows to use the whole screen */
         padding: 0 clamp(18px, 2.4vw, 44px) clamp(18px, 2vw, 32px);
     }
@@ -101,24 +101,26 @@
     .hero { grid-column: span 5; grid-row: span 2; display: flex; flex-direction: column; align-items: center; }
     .kpis { grid-column: span 7; align-self: start; display: grid; grid-template-columns: repeat(4, 1fr); gap: clamp(10px, 1vw, 16px); }
     .groups { grid-column: span 7; }
-    .seats { grid-column: span 8; display: flex; flex-direction: column; }
+    .seats { grid-column: span 12; display: flex; flex-direction: column; }
     .seats #seatMap { flex: 1; justify-content: space-evenly; }
-    .ticker { grid-column: span 4; }
+    .ticker { grid-column: span 12; display: flex; align-items: center; gap: 22px; padding-top: 12px; padding-bottom: 12px; }
+    .ticker h2 { margin: 0; flex: 0 0 auto; }
+    #recent { flex: 1; min-width: 0; display: flex; }
 
     /* ---------- the gauge ---------- */
-    .gauge { position: relative; width: min(100%, 430px); aspect-ratio: 1; margin: 2px auto 6px; }
+    .gauge { position: relative; width: min(100%, 300px); aspect-ratio: 1; margin: 2px auto 6px; }
     .gauge svg { width: 100%; height: 100%; overflow: visible; }
     .track { fill: none; stroke: rgba(255,255,255,.08); stroke-width: 26; }
     .arc { fill: none; stroke-width: 26; stroke-linecap: round; transition: stroke-dashoffset 1.4s cubic-bezier(.2,.8,.2,1); }
     .arc.glow { filter: blur(11px); opacity: .55; }
     .tick { stroke: rgba(255,255,255,.55); stroke-width: 3; stroke-linecap: round; transition: stroke .5s; }
     .tick.hit { stroke: var(--green); }
-    .tick-label { fill: #c9d8ea; font: 800 17px 'Inter', sans-serif; letter-spacing: .06em; text-anchor: middle; transition: fill .5s; }
+    .tick-label { fill: #c9d8ea; font: 800 24px 'Inter', sans-serif; letter-spacing: .06em; text-anchor: middle; transition: fill .5s; }
     .tick-label.hit { fill: var(--green); }
     .gauge-center { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; }
-    .big { font-size: clamp(60px, 6.2vw, 100px); font-weight: 800; line-height: 1; letter-spacing: -.03em; background: linear-gradient(180deg, #fff, #ffd9a1); -webkit-background-clip: text; background-clip: text; color: transparent; }
-    .big-sub { margin-top: 8px; font-size: 14px; letter-spacing: .22em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
-    .big-of { margin-top: 12px; font-size: 22px; font-weight: 600; color: var(--text); }
+    .big { font-size: clamp(40px, 3.8vw, 68px); font-weight: 800; line-height: 1; letter-spacing: -.03em; background: linear-gradient(180deg, #fff, #ffd9a1); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .big-sub { margin-top: 4px; font-size: 11px; letter-spacing: .22em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+    .big-of { margin-top: 6px; font-size: 17px; font-weight: 600; color: var(--text); }
     .big-of b { color: var(--gold); font-weight: 700; }
 
     .milestones { width: 100%; display: grid; gap: 10px; margin-top: 4px; }
@@ -140,20 +142,20 @@
     .kpi { position: relative; overflow: hidden; padding: clamp(14px, 1.2vw, 20px); border-radius: var(--radius); background: var(--card); border: 1px solid var(--line); box-shadow: 0 18px 40px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.06); }
     .kpi::after { content: ''; position: absolute; right: -30px; top: -30px; width: 110px; height: 110px; border-radius: 50%; background: var(--accent, var(--orange)); opacity: .16; filter: blur(8px); }
     .kpi .label { font-size: 11px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); }
-    .kpi .value { margin-top: 8px; font-size: clamp(30px, 3vw, 50px); font-weight: 800; line-height: 1; }
+    .kpi .value { margin-top: 6px; font-size: clamp(26px, 2.4vw, 40px); font-weight: 800; line-height: 1; }
     .kpi .value small { font-size: .42em; font-weight: 600; color: var(--muted); margin-left: 4px; }
     .kpi .hint { margin-top: 9px; font-size: 13px; color: var(--muted); }
 
     /* ---------- bars by sector ---------- */
-    .grp { display: grid; grid-template-columns: minmax(110px, 190px) 1fr auto; gap: 18px; align-items: center; padding: 20px 0; }
-    .grp-name { font-size: 20px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .grp-bar { height: 26px; border-radius: 99px; background: rgba(255,255,255,.08); overflow: hidden; }
+    .grp { display: grid; grid-template-columns: minmax(110px, 190px) 1fr auto; gap: 18px; align-items: center; padding: 9px 0; }
+    .grp-name { font-size: 18px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .grp-bar { height: 20px; border-radius: 99px; background: rgba(255,255,255,.08); overflow: hidden; }
     .grp-bar i { display: block; height: 100%; width: 0; border-radius: 99px; background: linear-gradient(90deg, var(--blue), #6fd0ff); transition: width 1.2s cubic-bezier(.2,.8,.2,1); }
     .grp-bar i.full { background: linear-gradient(90deg, #19c58a, var(--green)); }
     .grp-num { font-size: 18px; color: var(--muted); min-width: 86px; text-align: right; }
     .grp-num b { color: var(--text); font-weight: 700; }
     /* row = members count | role name | bar | weight */
-    .grp, .grp-head { grid-template-columns: 90px minmax(110px, 170px) 1fr 120px; }
+    .grp, .grp-head { grid-template-columns: 90px 240px 1fr 120px; }
     .grp-head { display: grid; gap: 18px; padding: 0 0 4px; }
     .gh { font-size: 11px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); }
     .gh-w { text-align: right; }
@@ -168,21 +170,21 @@
     .legend .on { background: var(--orange); box-shadow: 0 0 10px rgba(247,142,30,.8); }
     .legend .off { border: 1.5px solid rgba(255,255,255,.3); }
     /* the seat map is a tree: one centred row per level, joined by a thin line */
-    #seatMap { display: flex; flex-direction: column; align-items: stretch; gap: 22px; }
-    .tier { position: relative; display: flex; flex-wrap: wrap; justify-content: center; gap: 14px 40px; }
-    .tier + .tier::before { content: ''; position: absolute; top: -22px; left: 50%; height: 22px; width: 1px; background: linear-gradient(rgba(247,142,30,.0), rgba(247,142,30,.55)); }
-    .tier.t0 .seat { width: 44px; height: 44px; }
+    #seatMap { display: flex; flex-direction: column; align-items: stretch; gap: 20px; }
+    .tier { position: relative; display: flex; flex-wrap: wrap; justify-content: center; gap: 12px 46px; }
+    .tier + .tier::before { content: ''; position: absolute; top: -20px; left: 50%; height: 20px; width: 1px; background: linear-gradient(rgba(247,142,30,.0), rgba(247,142,30,.55)); }
+    .tier.t0 .seat { width: 62px; height: 62px; }
     .sgroup { flex: 0 1 auto; max-width: 100%; }
     .sgroup .sg-head { justify-content: center; }
     .sg-grid { justify-content: center; }
-    .tier.t3 .sgroup { max-width: 1100px; }
+    .tier.t3 .sgroup { max-width: 1320px; }   /* the 72 members wrap into balanced rows */
     .seat.empty { border-style: dashed; opacity: .45; }
-    .sg-head { display: flex; justify-content: space-between; gap: 14px; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 8px; }
+    .sg-head { display: flex; justify-content: space-between; gap: 14px; font-size: 16px; font-weight: 600; color: var(--muted); margin-bottom: 8px; }
     .sg-head b { color: var(--text); }
-    .sg-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+    .sg-grid { display: flex; flex-wrap: wrap; gap: 8px; }
     .seat {
-        width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center;
-        font-size: 11px; font-weight: 700; color: rgba(255,255,255,.45);
+        width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center;
+        font-size: 15px; font-weight: 700; color: rgba(255,255,255,.45);
         border: 1.5px solid rgba(255,255,255,.22); background: rgba(255,255,255,.03);
         transition: all .5s cubic-bezier(.2,.8,.2,1);
     }
@@ -196,12 +198,17 @@
     @keyframes pop { 0% { transform: scale(.4); box-shadow: 0 0 0 0 rgba(255,198,110,.9); } 60% { transform: scale(1.5); } 100% { transform: scale(1.04); box-shadow: 0 0 14px rgba(247,142,30,.75); } }
 
     /* ---------- arrivals ticker ---------- */
-    .row { display: grid; grid-template-columns: 40px 1fr auto; gap: 12px; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.06); }
-    .row:last-child { border-bottom: 0; }
-    .av { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; color: #2b1500; background: linear-gradient(145deg, #ffd08a, var(--orange)); }
+    /* the last 10 arrivals as a slim strip: face + name + weight and time */
+    .row { flex: 1 1 0; min-width: 0; display: flex; gap: 10px; align-items: center; padding: 4px 12px; border-left: 1px solid rgba(255,255,255,.08); }
+    .row:first-child { border-left: 0; }
+    .row .who { flex: 1; }
+    .row .r { display: flex; align-items: center; gap: 6px; margin-top: 3px; }
+    .row .t { display: inline; margin: 0; }
+    .row .w { padding: 1px 7px; font-size: 11px; }
+    .av { flex: 0 0 auto; width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; color: #2b1500; background: linear-gradient(145deg, #ffd08a, var(--orange)); }
     .who { min-width: 0; }
     .who .n, .who .r { text-align: left; }
-    .who .n { font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .who .n { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .who .r { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .meta { text-align: right; }
     .w { display: inline-block; padding: 3px 10px; border-radius: 99px; font-size: 12px; font-weight: 800; color: var(--gold); background: rgba(247,142,30,.16); border: 1px solid rgba(247,142,30,.35); }
@@ -298,14 +305,14 @@
         <div id="groupBars"></div>
     </section>
 
-    <section class="card seats">
-        <h2>Seat map <span class="legend"><span><i class="on"></i>PRESENT</span><span><i class="off"></i>ABSENT</span></span></h2>
-        <div id="seatMap"></div>
-    </section>
-
     <section class="card ticker">
         <h2>Latest arrivals</h2>
         <div id="recent"></div>
+    </section>
+
+    <section class="card seats">
+        <h2>Seat map <span class="legend"><span><i class="on"></i>PRESENT</span><span><i class="off"></i>ABSENT</span></span></h2>
+        <div id="seatMap"></div>
     </section>
 </main>
 
@@ -407,13 +414,15 @@
         for (var i = 0; i < VP_OFFICES.length; i++) { if (norm(VP_OFFICES[i]) === n) { return i; } }
         return -1;
     }
-    // 0 president | 1 نائب | 2 vice presidents + those offices | 3 عضو | 4 انتشار | 5 everything else
+    // 0 president | 1 نائب | 2 vice presidents | 3 عضو | 4 انتشار | 5 sector representatives | 6 offices
     function tierOf(name) {
         if (name === 'الرئيس') { return 0; }
         if (name === 'نائب') { return 1; }
         if (name.indexOf('نائب') === 0) { return 2; }
         if (name === 'عضو') { return 3; }
         if (name.indexOf('انتشار') === 0) { return 4; }
+        var n = norm(name);
+        if (officeIndex(name) > -1 || n.indexOf('مكتب') === 0 || n.indexOf('ارباب') === 0) { return 6; }
         return 5;
     }
 
@@ -428,7 +437,7 @@
             { name: 'القطاعات والمكاتب', weight: 0, weight_present: 0 }
         ];
         d.groups.forEach(function (g) {
-            var t = tierOf(g.name);
+            var t = Math.min(tierOf(g.name), 5);   // sector representatives and offices share the last bar
             levels[t].weight += g.weight; levels[t].weight_present += g.weight_present;
             levels[t].members = (levels[t].members || 0) + g.members; levels[t].present = (levels[t].present || 0) + g.present;
         });
@@ -455,15 +464,16 @@
             d.members.forEach(function (m) { (byGroup[m.sector] = byGroup[m.sector] || []).push(m); });
             var order = d.groups.map(function (g) { return g.name; });
             // the council as a tree: president, نائب, vice presidents + offices, members, the diaspora, then the rest
-            var tiers = [[], [], [], [], [], []];
+            var tiers = [[], [], [], [], [], [], []];
             order.forEach(function (name) { tiers[tierOf(name)].push(name); });
-            // last row: the other offices first, then the four fixed offices at the very end (a placeholder when nobody holds one)
-            var others = tiers[5].filter(function (n) { return officeIndex(n) < 0; });
+            // row 5 = sector representatives, row 6 (the last) = the offices: the other offices first, then the four fixed
+            // offices at the very end (a placeholder when nobody holds one)
+            var others = tiers[6].filter(function (n) { return officeIndex(n) < 0; });
             var offices = VP_OFFICES.map(function (canon) {
-                var found = tiers[5].filter(function (n) { return norm(n) === norm(canon); })[0];
+                var found = tiers[6].filter(function (n) { return norm(n) === norm(canon); })[0];
                 return found || canon;
             });
-            tiers[5] = others.concat(offices);
+            tiers[6] = others.concat(offices);
             map.innerHTML = tiers.map(function (names, t) {
                 if (!names.length) { return ''; }
                 return '<div class="tier t' + t + '">' + names.map(function (name) {
@@ -509,8 +519,8 @@
         $('recent').innerHTML = d.recent.slice(0, 10).map(function (r) {
             var fresh = !state.first && !state.seen[r.id];
             return '<div class="row' + (fresh ? ' fresh' : '') + '"><div class="av' + (r.photo ? ' ph' : '') + '"' + (r.photo ? ' style="background-image:url(&quot;' + esc(r.photo) + '&quot;)"' : '') + '>' + (r.photo ? '' : esc((r.name || '?').trim().charAt(0))) + '</div>' +
-                '<div class="who"><div class="n auto">' + esc(r.name) + '</div><div class="r auto">' + esc(r.role) + '</div></div>' +
-                '<div class="meta"><span class="w num">+' + r.weight + '</span><span class="t num">' + esc(r.at) + '</span></div></div>';
+                '<div class="who" title="' + esc(r.role) + '"><div class="n auto">' + esc(r.name) + '</div>' +
+                '<div class="r"><span class="w num">+' + r.weight + '</span><span class="t num">' + esc(r.at) + '</span></div></div></div>';
         }).join('');
         d.recent.forEach(function (r) { state.seen[r.id] = true; });
     }
