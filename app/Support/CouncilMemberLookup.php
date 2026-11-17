@@ -11,9 +11,14 @@ class CouncilMemberLookup
 {
     // Digits only, spaces and separators removed: Excel sheets carry card
     // numbers like "26 052 00129" or " 2022 12020001".
+    // Real member ids are stored as numbers (fpm_users.MemberId is a bigint), so
+    // they never carry a leading zero: "01 00100235" in a sheet is member
+    // 100100235.
     public static function normalizeMemberId($value): string
     {
-        return preg_replace('/\D+/', '', (string) $value);
+        $digits = preg_replace('/\D+/', '', (string) $value);
+
+        return $digits === '' ? '' : (ltrim($digits, '0') === '' ? '0' : ltrim($digits, '0'));
     }
 
     public static function search(string $q, ?array $onlyMemberIds = null, int $limit = 10): array
