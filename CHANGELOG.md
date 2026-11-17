@@ -23,6 +23,7 @@ All notable changes to the FPM-CMS (Laravel backend) are documented in this file
 
 ### Fixed
 
+- **Likes and shares on EVENTS in the Home feed were lost on refresh (and could land on a news article).** Only news could be liked: the feed reported `like: null` for events, and the app sent an event's id to `news-like` / `news-share`, so the like was either rejected or attached to whichever news article had the same numeric id, and never came back. Events now have their own `event_likes` table (unique per user+event) and an `events.shares` counter, new endpoints `POST event-like` / `POST event-share`, and the Home feed (`get-wall-feed`) reports `likes_nb` / `like` for events. **Needs the new app release** - app builds before 4.4.22 still send event likes to the news endpoints. Any news likes that were wrongly attached to a news article by an old build cannot be told apart from real ones.
 - **`fpm_users.PersonImage` widened to MEDIUMBLOB** (it was a TEXT/BLOB capped at 65,535 bytes, which silently cut every larger member photo mid-file; 658 of 40,500 staging rows are exactly 65,535 bytes). Migration is idempotent, relaxes `sql_mode` for its own session only (some rows hold an invalid `0000-00-00` date_of_birth that strict mode refuses mid-ALTER), and keeps every byte. Photos already truncated stay truncated until the TWH sync sends them again.
 
 ### Security (continued)

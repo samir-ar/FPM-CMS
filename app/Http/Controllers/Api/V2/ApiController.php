@@ -241,6 +241,35 @@ class ApiController extends Controller
 
 
 
+    public function likeEvent(Request $request, ApiRepository $repo)
+    {
+        $user = $request->user;
+
+        $validator = Validator::make($request->all(), [
+            'event_id' => 'required|exists:events,id',
+            'like' => 'required|boolean'
+        ]);
+
+        if ($validator->fails()) {
+            return $this->api_error_response('missing_parameters', 101, implode(', ', $validator->messages()->all()));
+        }
+
+        return response()->json($repo->likeEvent($user, $request->input('event_id'), (bool) $request->input('like')));
+    }
+
+    public function shareEvent(Request $request, ApiRepository $repo)
+    {
+        $validator = Validator::make($request->all(), [
+            'event_id' => 'required|exists:events,id',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->api_error_response('missing_parameters', 101, implode(', ', $validator->messages()->all()));
+        }
+
+        return response()->json($repo->shareEvent($request->input('event_id')));
+    }
+
     public function shareNews(Request $request, ApiRepository $repo)
     {
         $user = $request->user;
@@ -624,8 +653,12 @@ class ApiController extends Controller
         $newsIdsOnPage = $pageItems->where('type', 'NEWS')->pluck('model.id');
         [$likesCounts, $likedByMe] = $apiRepository->getNewsLikesData($newsIdsOnPage, $user);
 
-        $currentPageSearchResults = $pageItems->map(function ($item) use ($apiRepository, $user, $likesCounts, $likedByMe) {
-            return $apiRepository->getGenericInstance($item['model'], $item['type'], null, $user, $likesCounts, $likedByMe);
+        // ...and the same for the events on this page (they have their own like table)
+        $eventIdsOnPage = $pageItems->where('type', 'EVENT')->pluck('model.id');
+        [$eventLikesCounts, $eventLikedByMe] = $apiRepository->getEventLikesData($eventIdsOnPage, $user);
+
+        $currentPageSearchResults = $pageItems->map(function ($item) use ($apiRepository, $user, $likesCounts, $likedByMe, $eventLikesCounts, $eventLikedByMe) {
+            return $apiRepository->getGenericInstance($item['model'], $item['type'], null, $user, $likesCounts, $likedByMe, $eventLikesCounts, $eventLikedByMe);
         })->all();
 
         //Create our paginator and pass it to the view

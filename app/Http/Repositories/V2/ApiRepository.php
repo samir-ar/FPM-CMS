@@ -722,7 +722,57 @@ class ApiRepository
         return [$likesCounts, $likedByMe];
     }
 
-    public function getGenericInstance($g, $type, $placeholder = null, $user = null, $likesCounts = null, $likedByMe = [])
+    // Same as getNewsLikesData, for events (event_likes).
+    public function getEventLikesData($eventIds, $user = null)
+    {
+        if ($eventIds->isEmpty()) {
+            return [collect(), []];
+        }
+
+        $likesCounts = DB::table('event_likes')
+            ->whereIn('event_id', $eventIds)
+            ->selectRaw('event_id, count(*) as cnt')
+            ->groupBy('event_id')
+            ->pluck('cnt', 'event_id');
+
+        $likedByMe = $user
+            ? DB::table('event_likes')->where('user_id', $user->id)->whereIn('event_id', $eventIds)->pluck('event_id')->all()
+            : [];
+
+        return [$likesCounts, $likedByMe];
+    }
+
+    // Like / unlike an event (idempotent: liking twice keeps one row).
+    public function likeEvent($user, $event_id, $status)
+    {
+        if ($status) {
+            DB::table('event_likes')->updateOrInsert(
+                ['user_id' => $user->id, 'event_id' => $event_id],
+                ['updated_at' => now(), 'created_at' => now()]
+            );
+        } else {
+            DB::table('event_likes')->where('user_id', $user->id)->where('event_id', $event_id)->delete();
+        }
+
+        return [
+            'id' => (int) $event_id,
+            'likes_nb' => DB::table('event_likes')->where('event_id', $event_id)->count(),
+            'like' => (bool) $status,
+        ];
+    }
+
+    // Repeatable counter, like shareNews (not a toggle).
+    public function shareEvent($event_id)
+    {
+        DB::table('events')->where('id', $event_id)->increment('shares');
+
+        return [
+            'id' => (int) $event_id,
+            'shares' => (int) DB::table('events')->where('id', $event_id)->value('shares'),
+        ];
+    }
+
+    public function getGenericInstance($g, $type, $placeholder = null, $user = null, $likesCounts = null, $likedByMe = [], $eventLikesCounts = null, $eventLikedByMe = [])
     {
 
         //Thumbnail
@@ -756,8 +806,8 @@ class ApiRepository
             'type' => $g->type,
             "thumbnail" => ($thumbnail) ? ($type === "NEWS" ? Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'news/videos/thumbnails/' . $thumbnail) : ($type === "EVENT" ? Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/events/' . $thumbnail) : null)) : null,
             "date" => ($g->date) ? strtotime($g->date) : null,
-            "likes_nb" => ($type === "NEWS") ? ($likesCounts[$g->id] ?? 0) : null,
-            "like" => ($type === "NEWS") ? in_array($g->id, $likedByMe) : null,
+            "likes_nb" => ($type === "NEWS") ? ($likesCounts[$g->id] ?? 0) : (($type === "EVENT") ? ($eventLikesCounts[$g->id] ?? 0) : null),
+            "like" => ($type === "NEWS") ? in_array($g->id, $likedByMe) : (($type === "EVENT") ? in_array($g->id, $eventLikedByMe) : null),
             "strict_lang" => ($g->strict_lang) ? $g->strict_lang : "ar",
             "link" => ($g->link) ? secure_url($g->link) : null,
             "shares" => $g->shares,
