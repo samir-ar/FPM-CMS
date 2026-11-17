@@ -161,4 +161,29 @@ class PublicSharePagesTest extends CouncilTestCase
         $this->assertNotContains($private, $guestSees, 'a members-only event is hidden from guests');
         $this->assertContains($private, $memberSees, 'but members still see it');
     }
+
+    public function test_the_guest_home_feed_only_shows_public_events_but_members_still_see_all()
+    {
+        $public = $this->makeEvent(true);
+        $private = $this->makeEvent(false);
+        foreach ([$public, $private] as $eventId) {
+            DB::table('groups_events')->insert(['event_id' => $eventId, 'group_group_id' => 81, 'created_at' => now(), 'updated_at' => now()]);
+        }
+        $ctrl = app(\App\Http\Controllers\Api\V2\ApiController::class);
+        $repo = app(\App\Http\Repositories\V2\ApiRepository::class);
+
+        // a guest: no logged-in user
+        $guest = json_decode($ctrl->getWallFeed(\Illuminate\Http\Request::create('/x', 'POST', ['page' => 1]), $repo)->getContent(), true);
+        $guestEvents = collect($guest['data'])->where('item_type', 'EVENT')->pluck('id')->all();
+        $this->assertContains($public, $guestEvents);
+        $this->assertNotContains($private, $guestEvents, 'a members-only event must not reach the guest Home feed');
+
+        // a member
+        $user = \App\V2\AppUser::find($this->makeAppUser('T member', '99900000091'));
+        $req = \Illuminate\Http\Request::create('/x', 'POST', ['page' => 1]);
+        $req->merge(['user' => $user]);
+        $member = json_decode($ctrl->getWallFeed($req, $repo)->getContent(), true);
+        $memberEvents = collect($member['data'])->where('item_type', 'EVENT')->pluck('id')->all();
+        $this->assertContains($private, $memberEvents, 'members still see it');
+    }
 }

@@ -678,7 +678,9 @@ class ApiController extends Controller
             }
         }
 
-        foreach ($apiRepository->getEventsUpcomingByGroup(request('groups'))->get() as $event) {
+        // A guest (no login) only gets the events ticked "Public" in the event form, same as the
+        // Events tab - before this the Home feed handed guests every event of the All Members group.
+        foreach ($apiRepository->getEventsUpcomingByGroup(request('groups'), !$user)->get() as $event) {
             $merged->push(['type' => 'EVENT', 'created_at' => $event->created_at, 'model' => $event]);
         }
 
