@@ -21,7 +21,7 @@ class PublicSharePagesTest extends CouncilTestCase
             'organized_by' => 'التيار',
             'from_date' => now()->addDays(3),
             'to_date' => now()->addDays(4),
-            'public' => $public ? 1 : 0,
+            'show_for_guest' => $public ? 1 : 0,
             'image' => $image,
             'created_at' => now(),
             'updated_at' => now(),
@@ -65,7 +65,7 @@ class PublicSharePagesTest extends CouncilTestCase
             'name' => json_encode(['en' => 'English only name']),
             'details' => json_encode(['en' => '<p>English only details</p>']),
             'from_date' => now()->addDay(), 'to_date' => now()->addDays(2),
-            'public' => 1, 'created_at' => now(), 'updated_at' => now(),
+            'show_for_guest' => 1, 'created_at' => now(), 'updated_at' => now(),
         ]);
 
         $html = $this->get('/events/' . $id)->assertOk()->getContent();
@@ -100,5 +100,65 @@ class PublicSharePagesTest extends CouncilTestCase
         $this->assertContains('/events/*', $paths);
 
         $this->get('/.well-known/assetlinks.json')->assertOk();
+    }
+
+    // ---- the tick in the event form: members only <-> public ----
+
+    private function adminPut(int $id, array $data)
+    {
+        $payload = $data + [
+            'name' => 'T name', 'name_ar' => 'اسم', 'organized_by' => 'T', 'strict_lang' => 'ar',
+            'details' => 'd', 'details_ar' => 'تفاصيل',
+            'from_date' => now()->addDay()->format('Y-m-d H:i'), 'to_date' => now()->addDays(2)->format('Y-m-d H:i'),
+            'groups' => [81],
+        ];
+
+        return $this->actingAs($this->adminUser(), 'admin')->put(route('admin.events.update', $id, false), $payload);
+    }
+
+    public function test_the_event_form_has_the_public_tick_and_it_saves_and_clears_the_flag()
+    {
+        $id = $this->makeEvent(false);
+        $admin = $this->adminUser();
+
+        $html = $this->actingAs($admin, 'admin')->get(route('admin.events.edit', $id, false))->assertOk()->getContent();
+        $this->assertStringContainsString('name="show_for_guest"', $html, 'the tick is on the form');
+        $this->assertStringNotContainsString('name="show_for_guest" class="minimal" checked', $html, 'unticked for a members-only event');
+
+        $this->adminPut($id, ['show_for_guest' => '1']);
+        $this->assertSame(1, (int) DB::table('events')->where('id', $id)->value('show_for_guest'), 'ticking makes it public');
+
+        $html = $this->actingAs($admin, 'admin')->get(route('admin.events.edit', $id, false))->getContent();
+        $this->assertStringContainsString('name="show_for_guest" class="minimal" checked', $html, 'the form shows it ticked');
+
+        $this->adminPut($id, []);
+        $this->assertSame(0, (int) DB::table('events')->where('id', $id)->value('show_for_guest'), 'unticking makes it members only again');
+    }
+
+    public function test_the_tick_is_what_makes_the_web_page_show_the_event()
+    {
+        $id = $this->makeEvent(false);
+        $this->assertStringNotContainsString('حفل الاستقلال', $this->get('/events/' . $id)->getContent());
+
+        $this->adminPut($id, ['show_for_guest' => '1', 'name' => 'T name', 'name_ar' => 'حفل الاستقلال']);
+
+        $this->assertStringContainsString('حفل الاستقلال', $this->get('/events/' . $id)->getContent());
+    }
+
+    public function test_the_tick_is_also_what_lets_a_guest_see_the_event_in_the_app()
+    {
+        $public = $this->makeEvent(true);
+        $private = $this->makeEvent(false);
+        foreach ([$public, $private] as $eventId) {
+            DB::table('groups_events')->insert(['event_id' => $eventId, 'group_group_id' => 81, 'created_at' => now(), 'updated_at' => now()]);
+        }
+
+        $repo = app(\App\Http\Repositories\V2\ApiRepository::class);
+        $guestSees = $repo->getEventsUpcomingByGroup([], true)->get()->pluck('id')->all();
+        $memberSees = $repo->getEventsUpcomingByGroup([], false)->get()->pluck('id')->all();
+
+        $this->assertContains($public, $guestSees);
+        $this->assertNotContains($private, $guestSees, 'a members-only event is hidden from guests');
+        $this->assertContains($private, $memberSees, 'but members still see it');
     }
 }

@@ -66,9 +66,10 @@ class HomeController extends Controller
     /**
      * Public (no-auth) single-event page - the web fallback for a shared event
      * link, and the App Link / Universal Link target the app intercepts when it
-     * is installed. Only an event flagged `public` shows its content here; a
-     * member-only event shows just the "download the app" page, so a shared link
-     * can never leak it to the web.
+     * is installed. Only an event ticked "Public" in the event form
+     * (`show_for_guest`, the same flag that lets guests see it in the app) shows its
+     * content here; a members-only event shows just the "download the app" page, so a
+     * shared link can never leak it to the web.
      */
     public function showEvent($id)
     {
@@ -78,7 +79,8 @@ class HomeController extends Controller
             abort(404);
         }
 
-        $isPublic = (bool) $event->public;
+        // the same tick as "visible to guests" in the app (events.show_for_guest, set in the event form)
+        $isPublic = (bool) $event->show_for_guest;
 
         // preferred language first, then the other one: many events only have an
         // English (or only an Arabic) version of the text

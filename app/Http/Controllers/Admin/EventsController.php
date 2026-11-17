@@ -121,6 +121,9 @@ class EventsController extends Controller
                     'box-header' => 'Permissions',
                     'form_fields' => [
                         $this->drawHtml('multiple-select-box', 'Groups', 'groups[]', $request->old('groups') , $groups, '', 'col-md-12 '),
+                        // one tick decides who can see the event outside the member groups: ticked = guests in the app
+                        // AND anyone opening a shared link on the web; unticked = members only
+                        $this->drawHtml('checkbox', 'Public - visible to guests too, and to anyone with the shared link (leave unticked for members only)', 'show_for_guest', $request->old('show_for_guest'), '1', '', 'col-md-12 '),
                         //$this->drawHtml('checkbox', 'All Groups', 'all_groups', $request->old('all_groups') , null, '', 'col-md-12 '),
 
                         $this->drawHtml('checkbox', 'Send Push Notification', 'push_notification', $request->old('push_notification') , null, '', 'col-md-12 '),
@@ -207,6 +210,7 @@ class EventsController extends Controller
 
         $event->lat = request('lat');
         $event->lng = request('lng');
+        $event->show_for_guest = $request->boolean('show_for_guest');
 
 
         $event->save();
@@ -310,6 +314,7 @@ class EventsController extends Controller
                     'box-header' => 'Permissions',
                     'form_fields' => [
                         $this->drawHtml('multiple-select-box', 'Groups', 'groups[]', $default_groups , $groups, '', 'col-md-12 '),
+                        $this->drawHtml('checkbox', 'Public - visible to guests too, and to anyone with the shared link (leave unticked for members only)', 'show_for_guest', (bool) $event->show_for_guest, '1', '', 'col-md-12 '),
                         //$this->drawHtml('checkbox', 'All Groups', 'all_groups', null , null, '', 'col-md-12 '),
 
                     ]
@@ -349,6 +354,7 @@ class EventsController extends Controller
 
         $event->lat = request('lat');
         $event->lng = request('lng');
+        $event->show_for_guest = $request->boolean('show_for_guest');
 
         if(request('image')){
             $oldImage = $event->image;
