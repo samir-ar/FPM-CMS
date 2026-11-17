@@ -86,7 +86,29 @@
             <div class="col-md-3"><strong>النصف + 1:</strong> {{ $majority }}</div>
             <div class="col-md-3"><strong>الثلثان:</strong> {{ $twoThirds }}</div>
         </div>
-        <p class="text-muted">الاجتماع الجديد يثبّت هذه الأرقام عند إنشائه، فإضافة عضو لاحقاً لا تغيّر نصاب اجتماع قائم.</p>
+        <p class="text-muted">أرقام اللائحة الفعلية أعلاه للاطلاع فقط. نصاب الاجتماعات يُبنى على «أساس النصاب» أدناه ويُثبَّت عند إنشاء الاجتماع، فإضافة عضو لاحقاً لا تغيّر نصاب اجتماع قائم.</p>
+
+        <h4>أساس النصاب (للاجتماعات الجديدة)</h4>
+        <form method="POST" action="{{ route('admin.council-roster.quorum-base') }}" style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; margin-bottom:25px;">
+            @csrf
+            <div>
+                <label>مجموع الأوزان</label>
+                <input type="number" name="council_quorum_total_weight" class="form-control" style="width:130px;" min="1" value="{{ $quorumBase['total_weight'] }}" placeholder="مثلاً 755">
+            </div>
+            <div>
+                <label>عدد الأعضاء</label>
+                <input type="number" name="council_quorum_member_count" class="form-control" style="width:130px;" min="1" value="{{ $quorumBase['member_count'] }}" placeholder="مثلاً 105">
+            </div>
+            <button type="submit" class="btn btn-default">حفظ</button>
+            <small class="text-muted">
+                @if($quorumBase['total_weight'])
+                    النصف + 1 = {{ \App\V2\CouncilMeeting::majorityOf($quorumBase['total_weight']) }}،
+                    الثلثان = {{ \App\V2\CouncilMeeting::twoThirdsOf($quorumBase['total_weight']) }}.
+                @else
+                    فارغ = يُستعمل مجموع اللائحة الفعلية.
+                @endif
+            </small>
+        </form>
 
         <h4>إضافة عضو</h4>
         <form id="addMemberForm" style="margin-bottom:20px;">

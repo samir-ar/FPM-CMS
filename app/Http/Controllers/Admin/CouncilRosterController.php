@@ -36,7 +36,25 @@ class CouncilRosterController extends Controller
             'totalWeight' => $total,
             'majority' => CouncilMeeting::majorityOf($total),
             'twoThirds' => CouncilMeeting::twoThirdsOf($total),
+            'quorumBase' => CouncilMeeting::quorumBase(),
         ]);
+    }
+
+    // The official quorum base every NEW meeting is frozen on (blank = use the
+    // live roster totals instead).
+    public function updateQuorumBase(Request $request)
+    {
+        $request->validate([
+            'council_quorum_total_weight' => 'nullable|integer|min:1|max:100000',
+            'council_quorum_member_count' => 'nullable|integer|min:1|max:100000',
+        ]);
+
+        $settings = \App\V2\Setting::first();
+        $settings->council_quorum_total_weight = $request->council_quorum_total_weight ?: null;
+        $settings->council_quorum_member_count = $request->council_quorum_member_count ?: null;
+        $settings->save();
+
+        return back()->with('message', 'تم حفظ أساس النصاب.');
     }
 
     public function search(Request $request)

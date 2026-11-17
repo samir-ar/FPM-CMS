@@ -35,13 +35,28 @@ class CouncilMeeting extends Model
         return (int) ceil($totalWeight * 2 / 3);
     }
 
-    // Copies the CURRENT roster totals onto this meeting (called when the
-    // meeting is created, and by the explicit "refresh quorum" action).
+    // The council's official quorum base (755 total weight / 105 members, set in
+    // settings, editable on the roster page) - or null when not configured.
+    public static function quorumBase(): array
+    {
+        $s = Setting::first();
+
+        return [
+            'total_weight' => $s && $s->council_quorum_total_weight ? (int) $s->council_quorum_total_weight : null,
+            'member_count' => $s && $s->council_quorum_member_count ? (int) $s->council_quorum_member_count : null,
+        ];
+    }
+
+    // Copies the quorum figures onto this meeting (called when the meeting is
+    // created, and by the explicit "refresh quorum" action). Uses the official
+    // quorum base when one is configured, otherwise the live roster totals.
     public function freezeFromRoster(): void
     {
         $roster = CouncilRosterMember::active();
-        $this->member_count = (clone $roster)->count();
-        $this->total_weight = (int) (clone $roster)->sum('weight');
+        $base = self::quorumBase();
+
+        $this->member_count = $base['member_count'] ?? (clone $roster)->count();
+        $this->total_weight = $base['total_weight'] ?? (int) (clone $roster)->sum('weight');
         $this->quorum_majority = self::majorityOf($this->total_weight);
         $this->quorum_two_thirds = self::twoThirdsOf($this->total_weight);
     }
