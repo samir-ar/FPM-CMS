@@ -104,6 +104,7 @@ Route::group(['namespace' => 'Api\V2', 'prefix' => 'v2/', 'middleware' => ['lang
 
         Route::post('event-checkin', 'ApiController@checkInMember');
         Route::post('checkin-events', 'ApiController@getCheckinEvents');
+        Route::post('council-meeting-checkin', 'ApiController@councilMeetingCheckIn');
 
         Route::post('get-my-community', 'CommunityController@getMyCommunityPosts');
         Route::post('create-community', 'CommunityController@createCommunityPost');

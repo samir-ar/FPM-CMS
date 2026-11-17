@@ -1164,7 +1164,82 @@ class ApiController extends Controller
             ->orderByDesc('event_date')
             ->get(['id', 'name', 'location', 'event_date']);
 
-        return response()->json(['data' => $events]);
+        // Open National Council meetings are scannable too. Older app builds
+        // only read 'data' (the events) and ignore this key.
+        $meetings = \App\V2\CouncilMeeting::where('is_active', true)
+            ->orderByDesc('id')
+            ->get(['id', 'title', 'meeting_date'])
+            ->map(fn($m) => [
+                'id' => $m->id,
+                'name' => $m->title,
+                'event_date' => optional($m->meeting_date)->format('Y-m-d'),
+            ]);
+
+        return response()->json(['data' => $events, 'council_meetings' => $meetings]);
+    }
+
+    // QR scan for a National Council meeting. Same people allowed to scan as
+    // for events (can_scan_checkin); only members on the council roster can be
+    // marked present; attendance only feeds the quorum, never voting.
+    public function councilMeetingCheckIn(Request $request)
+    {
+        $user = $request->user;
+
+        if (!$user || !$user->can_scan_checkin) {
+            return $this->api_error_response('not_authorized', 103, 'You are not authorized to scan check-ins.');
+        }
+
+        $validator = Validator::make($request->all(), [
+            'meeting_id' => 'required|integer|exists:council_meetings,id,is_active,1',
+            'member_id' => 'required|digits_between:1,20',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->api_error_response('missing_parameters', 101, implode(', ', $validator->messages()->all()));
+        }
+
+        $meeting = \App\V2\CouncilMeeting::find($request->input('meeting_id'));
+        $memberId = (string) $request->input('member_id');
+
+        $rosterMember = \App\V2\CouncilRosterMember::active()->where('member_id', $memberId)->first();
+        if (!$rosterMember) {
+            return $this->api_error_response('not_in_council', 101, 'هذا الشخص ليس من أعضاء المجلس الوطني');
+        }
+
+        $memberName = \DB::table('fpm_users')->where('MemberId', $memberId)->value('UserFullName');
+        $position = $rosterMember->role ?: null;
+
+        $already = false;
+        try {
+            \App\V2\CouncilMeetingAttendance::create([
+                'meeting_id' => $meeting->id,
+                'member_id' => $memberId,
+                'weight' => $rosterMember->weight,
+                'checked_in_at' => now(),
+                'scanned_by_app_user_id' => $user->id,
+            ]);
+        } catch (QueryException $e) {
+            if ($e->getCode() !== '23000') {
+                throw $e;
+            }
+            $already = true;
+        }
+
+        $stats = $meeting->stats();
+
+        return response()->json([
+            'already_checked_in' => $already,
+            'member_name' => $memberName,
+            'position' => $position,
+            'weight' => (int) $rosterMember->weight,
+            'message' => $already
+                ? $memberName . ' is already checked in to this meeting.'
+                : $memberName . ' checked in successfully.',
+            'present_weight' => $stats['present_weight'],
+            'total_weight' => $stats['total_weight'],
+            'majority_reached' => $stats['majority_reached'],
+            'two_thirds_reached' => $stats['two_thirds_reached'],
+        ]);
     }
 
     public function checkInMember(Request $request)
