@@ -32,7 +32,7 @@ class CouncilRosterImport implements ToCollection
             $weight = trim((string) ($row[1] ?? ''));
             if ($weight === '' || !ctype_digit($weight)) {
                 throw new InvalidVotersFileException(
-                    'يجب إدخال رقم الانتساب (Member ID) والوزن (Weight) لكل عضو. المشكلة عند الرقم: ' . $memberId
+                    'Both the member ID and the weight are required for every member. The problem is at member number: ' . $memberId
                 );
             }
 

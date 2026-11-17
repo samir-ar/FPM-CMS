@@ -60,7 +60,7 @@ class CouncilMeetingsController extends Controller
         $meeting->save();
 
         return redirect()->route('admin.council-meetings.show', $meeting->id)
-            ->with('message', 'تم إنشاء الاجتماع. النصاب مثبّت على لائحة المجلس الحالية.');
+            ->with('message', 'Meeting created. The quorum is frozen on the current council roster.');
     }
 
     public function show($id)
@@ -130,7 +130,7 @@ class CouncilMeetingsController extends Controller
         $meeting = CouncilMeeting::findOrFail($id);
 
         if (!$meeting->is_active) {
-            return $this->reply($request, 'هذا الاجتماع مغلق، لا يمكن تسجيل الحضور.', 422);
+            return $this->reply($request, 'This meeting is closed; attendance cannot be recorded.', 422);
         }
 
         $request->validate(['member_id' => 'required|digits_between:1,20']);
@@ -138,13 +138,13 @@ class CouncilMeetingsController extends Controller
 
         $rosterMember = CouncilRosterMember::active()->where('member_id', $memberId)->first();
         if (!$rosterMember) {
-            return $this->reply($request, 'هذا العضو ليس في لائحة المجلس الوطني.', 422);
+            return $this->reply($request, 'This person is not on the National Council roster.', 422);
         }
 
         $name = \DB::table('fpm_users')->where('MemberId', $memberId)->value('UserFullName') ?: $memberId;
 
         if ($meeting->attendance()->where('member_id', $memberId)->exists()) {
-            return $this->reply($request, $name . ' مسجّل حضوره مسبقاً.', 422);
+            return $this->reply($request, $name . ' is already marked present.', 422);
         }
 
         try {
@@ -157,12 +157,12 @@ class CouncilMeetingsController extends Controller
             ]);
         } catch (\Illuminate\Database\QueryException $e) {
             if ($e->getCode() === '23000') {
-                return $this->reply($request, $name . ' مسجّل حضوره مسبقاً.', 422);
+                return $this->reply($request, $name . ' is already marked present.', 422);
             }
             throw $e;
         }
 
-        return $this->reply($request, 'تم تسجيل حضور ' . $name . '.');
+        return $this->reply($request, $name . ' was marked present.');
     }
 
     public function destroyAttendance(Request $request, $id, $attendanceId)
@@ -170,7 +170,7 @@ class CouncilMeetingsController extends Controller
         $meeting = CouncilMeeting::findOrFail($id);
         $meeting->attendance()->where('id', $attendanceId)->delete();
 
-        return $this->reply($request, 'تم إلغاء تسجيل الحضور.');
+        return $this->reply($request, 'Attendance cancelled.');
     }
 
     // Re-freezes this meeting's quorum from the roster as it is NOW.
@@ -180,7 +180,7 @@ class CouncilMeetingsController extends Controller
         $meeting->freezeFromRoster();
         $meeting->save();
 
-        return back()->with('message', 'تم تحديث النصاب من لائحة المجلس الحالية.');
+        return back()->with('message', 'The quorum was updated from the current council roster.');
     }
 
     public function toggleActive($id)
@@ -189,14 +189,14 @@ class CouncilMeetingsController extends Controller
         $meeting->is_active = !$meeting->is_active;
         $meeting->save();
 
-        return back()->with('message', $meeting->is_active ? 'تم فتح الاجتماع.' : 'تم إغلاق الاجتماع.');
+        return back()->with('message', $meeting->is_active ? 'Meeting opened.' : 'Meeting closed.');
     }
 
     public function destroy($id)
     {
         CouncilMeeting::findOrFail($id)->delete();
 
-        return redirect()->route('admin.council-meetings.index')->with('message', 'تم حذف الاجتماع.');
+        return redirect()->route('admin.council-meetings.index')->with('message', 'Meeting deleted.');
     }
 
     public function exportAttendance($id)

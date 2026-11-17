@@ -58,7 +58,7 @@ class CouncilRosterController extends Controller
         $name = \DB::table('fpm_users')->where('MemberId', $memberId)->value('UserFullName');
 
         if (CouncilRosterMember::where('member_id', $memberId)->exists()) {
-            return $this->reply($request, $name . ' موجود مسبقاً في لائحة المجلس.', 422);
+            return $this->reply($request, $name . ' is already in the council roster.', 422);
         }
 
         CouncilRosterMember::create([
@@ -69,7 +69,7 @@ class CouncilRosterController extends Controller
             'district' => $request->district,
         ]);
 
-        return $this->reply($request, 'تمت إضافة ' . $name . ' الى لائحة المجلس.');
+        return $this->reply($request, 'Added ' . $name . ' to the council roster.');
     }
 
     public function update(Request $request, $id)
@@ -92,7 +92,7 @@ class CouncilRosterController extends Controller
         }
         $member->save();
 
-        return $this->reply($request, 'تم الحفظ.');
+        return $this->reply($request, 'Saved.');
     }
 
     public function destroy(Request $request, $id)
@@ -100,7 +100,7 @@ class CouncilRosterController extends Controller
         $member = CouncilRosterMember::findOrFail($id);
         $member->delete();
 
-        return $this->reply($request, 'تمت إزالة العضو من لائحة المجلس.');
+        return $this->reply($request, 'The member was removed from the council roster.');
     }
 
     public function import(Request $request)
@@ -118,7 +118,7 @@ class CouncilRosterController extends Controller
 
         return redirect()->route('admin.council-roster.index')->with(
             'message',
-            "تم الاستيراد: أُضيف {$import->added}، تم تحديث {$import->updated}، تم تجاهل {$import->skipped} سطر."
+            "Import done: {$import->added} added, {$import->updated} updated, {$import->skipped} rows skipped."
         );
     }
 

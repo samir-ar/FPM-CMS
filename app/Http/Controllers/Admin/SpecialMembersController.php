@@ -61,19 +61,19 @@ class SpecialMembersController extends Controller
         // phone is stored exactly in that form.
         $phone = preg_replace('/\D+/', '', $request->phone);
         if (strlen($phone) < 7) {
-            return back()->withErrors(['phone' => 'رقم الهاتف غير صالح.'])->withInput();
+            return back()->withErrors(['phone' => 'The phone number is not valid.'])->withInput();
         }
 
         $clash = DB::table('fpm_users')->where('MobileNumber', $phone)->first(['MemberId', 'UserFullName']);
         if ($clash) {
-            return back()->withErrors(['phone' => 'هذا الرقم مسجّل مسبقاً لـ ' . $clash->UserFullName . ' (#' . $clash->MemberId . '). استعمل رقماً آخر أو أضفه كعضو عادي.'])->withInput();
+            return back()->withErrors(['phone' => 'This number is already registered to ' . $clash->UserFullName . ' (#' . $clash->MemberId . '). Use another number, or add them as a regular member.'])->withInput();
         }
 
         $photo = null;
         if ($request->hasFile('photo')) {
             $photo = $this->resizePhoto($request->file('photo')->getRealPath());
             if ($photo === null) {
-                return back()->withErrors(['photo' => 'تعذّر معالجة الصورة.'])->withInput();
+                return back()->withErrors(['photo' => 'The photo could not be processed.'])->withInput();
             }
         }
 
@@ -103,7 +103,7 @@ class SpecialMembersController extends Controller
 
         return redirect()->route('admin.special-members.index')->with(
             'message',
-            'تمت إضافة ' . $special->full_name . ' برقم عضوية ' . $special->member_id . '.' . $photoNote
+            'Added ' . $special->full_name . ' with member number ' . $special->member_id . '.' . $photoNote
         );
     }
 
@@ -113,13 +113,13 @@ class SpecialMembersController extends Controller
         $special = SpecialMember::findOrFail($id);
 
         if (DB::table('fpm_users')->where('MemberId', $special->member_id)->exists()) {
-            return back()->with('message', 'السجل موجود أصلاً في لائحة الأعضاء.');
+            return back()->with('message', 'The record is already in the member list.');
         }
 
         $photo = DB::table('special_members')->where('id', $special->id)->value('photo');
         $note = $this->writeFpmRow($special, $photo);
 
-        return back()->with('message', 'تمت إعادة السجل الى لائحة الأعضاء.' . $note);
+        return back()->with('message', 'The record was put back into the member list.' . $note);
     }
 
     // Enable / disable login for this member (fpm_users.member_status).
@@ -129,13 +129,13 @@ class SpecialMembersController extends Controller
         $row = DB::table('fpm_users')->where('MemberId', $special->member_id)->first(['member_status']);
 
         if (!$row) {
-            return back()->with('message', 'السجل غير موجود في لائحة الأعضاء، استعمل زر الاستعادة أولاً.');
+            return back()->with('message', 'The record is not in the member list; use Restore first.');
         }
 
         $new = $row->member_status ? 0 : 1;
         DB::table('fpm_users')->where('MemberId', $special->member_id)->update(['member_status' => $new]);
 
-        return back()->with('message', $new ? 'تم تفعيل الحساب.' : 'تم تعطيل الحساب.');
+        return back()->with('message', $new ? 'Account enabled.' : 'Account disabled.');
     }
 
     // The reserved id: next number above everything already used in the range,
@@ -203,7 +203,7 @@ class SpecialMembersController extends Controller
                 throw $e;
             }
             DB::table('fpm_users')->insert($row + ['PersonImage' => '']);
-            return ' (لم يُحفظ الصورة في سجل العضو: ' . mb_substr($e->getMessage(), 0, 120) . ')';
+            return ' (the photo could not be saved on the member record: ' . mb_substr($e->getMessage(), 0, 120) . ')';
         }
     }
 
