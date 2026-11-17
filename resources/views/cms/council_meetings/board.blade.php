@@ -152,6 +152,10 @@
     .grp-bar i.full { background: linear-gradient(90deg, #19c58a, var(--green)); }
     .grp-num { font-size: 18px; color: var(--muted); min-width: 86px; text-align: right; }
     .grp-num b { color: var(--text); font-weight: 700; }
+    .grp-num { min-width: 190px; line-height: 1.25; }
+    .gn-count { font-size: 18px; }
+    .gn-count small, .gn-weight { font-size: 12px; letter-spacing: .04em; }
+    .gn-weight b { font-size: 13px; }
 
     /* ---------- seat map ---------- */
     .legend { display: flex; gap: 16px; font-size: 11px; letter-spacing: .12em; }
@@ -421,6 +425,7 @@
         d.groups.forEach(function (g) {
             var t = tierOf(g.name);
             levels[t].weight += g.weight; levels[t].weight_present += g.weight_present;
+            levels[t].members = (levels[t].members || 0) + g.members; levels[t].present = (levels[t].present || 0) + g.present;
         });
         levels = levels.filter(function (l) { return l.weight > 0; });
         $('grpCount').textContent = levels.length + ' levels';
@@ -428,7 +433,8 @@
             var p = g.weight ? Math.round(g.weight_present * 100 / g.weight) : 0;
             return '<div class="grp"><div class="grp-name auto" title="' + esc(g.name) + '">' + esc(g.name) + '</div>' +
                 '<div class="grp-bar"><i class="' + (p >= 100 ? 'full' : '') + '" style="width:' + p + '%"></i></div>' +
-                '<div class="grp-num num"><b>' + g.weight_present + '</b> / ' + g.weight + '</div></div>';
+                '<div class="grp-num num"><div class="gn-count"><b>' + g.present + '</b> / ' + g.members + ' <small>members</small></div>' +
+                '<div class="gn-weight">weight <b>' + g.weight_present + '</b> / ' + g.weight + '</div></div></div>';
         }).join('') || '<div class="empty">No members yet</div>';
     }
 
