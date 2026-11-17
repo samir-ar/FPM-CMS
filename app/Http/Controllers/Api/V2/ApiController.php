@@ -1358,6 +1358,17 @@ class ApiController extends Controller
     // as a normal image response, so it can be used as an ordinary image URL.
     public function getMemberPhoto($memberId)
     {
+        // Public (no login) because representatives' and election candidates'
+        // photos have to show in the app for everyone - so it may only serve
+        // the photo of someone who is actually a representative or a candidate.
+        // Before this any member id returned that member's real photo to anyone.
+        $isPublicFace = \DB::table('persons')->where('member_id', $memberId)->exists()
+            || \DB::table('internal_election_candidates')->where('member_id', $memberId)->exists();
+
+        if (!$isPublicFace) {
+            abort(404);
+        }
+
         $bytes = \DB::table('fpm_users')->where('MemberId', $memberId)->value('PersonImage');
 
         if (empty($bytes)) {

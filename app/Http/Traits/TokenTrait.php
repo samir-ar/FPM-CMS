@@ -10,7 +10,8 @@ trait TokenTrait
 
     public function generate_token()
     {
-        return hash('sha512', sprintf('%04X%04X%04X%04X', mt_rand(0, 65535), mt_rand(16384, 20479), mt_rand(32768, 49151), mt_rand(0, 65535)));
+        // random_bytes (CSPRNG): the old mt_rand() version drew from a predictable generator.
+        return hash('sha512', random_bytes(32));
     }
 
     public function generatePIN($digits = 4)
@@ -19,7 +20,7 @@ trait TokenTrait
         $pin = ""; //our default pin is blank.
         while($i < $digits){
             //generate a random number between 0 and 9.
-            $pin .= mt_rand(0, 9);
+            $pin .= random_int(0, 9);
             $i++;
         }
 
