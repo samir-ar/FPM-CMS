@@ -411,7 +411,12 @@
 
     function drawSeats(d) {
         var map = $('seatMap');
-        if (!map.getAttribute('data-built')) {
+        // rebuilt whenever the council itself changes (e.g. the women's representative is added to the roster mid-meeting)
+        var sig = d.members.map(function (m) { return m.id + '|' + m.sector; }).join(',');
+        var rebuilt = false;
+        if (map.getAttribute('data-built') !== sig) {
+            rebuilt = !!map.getAttribute('data-built');
+            if (rebuilt) { state.presentIds = {}; }
             var byGroup = {};
             d.members.forEach(function (m) { (byGroup[m.sector] = byGroup[m.sector] || []).push(m); });
             var order = d.groups.map(function (g) { return g.name; });
@@ -433,7 +438,7 @@
                         list.map(function (m) { return '<i class="seat" id="s' + esc(m.id) + '"></i>'; }).join('') + '</div></div>';
                 }).join('') + '</div>';
             }).join('');
-            map.setAttribute('data-built', '1');
+            map.setAttribute('data-built', sig);
         }
         d.members.forEach(function (m) {
             var el = document.getElementById('s' + m.id);
@@ -454,7 +459,7 @@
             var was = !!state.presentIds[m.id];
             if (m.present && !was) {
                 el.classList.add('on');
-                if (!state.first) { el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
+                if (!state.first && !rebuilt) { el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
             }
             if (!m.present) { el.classList.remove('on', 'pop'); }
             state.presentIds[m.id] = m.present;
