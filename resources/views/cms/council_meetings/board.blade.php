@@ -165,7 +165,8 @@
     .sgroup { flex: 0 1 auto; max-width: 100%; }
     .sgroup .sg-head { justify-content: center; }
     .sg-grid { justify-content: center; }
-    .tier.t2 .sgroup { max-width: 1100px; }
+    .tier.t3 .sgroup { max-width: 1100px; }
+    .seat.empty { border-style: dashed; opacity: .45; }
     .sg-head { display: flex; justify-content: space-between; gap: 14px; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 8px; }
     .sg-head b { color: var(--text); }
     .sg-grid { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -386,17 +387,37 @@
         $('subtitle').textContent = [d.meeting.date, fmt(s.member_count) + ' members · weight ' + fmt(s.total_weight)].filter(Boolean).join('  ·  ');
     }
 
+    // ---- the council tree: the level (row) every role belongs to ----
+    function norm(s) { return String(s || '').replace(/[أإآ]/g, 'ا').replace(/\s+/g, ' ').trim(); }
+    // offices that always get a place beside the vice presidents, even while nobody holds them
+    var VP_OFFICES = ['مكتب طلاب الجامعات والمعاهد العليا', 'مكتب طلاب المهنيات', 'مكتب تلامذة المدارس', 'مكتب شباب الاقضية'];
+    function officeIndex(name) {
+        var n = norm(name);
+        for (var i = 0; i < VP_OFFICES.length; i++) { if (norm(VP_OFFICES[i]) === n) { return i; } }
+        return -1;
+    }
+    // 0 president | 1 نائب | 2 vice presidents + those offices | 3 عضو | 4 انتشار | 5 everything else
+    function tierOf(name) {
+        if (name === 'الرئيس') { return 0; }
+        if (name === 'نائب') { return 1; }
+        if (name.indexOf('نائب') === 0 || officeIndex(name) > -1) { return 2; }
+        if (name === 'عضو') { return 3; }
+        if (name.indexOf('انتشار') === 0) { return 4; }
+        return 5;
+    }
+
     function drawGroups(d) {
-        // one bar per level of the tree: all the انتشار regions are a single bar, all the offices another
+        // one bar per level of the tree: all the انتشار regions are a single bar, all the other offices another
         var levels = [
             { name: 'الرئيس', weight: 0, weight_present: 0 },
             { name: 'نائب', weight: 0, weight_present: 0 },
+            { name: 'نائب الرئيس', weight: 0, weight_present: 0 },
             { name: 'عضو', weight: 0, weight_present: 0 },
             { name: 'انتشار', weight: 0, weight_present: 0 },
             { name: 'المكاتب وأخرى', weight: 0, weight_present: 0 }
         ];
         d.groups.forEach(function (g) {
-            var t = g.name === 'الرئيس' ? 0 : g.name === 'نائب' ? 1 : (g.name === 'عضو' || g.name.indexOf('نائب') === 0) ? 2 : g.name.indexOf('انتشار') === 0 ? 3 : 4;
+            var t = tierOf(g.name);
             levels[t].weight += g.weight; levels[t].weight_present += g.weight_present;
         });
         levels = levels.filter(function (l) { return l.weight > 0; });
@@ -420,22 +441,22 @@
             var byGroup = {};
             d.members.forEach(function (m) { (byGroup[m.sector] = byGroup[m.sector] || []).push(m); });
             var order = d.groups.map(function (g) { return g.name; });
-            // the council as a tree: president, vice presidents, members, the diaspora, then the offices
-            function tierOf(name) {
-                if (name === 'الرئيس') { return 0; }          // الرئيس
-                if (name === 'نائب') { return 1; }                          // نائب
-                if (name === 'عضو' || name.indexOf('نائب') === 0) { return 2; } // عضو + the two vice presidents (نائب الرئيس ...)
-                if (name.indexOf('انتشار') === 0) { return 3; } // انتشار...
-                return 4;
-            }
-            var tiers = [[], [], [], [], []];
+            // the council as a tree: president, نائب, vice presidents + offices, members, the diaspora, then the rest
+            var tiers = [[], [], [], [], [], []];
             order.forEach(function (name) { tiers[tierOf(name)].push(name); });
+            // third row: the vice presidents first, then the four offices in their fixed order (a placeholder when nobody holds one)
+            var vps = tiers[2].filter(function (n) { return officeIndex(n) < 0; });
+            var offices = VP_OFFICES.map(function (canon) {
+                var found = tiers[2].filter(function (n) { return norm(n) === norm(canon); })[0];
+                return found || canon;
+            });
+            tiers[2] = vps.concat(offices);
             map.innerHTML = tiers.map(function (names, t) {
                 if (!names.length) { return ''; }
                 return '<div class="tier t' + t + '">' + names.map(function (name) {
                     var list = byGroup[name] || [];
                     return '<div class="sgroup" data-g="' + esc(name) + '"><div class="sg-head"><span class="auto">' + esc(name) + '</span><span class="num"><b data-c="' + esc(name) + '">0</b> / ' + list.length + '</span></div><div class="sg-grid">' +
-                        list.map(function (m) { return '<i class="seat" id="s' + esc(m.id) + '"></i>'; }).join('') + '</div></div>';
+                        (list.length ? list.map(function (m) { return '<i class="seat" id="s' + esc(m.id) + '"></i>'; }).join('') : '<i class="seat empty"></i>') + '</div></div>';
                 }).join('') + '</div>';
             }).join('');
             map.setAttribute('data-built', sig);
