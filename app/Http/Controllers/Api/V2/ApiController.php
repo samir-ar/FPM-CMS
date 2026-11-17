@@ -1306,7 +1306,10 @@ class ApiController extends Controller
             return $this->api_error_response('not_in_council', 101, 'هذا الشخص ليس من أعضاء المجلس الوطني');
         }
 
-        $memberName = \DB::table('fpm_users')->where('MemberId', $memberId)->value('UserFullName');
+        $memberName = \App\Support\CouncilMemberLookup::displayName(
+            $memberId,
+            \DB::table('fpm_users')->where('MemberId', $memberId)->value('UserFullName')
+        );
         $position = $rosterMember->role ?: null;
 
         $already = false;

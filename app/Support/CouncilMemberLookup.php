@@ -47,6 +47,15 @@ class CouncilMemberLookup
     // The picture uploaded on the member's Representatives record (persons.image, kept in S3), as a URL.
     // It is often newer than the photo in the member list, so for the council pages it comes FIRST. Checked
     // once an hour that the file really is there, so a missing S3 file falls back to the member-list photo.
+    // The name to show for a council member: the override in config/council_member_names.php when there
+    // is one, otherwise the member-list name.
+    public static function displayName($memberId, $memberListName)
+    {
+        $overrides = (array) config('council_member_names', []);
+
+        return $overrides[(string) $memberId] ?? $memberListName;
+    }
+
     // Arabic names compared loosely: أ/إ/آ = ا, ة = ه, ى = ي, and ALL spaces ignored ("عطا الله" = "عطالله").
     private static function normName($s): string
     {
@@ -83,10 +92,10 @@ class CouncilMemberLookup
         $names = DB::table('fpm_users')->whereIn('MemberId', $ids)->pluck('UserFullName', 'MemberId');
         $out = [];
         foreach ($ids as $id) {
-            $key = isset($names[$id]) ? self::normName($names[$id]) : null;
+            $key = self::normName(self::displayName($id, $names[$id] ?? ''));
             if (isset($linked[$id])) {
                 $out[$id] = $linked[$id];
-            } elseif ($key && isset($byName[$key])) {
+            } elseif ($key !== '' && isset($byName[$key])) {
                 $out[$id] = $byName[$key];
             }
         }
@@ -179,7 +188,7 @@ class CouncilMemberLookup
         return $query->limit($limit)->get(['MemberId', 'UserFullName', 'MobileNumber'])
             ->map(fn($m) => [
                 'member_id' => (string) $m->MemberId,
-                'name' => $m->UserFullName,
+                'name' => self::displayName($m->MemberId, $m->UserFullName),
                 'phone' => $m->MobileNumber,
             ])->all();
     }
@@ -193,6 +202,9 @@ class CouncilMemberLookup
 
         return DB::table('fpm_users')->whereIn('MemberId', $memberIds)
             ->get(['MemberId', 'UserFullName', 'MobileNumber', 'district', 'town', 'LastUnitPosition'])
+            ->each(function ($m) {
+                $m->UserFullName = self::displayName($m->MemberId, $m->UserFullName);
+            })
             ->keyBy(fn($m) => (string) $m->MemberId)->all();
     }
 }

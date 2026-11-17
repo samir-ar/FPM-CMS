@@ -434,6 +434,21 @@ class CouncilSessionTest extends CouncilTestCase
         $spaced = DB::table('fpm_users')->where('MemberId', $c)->update(['UserFullName' => 'جورج نعيم عطا الله']);
         DB::table('persons')->where('image', $file)->update(['name' => json_encode(['ar' => 'جورج نعيم عطاالله'], JSON_UNESCAPED_UNICODE)]);
         $this->assertSame($file, \App\Support\CouncilMemberLookup::repImageFiles([(string) $c])[(string) $c] ?? null);
+
+        // a member written differently in the member list: the council-only display name finds the record
+        DB::table('fpm_users')->where('MemberId', $c)->update(['UserFullName' => 'اسم مختلف في قائمة الاعضاء']);
+        $this->assertNull(\App\Support\CouncilMemberLookup::repImageFiles([(string) $c])[(string) $c] ?? null);
+        config(['council_member_names' => [(string) $c => 'جورج نعيم عطاالله']]);
+        $this->assertSame($file, \App\Support\CouncilMemberLookup::repImageFiles([(string) $c])[(string) $c] ?? null, 'the display name finds the record');
+        $this->assertSame('جورج نعيم عطاالله', \App\Support\CouncilMemberLookup::detailsFor([(string) $c])[(string) $c]->UserFullName, 'and it is the name shown on the council pages');
+        $this->assertSame('اسم مختلف في قائمة الاعضاء', DB::table('fpm_users')->where('MemberId', $c)->value('UserFullName'), 'the member list itself is never edited');
+    }
+
+    public function test_martin_najm_is_shown_as_مارتين_نجم_كتيلي_on_the_council_pages()
+    {
+        $this->assertSame('مارتين نجم كتيلي', config('council_member_names')['400300136'] ?? null);
+        $this->assertSame('مارتين نجم كتيلي', \App\Support\CouncilMemberLookup::displayName('400300136', 'مارتين بدري نجم'));
+        $this->assertSame('أحد آخر', \App\Support\CouncilMemberLookup::displayName('1', 'أحد آخر'), 'everyone else keeps the member-list name');
     }
 
     public function test_logged_in_means_active_since_tracking_began_not_just_having_an_old_account()
