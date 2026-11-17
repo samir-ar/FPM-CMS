@@ -6,6 +6,6 @@ use Illuminate\Database\Eloquent\Model;
 
 class AnswerCouncilNationalPoll extends Model
 {
-    protected $fillable = ['answer','question_id'];
+    protected $fillable = ['answer','question_id','member_id'];
     protected $hidden = ['created_at','updated_at','question_id'];
 }

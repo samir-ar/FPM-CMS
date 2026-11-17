@@ -163,4 +163,49 @@ class CouncilPollAdminTest extends CouncilTestCase
         $create->assertOk();
         $this->assertStringContainsString('from_roster', $create->getContent());
     }
+
+    public function test_a_question_can_take_candidates_picked_from_the_member_list()
+    {
+        $poll = $this->pollFromRoster();
+        $admin = $this->adminUser();
+        $this->actingAs($admin, 'admin');
+        [, , , $pick] = $this->members;                       // a member who is NOT on the roster
+        $pickName = DB::table('fpm_users')->where('MemberId', $pick)->value('UserFullName');
+
+        // the page shows the picker and the corrected button label
+        $create = $this->get(route('admin.national-council-poll.questions.create', $poll->id, false))->assertOk()->getContent();
+        $this->assertStringContainsString('candSearchInput', $create);
+        $index = $this->get(route('admin.national-council-poll.questions.index', $poll->id, false))->assertOk()->getContent();
+        $this->assertStringContainsString('>Add Question<', $index);
+        $this->assertStringNotContainsString('Add National Council Poll', $index);
+
+        // the search finds any member of the member list (by id), with a photo url for the preview
+        $found = $this->getJson(route('admin.national-council-poll.candidates.search', $poll->id, false) . '?q=' . $pick)->assertOk()->json();
+        $this->assertContains((string) $pick, array_column($found, 'member_id'));
+        $this->assertStringContainsString('/candidates/photo/' . $pick, $found[0]['photo']);
+        $this->getJson(route('admin.national-council-poll.candidates.search', $poll->id, false) . '?q=a')->assertOk()->assertExactJson([]);   // too short
+
+        // saving: the picked member keeps his member id, a hand-typed option keeps none
+        $this->post(route('admin.national-council-poll.questions.store', $poll->id, false), [
+            'question' => 'من تختارون؟',
+            'options' => [
+                ['name_ar' => $pickName, 'member_id' => (string) $pick],
+                ['name_ar' => 'خيار مكتوب بخط اليد'],
+            ],
+        ])->assertRedirect();
+        $answers = DB::table('answer_council_national_polls')->orderBy('id')->get();
+        $this->assertSame((string) $pick, $answers[0]->member_id);
+        $this->assertNull($answers[1]->member_id);
+
+        // editing the question keeps who the candidate is
+        $question = DB::table('council_national_poll_questions')->where('poll_id', $poll->id)->first();
+        $this->put(route('admin.national-council-poll.questions.update', [$poll->id, $question->id], false), [
+            'question' => 'من تختارون؟ (معدل)',
+            'options' => [
+                ['id' => $answers[0]->id, 'name_ar' => $pickName . ' (معدل)'],
+                ['id' => $answers[1]->id, 'name_ar' => 'خيار مكتوب بخط اليد'],
+            ],
+        ])->assertRedirect();
+        $this->assertSame((string) $pick, DB::table('answer_council_national_polls')->where('id', $answers[0]->id)->value('member_id'));
+    }
 }

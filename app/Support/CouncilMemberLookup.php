@@ -142,9 +142,10 @@ class CouncilMemberLookup
     // The photo of a COUNCIL member as an image response (404 when he is not on the roster or has no
     // photo). For the admin pages only. Order: the Representatives upload (usually the newer one), then
     // fpm_users.PersonImage, which normally holds raw JPEG/PNG bytes, sometimes base64 text.
-    public static function photoResponse($memberId)
+    public static function photoResponse($memberId, bool $councilOnly = true)
     {
-        abort_unless(\App\V2\CouncilRosterMember::where('member_id', (string) $memberId)->exists(), 404);
+        // the council pages serve council members only; the poll candidate picker may preview any member
+        abort_unless(!$councilOnly || \App\V2\CouncilRosterMember::where('member_id', (string) $memberId)->exists(), 404);
 
         if ($url = self::repImageUrl($memberId)) {
             return redirect()->away($url)->header('Cache-Control', 'private, max-age=600');
