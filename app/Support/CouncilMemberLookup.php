@@ -47,10 +47,56 @@ class CouncilMemberLookup
     // The picture uploaded on the member's Representatives record (persons.image, kept in S3), as a URL.
     // It is often newer than the photo in the member list, so for the council pages it comes FIRST. Checked
     // once an hour that the file really is there, so a missing S3 file falls back to the member-list photo.
+    // Arabic names compared loosely: أ/إ/آ = ا, ة = ه, ى = ي, extra spaces ignored.
+    private static function normName($s): string
+    {
+        $s = preg_replace('/[أإآ]/u', 'ا', (string) $s);
+
+        return trim(preg_replace('/\s+/u', ' ', str_replace(['ة', 'ى'], ['ه', 'ي'], $s)));
+    }
+
+    // member id => the image file of his Representatives record. A record linked by member_id wins; most
+    // Representatives records are NOT linked (no member_id), so those are matched by exact full name
+    // (Arabic or English, loosely normalised). Records stay untouched, nothing is linked behind your back.
+    public static function repImageFiles(array $memberIds): array
+    {
+        $ids = array_map('strval', $memberIds);
+        if (!$ids) {
+            return [];
+        }
+
+        $persons = DB::table('persons')->whereNotNull('image')->where('image', '!=', '')->orderBy('id')->get(['name', 'member_id', 'image']);
+        $linked = [];
+        $byName = [];
+        foreach ($persons as $p) {
+            if (!empty($p->member_id)) {
+                $linked[(string) $p->member_id] = $p->image;   // newest record wins (ordered by id)
+            }
+            $n = json_decode($p->name, true);
+            foreach (is_array($n) ? [$n['ar'] ?? null, $n['en'] ?? null] : [$p->name] as $s) {
+                if ($s) {
+                    $byName[self::normName($s)] = $p->image;
+                }
+            }
+        }
+
+        $names = DB::table('fpm_users')->whereIn('MemberId', $ids)->pluck('UserFullName', 'MemberId');
+        $out = [];
+        foreach ($ids as $id) {
+            $key = isset($names[$id]) ? self::normName($names[$id]) : null;
+            if (isset($linked[$id])) {
+                $out[$id] = $linked[$id];
+            } elseif ($key && isset($byName[$key])) {
+                $out[$id] = $byName[$key];
+            }
+        }
+
+        return $out;
+    }
+
     public static function repImageUrl($memberId): ?string
     {
-        $image = DB::table('persons')->where('member_id', (string) $memberId)
-            ->whereNotNull('image')->where('image', '!=', '')->orderByDesc('id')->value('image');
+        $image = self::repImageFiles([(string) $memberId])[(string) $memberId] ?? null;
         if (!$image) {
             return null;
         }
@@ -78,8 +124,7 @@ class CouncilMemberLookup
 
         $fromMembers = DB::table('fpm_users')->whereIn('MemberId', $memberIds)
             ->whereRaw('LENGTH(PersonImage) > 100')->pluck('MemberId');
-        $fromReps = DB::table('persons')->whereIn('member_id', $memberIds)
-            ->whereNotNull('image')->where('image', '!=', '')->pluck('member_id');
+        $fromReps = array_keys(self::repImageFiles($memberIds));
 
         return $fromMembers->merge($fromReps)->map(fn($i) => (string) $i)->unique()->values()->all();
     }

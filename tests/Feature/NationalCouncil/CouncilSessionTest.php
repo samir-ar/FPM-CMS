@@ -414,6 +414,23 @@ class CouncilSessionTest extends CouncilTestCase
         $this->assertContains((string) $a, \App\Support\CouncilMemberLookup::idsWithPhoto([(string) $a]));
     }
 
+    public function test_an_unlinked_representatives_record_is_matched_to_the_member_by_exact_name()
+    {
+        [, , $c] = $this->rosterOf3();
+        $fullName = DB::table('fpm_users')->where('MemberId', $c)->value('UserFullName');
+        $file = 'test-rep-byname-' . uniqid() . '.jpg';
+        $cat = DB::table('dynamic_representatives')->insertGetId(['title' => '{}', 'text' => '{}', 'order' => 999, 'created_at' => now(), 'updated_at' => now()]);
+        // no member_id on the record, the name is stored as {"ar":..,"en":..} with an alef variant
+        DB::table('persons')->insert(['name' => json_encode(['ar' => str_replace('ا', 'أ', $fullName), 'en' => $fullName], JSON_UNESCAPED_UNICODE),
+            'member_id' => null, 'image' => $file, 'dynamic_representative_id' => $cat, 'order' => 0, 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('persons')->insert(['name' => json_encode(['ar' => 'اسم مختلف تماما'], JSON_UNESCAPED_UNICODE),
+            'member_id' => null, 'image' => 'someone-else.jpg', 'dynamic_representative_id' => $cat, 'order' => 0, 'created_at' => now(), 'updated_at' => now()]);
+
+        $files = \App\Support\CouncilMemberLookup::repImageFiles([(string) $c]);
+        $this->assertSame($file, $files[(string) $c] ?? null, 'matched by name even though the alef is written differently');
+        $this->assertNotSame('someone-else.jpg', $files[(string) $c] ?? null);
+    }
+
     public function test_logged_in_means_active_since_tracking_began_not_just_having_an_old_account()
     {
         [$a, $b, $c] = $this->rosterOf3();
