@@ -423,7 +423,7 @@
             { name: 'الرئيس', weight: 0, weight_present: 0 },
             { name: 'نائب', weight: 0, weight_present: 0 },
             { name: 'نائب الرئيس', weight: 0, weight_present: 0 },
-            { name: 'عضو', weight: 0, weight_present: 0 },
+            { name: 'مجلس قضاء', weight: 0, weight_present: 0 },   // the عضو role is shown as "مجلس قضاء"
             { name: 'انتشار', weight: 0, weight_present: 0 },
             { name: 'المكاتب وأخرى', weight: 0, weight_present: 0 }
         ];
@@ -468,7 +468,7 @@
                 if (!names.length) { return ''; }
                 return '<div class="tier t' + t + '">' + names.map(function (name) {
                     var list = byGroup[name] || [];
-                    return '<div class="sgroup" data-g="' + esc(name) + '"><div class="sg-head"><span class="auto">' + esc(name) + '</span><span class="num"><b data-c="' + esc(name) + '">0</b> / ' + list.length + '</span></div><div class="sg-grid">' +
+                    return '<div class="sgroup" data-g="' + esc(name) + '"><div class="sg-head"><span class="auto">' + esc(name === 'عضو' ? 'مجلس قضاء' : name) + '</span><span class="num"><b data-c="' + esc(name) + '">0</b> / ' + list.length + '</span></div><div class="sg-grid">' +
                         (list.length ? list.map(function (m) { return '<i class="seat" id="s' + esc(m.id) + '"></i>'; }).join('') : '<i class="seat empty"></i>') + '</div></div>';
                 }).join('') + '</div>';
             }).join('');
