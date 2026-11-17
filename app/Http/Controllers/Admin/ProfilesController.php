@@ -23,6 +23,23 @@ class ProfilesController extends Controller
         ],
     ];
 
+    // PAGE_ACTIONS plus pages whose id has to be looked up by url (a literal
+    // id is only safe where it is known to match on every environment).
+    private function pageActions(): array
+    {
+        $actions = self::PAGE_ACTIONS;
+
+        $councilPageId = \DB::table('pages')->where('url', 'admin.council-meetings.index')->value('id');
+        if ($councilPageId) {
+            $actions[$councilPageId] = [ // Council Meetings
+                'attendance.store'  => 'Can record council attendance (manual add)',
+                'attendance.export' => 'Can export council attendance to Excel',
+            ];
+        }
+
+        return $actions;
+    }
+
     public function index()
     {
         return view('components.table')->with([
@@ -127,7 +144,7 @@ class ProfilesController extends Controller
             // Only meaningful when the level is View (Full already implies
             // every action, None means no access at all) — hidden by JS
             // below unless View is the currently-selected value.
-            if ($pageActions = self::PAGE_ACTIONS[$page->id] ?? null) {
+            if ($pageActions = $this->pageActions()[$page->id] ?? null) {
                 $checkboxes = '';
                 foreach ($pageActions as $actionKey => $label) {
                     $granted = in_array($actionKey, $currentExtraActions[$page->id] ?? [], true);

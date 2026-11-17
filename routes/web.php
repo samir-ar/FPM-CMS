@@ -235,6 +235,36 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     // a View-only admin doesn't get them by default, but doesn't need Full either.
     Route::get('checkin-events/{id}/attendance/export', 'CheckinEventsController@exportAttendance')->name('checkin-events.attendance.export')->middleware('page-perm:77,action:attendance.export');
     Route::post('checkin-events/{id}/attendance', 'CheckinEventsController@storeAttendance')->name('checkin-events.attendance.store')->middleware('page-perm:77,action:attendance.store');
+    // National Council session: roster, meetings + attendance, special members.
+    // Page ids are resolved by url (pagePermByUrl) because ids drift per env.
+    Route::get('council-roster', 'CouncilRosterController@index')->name('council-roster.index')->middleware(pagePermByUrl('admin.council-meetings.index', 'view'));
+    Route::get('council-roster/search', 'CouncilRosterController@search')->name('council-roster.search')->middleware(pagePermByUrl('admin.council-meetings.index', 'full'));
+    Route::get('council-roster/export', 'CouncilRosterController@export')->name('council-roster.export')->middleware(pagePermByUrl('admin.council-meetings.index', 'view'));
+    Route::get('council-roster/template', 'CouncilRosterController@template')->name('council-roster.template')->middleware(pagePermByUrl('admin.council-meetings.index', 'view'));
+    Route::post('council-roster/import', 'CouncilRosterController@import')->name('council-roster.import')->middleware(pagePermByUrl('admin.council-meetings.index', 'full'));
+    Route::post('council-roster', 'CouncilRosterController@store')->name('council-roster.store')->middleware(pagePermByUrl('admin.council-meetings.index', 'full'));
+    Route::put('council-roster/{id}', 'CouncilRosterController@update')->name('council-roster.update')->middleware(pagePermByUrl('admin.council-meetings.index', 'full'));
+    Route::delete('council-roster/{id}', 'CouncilRosterController@destroy')->name('council-roster.destroy')->middleware(pagePermByUrl('admin.council-meetings.index', 'full'));
+
+    Route::get('council-meetings', 'CouncilMeetingsController@index')->name('council-meetings.index')->middleware(pagePermByUrl('admin.council-meetings.index', 'view'));
+    Route::get('council-meetings/create', 'CouncilMeetingsController@create')->name('council-meetings.create')->middleware(pagePermByUrl('admin.council-meetings.index', 'full'));
+    Route::post('council-meetings', 'CouncilMeetingsController@store')->name('council-meetings.store')->middleware(pagePermByUrl('admin.council-meetings.index', 'full'));
+    Route::get('council-meetings/{id}', 'CouncilMeetingsController@show')->name('council-meetings.show')->middleware(pagePermByUrl('admin.council-meetings.index', 'view'));
+    Route::get('council-meetings/{id}/stats', 'CouncilMeetingsController@stats')->name('council-meetings.stats')->middleware(pagePermByUrl('admin.council-meetings.index', 'view'));
+    Route::get('council-meetings/{id}/search', 'CouncilMeetingsController@searchMembers')->name('council-meetings.search')->middleware(pagePermByUrl('admin.council-meetings.index', 'action:attendance.store'));
+    Route::post('council-meetings/{id}/attendance', 'CouncilMeetingsController@storeAttendance')->name('council-meetings.attendance.store')->middleware(pagePermByUrl('admin.council-meetings.index', 'action:attendance.store'));
+    Route::delete('council-meetings/{id}/attendance/{attendanceId}', 'CouncilMeetingsController@destroyAttendance')->name('council-meetings.attendance.destroy')->middleware(pagePermByUrl('admin.council-meetings.index', 'full'));
+    Route::get('council-meetings/{id}/attendance/export', 'CouncilMeetingsController@exportAttendance')->name('council-meetings.attendance.export')->middleware(pagePermByUrl('admin.council-meetings.index', 'action:attendance.export'));
+    Route::get('council-meetings/{id}/readiness/export', 'CouncilMeetingsController@exportReadiness')->name('council-meetings.readiness.export')->middleware(pagePermByUrl('admin.council-meetings.index', 'view'));
+    Route::get('council-meetings/{id}/refresh-quorum', 'CouncilMeetingsController@refreshQuorum')->name('council-meetings.refresh-quorum')->middleware(pagePermByUrl('admin.council-meetings.index', 'full'));
+    Route::get('council-meetings/{id}/toggle-active', 'CouncilMeetingsController@toggleActive')->name('council-meetings.toggle-active')->middleware(pagePermByUrl('admin.council-meetings.index', 'full'));
+    Route::delete('council-meetings/{id}', 'CouncilMeetingsController@destroy')->name('council-meetings.destroy')->middleware(pagePermByUrl('admin.council-meetings.index', 'full'));
+
+    Route::get('special-members', 'SpecialMembersController@index')->name('special-members.index')->middleware(pagePermByUrl('admin.special-members.index', 'full'));
+    Route::post('special-members', 'SpecialMembersController@store')->name('special-members.store')->middleware(pagePermByUrl('admin.special-members.index', 'full'));
+    Route::get('special-members/{id}/restore', 'SpecialMembersController@restore')->name('special-members.restore')->middleware(pagePermByUrl('admin.special-members.index', 'full'));
+    Route::get('special-members/{id}/toggle-status', 'SpecialMembersController@toggleStatus')->name('special-members.toggle-status')->middleware(pagePermByUrl('admin.special-members.index', 'full'));
+
     // page 72
     Route::get('competency-static', 'CompetencyStaticController@index')->name('competency-static.index')->middleware('page-perm:72,view');
     Route::post('competency-static', 'CompetencyStaticController@update')->name('competency-static.update')->middleware('page-perm:72,full');

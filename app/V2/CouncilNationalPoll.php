@@ -24,6 +24,10 @@ class CouncilNationalPoll extends Model
         return $this->belongsToMany(AppUser::class,'council_national_poll_votes','user_id','poll_id');
     }
 
+    public function meeting(){
+        return $this->belongsTo(CouncilMeeting::class,'meeting_id');
+    }
+
     public function groups(){
         return $this->belongsToMany(Group::class,'council_national_poll_groups');
     }
