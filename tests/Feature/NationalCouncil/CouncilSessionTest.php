@@ -384,6 +384,28 @@ class CouncilSessionTest extends CouncilTestCase
         $this->assertStringContainsString('/photo/' . $a, $show);
     }
 
+    public function test_logged_in_means_active_since_tracking_began_not_just_having_an_old_account()
+    {
+        [$a, $b, $c] = $this->rosterOf3();
+        // $a: old account, never active.  $b: old account + recorded activity.  $c: no account at all.
+        $this->makeAppUser('T old account', $a, ['created_at' => '2021-03-01 10:00:00']);
+        $userB = $this->makeAppUser('T active', $b, ['created_at' => '2021-03-01 10:00:00']);
+        DB::table('user_activity_logs')->insertOrIgnore(['app_user_id' => $userB, 'activity_date' => '2026-11-10', 'created_at' => now()]);
+
+        $res = \App\Support\CouncilMemberLookup::activitySince([$a, $b, $c]);
+        $this->assertArrayHasKey((string) $b, $res['last_seen']);
+        $this->assertArrayNotHasKey((string) $a, $res['last_seen'], 'an old account alone is not "logged in"');
+        $this->assertArrayNotHasKey((string) $c, $res['last_seen']);
+        $this->assertNotNull($res['since']);
+
+        $m = $this->newMeeting('T readiness');
+        $html = $this->actingAs($this->adminUser(), 'admin')->get(route('admin.council-meetings.show', $m->id, false))->assertOk()->getContent();
+        $this->assertMatchesRegularExpression('#<strong>1</strong> of <strong>3</strong> members have logged in#', $html);
+        $page = $this->get(route('admin.council-roster.index', [], false))->assertOk()->getContent();
+        $this->assertStringContainsString('last seen 10 Nov 2026', $page);
+        $this->assertStringContainsString('old account only', $page);
+    }
+
     public function test_the_live_board_is_not_open_to_the_public()
     {
         $this->rosterOf3();

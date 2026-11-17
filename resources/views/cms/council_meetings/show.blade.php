@@ -191,7 +191,7 @@
 
         <h4 style="margin-top:30px;">App login readiness</h4>
         <p>
-            <strong>{{ $loggedInCount }}</strong> of <strong>{{ $rosterCountNow }}</strong> members have logged in to the app.
+            <strong>{{ $loggedInCount }}</strong> of <strong>{{ $rosterCountNow }}</strong> members have logged in to the app {{ $trackingSince ? 'since tracking began (' . \Carbon\Carbon::parse($trackingSince)->format('j M Y') . ')' : '' }}.
             @if($notLoggedIn->count())
                 <span class="text-danger">{{ $notLoggedIn->count() }} have not logged in yet:</span>
                 <a href="{{ route('admin.council-meetings.readiness.export', $meeting->id) }}" class="btn btn-xs btn-default">Export the list</a>

@@ -21,6 +21,29 @@ class CouncilMemberLookup
         return $digits === '' ? '' : (ltrim($digits, '0') === '' ? '0' : ltrim($digits, '0'));
     }
 
+    // Who has REALLY used the app. An old app_users row (many date from 2020-2024) only proves an account
+    // exists, so "logged in" means: recorded active (user_activity_logs, one row per user per day) since
+    // activity tracking began. Returns the date tracking started and, per member id, the last day seen.
+    public static function activitySince(array $memberIds): array
+    {
+        $since = DB::table('user_activity_logs')->min('activity_date');
+        $last = [];
+
+        if ($memberIds) {
+            $rows = DB::table('user_activity_logs as l')
+                ->join('app_users as u', 'u.id', '=', 'l.app_user_id')
+                ->whereIn('u.member_id', $memberIds)
+                ->groupBy('u.member_id')
+                ->selectRaw('u.member_id as member_id, MAX(l.activity_date) as last_seen')
+                ->get();
+            foreach ($rows as $r) {
+                $last[(string) $r->member_id] = $r->last_seen;
+            }
+        }
+
+        return ['since' => $since, 'last_seen' => $last];
+    }
+
     // The photo of a COUNCIL member as an image response (404 when he is not on the roster or has no
     // photo). For the admin pages only. fpm_users.PersonImage normally holds raw JPEG/PNG bytes, sometimes
     // base64 text.

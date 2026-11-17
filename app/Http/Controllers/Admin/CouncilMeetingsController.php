@@ -74,9 +74,9 @@ class CouncilMeetingsController extends Controller
 
         $absent = $roster->filter(fn($m) => !isset($presentIds[$m->member_id]))->values();
 
-        $loggedIn = AppUser::whereIn('member_id', $roster->pluck('member_id'))
-            ->pluck('member_id')->unique()->flip();
-        $notLoggedIn = $roster->filter(fn($m) => !isset($loggedIn[$m->member_id]))->values();
+        // "logged in" = active in the app since tracking began (an old account alone does not count)
+        $activity = CouncilMemberLookup::activitySince($roster->pluck('member_id')->map(fn($i) => (string) $i)->all());
+        $notLoggedIn = $roster->filter(fn($m) => !isset($activity['last_seen'][(string) $m->member_id]))->values();
 
         $admin = auth('admin')->user();
 
@@ -90,6 +90,7 @@ class CouncilMeetingsController extends Controller
             'absent' => $absent,
             'notLoggedIn' => $notLoggedIn,
             'loggedInCount' => $roster->count() - $notLoggedIn->count(),
+            'trackingSince' => $activity['since'],
             'rosterTotalNow' => (int) $roster->sum('weight'),
             'rosterCountNow' => $roster->count(),
             'canAdd' => $this->canAction('attendance.store'),
@@ -336,8 +337,8 @@ class CouncilMeetingsController extends Controller
     {
         CouncilMeeting::findOrFail($id);
         $roster = CouncilRosterMember::active()->orderBy('id')->get();
-        $loggedIn = AppUser::whereIn('member_id', $roster->pluck('member_id'))->pluck('member_id')->unique()->flip();
-        $missing = $roster->filter(fn($m) => !isset($loggedIn[$m->member_id]))->values();
+        $loggedIn = CouncilMemberLookup::activitySince($roster->pluck('member_id')->map(fn($i) => (string) $i)->all())['last_seen'];
+        $missing = $roster->filter(fn($m) => !isset($loggedIn[(string) $m->member_id]))->values();
         $details = CouncilMemberLookup::detailsFor($missing->pluck('member_id')->all());
 
         $rows = $missing->map(fn($m) => [

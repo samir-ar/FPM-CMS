@@ -21,8 +21,10 @@ class CouncilRosterController extends Controller
     {
         $members = CouncilRosterMember::orderBy('id')->get();
         $details = CouncilMemberLookup::detailsFor($members->pluck('member_id')->all());
-        $loggedIn = AppUser::whereIn('member_id', $members->pluck('member_id'))
-            ->pluck('member_id')->unique()->flip();
+        // "logged in" = active in the app since tracking began (an old account alone does not count)
+        $activity = CouncilMemberLookup::activitySince($members->pluck('member_id')->map(fn($i) => (string) $i)->all());
+        $loggedIn = $activity['last_seen'];
+        $accounts = AppUser::whereIn('member_id', $members->pluck('member_id'))->pluck('member_id')->unique()->flip();
 
         $active = $members->where('is_active', true);
         $total = (int) $active->sum('weight');
@@ -32,6 +34,8 @@ class CouncilRosterController extends Controller
             'members' => $members,
             'details' => $details,
             'loggedIn' => $loggedIn,
+            'hasAccount' => $accounts,
+            'trackingSince' => $activity['since'],
             'memberCount' => $active->count(),
             'totalWeight' => $total,
             'majority' => CouncilMeeting::majorityOf($total),

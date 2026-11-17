@@ -186,6 +186,11 @@
             <div id="filterSummary" class="text-muted" style="padding-bottom:7px;"></div>
         </div>
 
+        <p class="text-muted" style="margin:0 0 8px;">
+            <strong>Logged in</strong> means the member was active in the app
+            @if($trackingSince) since activity tracking began ({{ \Carbon\Carbon::parse($trackingSince)->format('j M Y') }}) @else (no activity recorded yet) @endif.
+            An old account that has not been used since then shows as "not logged in yet".
+        </p>
         <table class="table table-bordered table-striped" id="rosterTable">
             <thead>
                 <tr>
@@ -220,7 +225,15 @@
                     <td><input type="text" dir="auto" class="form-control f-district" value="{{ $m->district }}"></td>
                     <td><input type="number" class="form-control f-weight" style="width:80px;" min="0" value="{{ $m->weight }}"></td>
                     <td><input type="checkbox" class="f-active" @if($m->is_active) checked @endif></td>
-                    <td>@if(isset($loggedIn[$m->member_id])) <span class="text-success">✔ logged in</span> @else <span class="text-danger">✖ not logged in yet</span> @endif</td>
+                    <td>
+                        @if(isset($loggedIn[(string) $m->member_id]))
+                            <span class="text-success">✔ logged in</span>
+                            <div class="text-muted" style="font-size:11px;">last seen {{ \Carbon\Carbon::parse($loggedIn[(string) $m->member_id])->format('j M Y') }}</div>
+                        @else
+                            <span class="text-danger">✖ not logged in yet</span>
+                            @if(isset($hasAccount[$m->member_id]))<div class="text-muted" style="font-size:11px;">old account only</div>@endif
+                        @endif
+                    </td>
                     <td style="white-space:nowrap;">
                         <button type="button" class="btn btn-xs btn-primary save-row">Save</button>
                         <button type="button" class="btn btn-xs btn-danger remove-row">Remove</button>
