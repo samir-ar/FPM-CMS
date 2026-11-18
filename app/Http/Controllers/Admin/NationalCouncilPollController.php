@@ -67,7 +67,7 @@ class NationalCouncilPollController extends Controller
                 ->addColumn('action', function($row){
                     return "<a class='edit-link' href='" . route('admin.national-council-poll.edit', $row->id) . "'>".
                         '<i class="fa fa-edit" aria-hidden="true"></i></a>'.
-                        "<a title='Who voted' style='margin-left:10px;' href='" . route('admin.national-council-poll.progress', $row->id) . "'><i class='fa fa-users' aria-hidden='true'></i></a>".
+                        "<a title='Who voted' style='margin:0 12px;' href='" . route('admin.national-council-poll.progress', $row->id) . "'><i class='fa fa-users' aria-hidden='true'></i></a>".
                         "<a data-toggle='modal' class='delete-link' href='#deleteModal' id='" .route('admin.national-council-poll.destroy', $row->id) . "'>".
                         "<i class='fa fa-trash' style='color: red;' aria-hidden='true'></i>".
                         ($row->is_published ? '' : "<a title='X DELETE ALL DATA X' data-toggle='modal' style='margin-left:10px;' class='delete-link' href='".route('admin.national-council-poll.clear', $row->id) . "'><i class='fa fa-window-close-o' style='color: red;' aria-hidden='true'></i></a>");
