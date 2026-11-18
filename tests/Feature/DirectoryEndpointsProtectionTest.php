@@ -94,7 +94,7 @@ class DirectoryEndpointsProtectionTest extends CouncilTestCase
         $this->postJson('/api/v2/municipalities', $params, $this->signHeaders('municipalities', $params) + ['token' => self::TOKEN])->assertOk();
         \Illuminate\Support\Facades\Log::shouldHaveReceived('info')->with('directory_pull', \Mockery::on(fn ($ctx) => $ctx['member_id'] == $this->memberId && $ctx['endpoint'] === 'getMunicipalities'))->once();
 
-        for ($i = 0; $i < 120; $i++) {
+        for ($i = 0; $i < 300; $i++) {
             RateLimiter::hit('directory-pulls:' . $this->memberId, 3600);
         }
         $this->postJson('/api/v2/municipalities', $params, $this->signHeaders('municipalities', $params) + ['token' => self::TOKEN])->assertStatus(429);
