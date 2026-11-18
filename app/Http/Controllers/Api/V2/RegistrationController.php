@@ -96,6 +96,14 @@ class RegistrationController extends Controller
             return $this->api_error_response('invalid_parameters', 101, 'الحساب مغلق. يرجى التواصل مع أمانة سر التيار الوطني الحر.');
         }
 
+        // Too many code requests for one member in a short time (SMS cost, and a stranger repeatedly asking for codes).
+        $sendKey = 'otp-send:' . ltrim((string) $request->input('member_id'), '0');
+        if (\Illuminate\Support\Facades\RateLimiter::tooManyAttempts($sendKey, 5)) {
+            return $this->api_error_response('too_many_requests', 101, 'تم تجاوز عدد المحاولات، يرجى المحاولة لاحقاً', 429);
+        }
+        \Illuminate\Support\Facades\RateLimiter::hit($sendKey, 900);
+
+        // $token is only the PENDING login token: it replaces the member's real one after the code is entered.
         $request->request->add(['image' => $fpmResponse->PersonImage, 'name' => $fpmResponse->UserFullName, 'token' => $token, 'email'=> $fpmResponse->Email]);
 
 
@@ -103,7 +111,8 @@ class RegistrationController extends Controller
         //add user
         if(!$user = $userRepo->getUserByPhoneNumber(request('phone_number'), request('member_id'))){
 
-            $user = $userRepo->addUser($request->all());
+            // a brand-new account gets an unusable placeholder token (and stays unverified) until the code is entered
+            $user = $userRepo->addUser(array_merge($request->all(), ['token' => strtoupper(bin2hex(random_bytes(16)))]));
         }
 
         else{
@@ -130,7 +139,6 @@ class RegistrationController extends Controller
             // ltrim(...,'+') matches UserRepository::normalizePhone()'s own
             // storage convention (used by addUser() for a brand new row).
             $user->phone_number = ltrim($data['phone_number'], '+');
-            $user->token = $data['token'];
             $user->image = base64_encode($data['image']);
             $user->name = $data['name'];
             $user->email = $data['email'];
@@ -149,16 +157,14 @@ class RegistrationController extends Controller
         }
 
 
-        $pin = $regRepo->sendVerificationPin($user);
+        // the code goes out by SMS only: it is NOT part of the reply (anyone who knew a member id + phone number
+        // could otherwise read it here and log in without the phone)
+        $user->pending_token = $token;
+        $user->save();
+        $regRepo->sendVerificationPin($user);
 
-
-
-        //$pin = '9999';
-
-        //send verification
         $data = [
-            'token' => $user->token,
-            'pin'   => $pin,
+            'token' => $token,
         ];
 
 
@@ -170,8 +176,8 @@ class RegistrationController extends Controller
     {
         //for now send phone_number
         $validator = Validator::make($request->all(), [
-            'token' => 'required|exists:app_users,token',
-            'pin' => 'required|exists:app_users,verification_nb',
+            'token' => 'required',
+            'pin' => 'required',
         ]);
 
         if ($validator->fails())
@@ -179,10 +185,12 @@ class RegistrationController extends Controller
             return $this->api_error_response('missing_parameters', 101,implode(', ', $validator->messages()->all()));
         }
 
-        if(!$user=$verificationRepo->checkVerificationCode($request->all()))
+        $result = $verificationRepo->completeVerification($request->all(), $request->ip());
+        if (isset($result['error']))
         {
-            return $this->api_error_response('invalid_parameters', 101, 'Invalid Pin Code');
+            return $this->api_error_response('invalid_parameters', 101, $result['error'], $result['status']);
         }
+        $user = $result['user'];
 
         $this->recordUserActivity($user['id']);
 

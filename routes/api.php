@@ -197,8 +197,8 @@ Route::group(['namespace' => 'Api\V2', 'prefix' => 'v2/', 'middleware' => ['lang
 
 Route::group(['namespace' => 'Api', 'prefix' => '', 'middleware' => ['lang']], function(){
 
-    Route::post('send-verification', 'RegistrationController@sendVerfication');
-    Route::post('verify-pin', 'RegistrationController@verify_pin');
+    Route::post('send-verification', 'V2\RegistrationController@sendVerfication');
+    Route::post('verify-pin', 'V2\RegistrationController@verify_pin');
     Route::post('country-codes', 'ApiController@getCountryCodes');
 
 

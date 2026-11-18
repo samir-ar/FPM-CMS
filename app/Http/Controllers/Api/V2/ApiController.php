@@ -3029,7 +3029,7 @@ class ApiController extends Controller
         $user = request('user');
         $pin   = request('pin');
 
-        if ($user->verification_nb == $pin) {
+        if ($pin !== null && $pin !== '' && $user->verification_nb !== null && hash_equals((string) $user->verification_nb, (string) $pin)) {
             $user->token = null;
             $user->image = null;
             $user->custom_image = null;
