@@ -95,6 +95,21 @@
     .kpi .l { font-size: 11px; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); font-weight: 700; margin-bottom: 10px; }
     .kpi .n { font-size: clamp(34px, 3.2vw, 56px); font-weight: 800; line-height: 1; letter-spacing: -.03em; }
     .kpi .s { margin-top: 10px; font-size: 13px; color: var(--muted); }
+    .viz { margin-top: 18px; cursor: pointer; }
+    .dots { display: grid; grid-template-columns: repeat(15, 1fr); gap: 6px; }
+    .dots i { aspect-ratio: 1; border-radius: 50%; background: rgba(255,255,255,.12); transition: background .35s, transform .25s, box-shadow .35s; }
+    .dots i.on { background: var(--accent); box-shadow: 0 0 9px var(--accent); }
+    .dots i:hover { transform: scale(1.7); }
+    .bars { display: flex; align-items: flex-end; gap: 4px; height: 64px; }
+    .bars i { flex: 1; border-radius: 3px 3px 0 0; background: rgba(255,255,255,.12); transition: background .4s, transform .25s, box-shadow .4s; transform-origin: bottom; }
+    .bars i.on { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+    .bars i:hover { transform: scaleY(1.12); }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip { display: flex; align-items: center; gap: 8px; max-width: 100%; padding: 7px 14px 7px 8px; border-radius: 999px; background: rgba(255,255,255,.07); border: 1px solid var(--line); font-size: 13px; font-weight: 600; opacity: 0; transform: translateY(8px); transition: opacity .5s, transform .5s, background .2s; unicode-bidi: plaintext; }
+    .chip.on { opacity: 1; transform: none; }
+    .chip:hover { background: rgba(255,255,255,.15); }
+    .chip b { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: #06263f; font-size: 12px; font-weight: 800; }
+    .chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     /* ---------- a question ---------- */
     .q { grid-column: 1 / -1; }
@@ -507,6 +522,36 @@
         requestAnimationFrame(step);
     }
 
+    // little visuals under the three figures; each lights up piece by piece, click one to watch it again
+    function lightUp(items, n, total) {
+        items.forEach(function (it, i) { it.classList.remove('on'); });
+        items.forEach(function (it, i) {
+            if (i >= n) return;
+            if (reduce) { it.classList.add('on'); return; }
+            setTimeout(function () { it.classList.add('on'); }, 150 + (3300 * i) / Math.max(1, n));
+        });
+    }
+    function buildViz(sec, p, animate) {
+        var vv = sec.querySelector('[data-v="voted"]'), vw = sec.querySelector('[data-v="weight"]'), vq = sec.querySelector('[data-v="qs"]');
+        // people: one dot per allowed voter (grouped when there are many); lit = voted
+        var per = Math.max(1, Math.ceil(p.electors / 120)), N = Math.max(1, Math.ceil(p.electors / per));
+        var lit = Math.round((p.voters / Math.max(1, p.electors)) * N);
+        vv.textContent = ''; var dots = el('div', 'dots'), di = [];
+        for (var i = 0; i < N; i++) { var d = el('i'); d.title = i < lit ? 'Voted' : 'Has not voted yet'; dots.appendChild(d); di.push(d); }
+        vv.appendChild(dots); vv.onclick = function () { lightUp(di, lit); };
+        // weight: a rising bar meter filled to the share of weight that voted
+        var share = p.total_weight > 0 ? p.voted_weight / p.total_weight : 0, B = 24, bl = Math.round(share * B), bi = [];
+        vw.textContent = ''; var bars = el('div', 'bars');
+        for (var j = 0; j < B; j++) { var b = el('i'); b.style.height = (28 + 72 * j / (B - 1)) + '%'; b.title = Math.round(share * 1000) / 10 + '% of the weight voted'; bars.appendChild(b); bi.push(b); }
+        vw.appendChild(bars); vw.onclick = function () { lightUp(bi, bl); };
+        // questions: one chip per question
+        vq.textContent = ''; var chips = el('div', 'chips'), ci = [];
+        p.questions.forEach(function (q, n) { var c = el('div', 'chip'); c.appendChild(el('b', null, String(n + 1))); c.appendChild(el('span', null, q.text)); c.title = q.text; chips.appendChild(c); ci.push(c); });
+        vq.appendChild(chips); vq.onclick = function () { lightUp(ci, ci.length); };
+        if (animate) { lightUp(di, lit); lightUp(bi, bl); lightUp(ci, ci.length); }
+        else { di.slice(0, lit).concat(bi.slice(0, bl), ci).forEach(function (n) { n.classList.add('on'); }); }
+    }
+
     function renderPoll(p, top, showHead) {
         var sec = stages.querySelector('[data-poll="' + p.id + '"]');
         var isNew = !sec;
@@ -523,7 +568,7 @@
             [['voted', 'Voted', '--blue'], ['weight', 'Weight that voted', '--orange'], ['qs', 'Questions', '--sky']].forEach(function (s) {
                 var c = el('div', 'kpi'); c.style.setProperty('--accent', 'var(' + s[2] + ')');
                 c.appendChild(el('div', 'l', s[1])); var n = el('div', 'n'); n.setAttribute('data-f', s[0]); c.appendChild(n);
-                var sm = el('div', 's'); sm.setAttribute('data-s', s[0]); c.appendChild(sm); k.appendChild(c);
+                var sm = el('div', 's'); sm.setAttribute('data-s', s[0]); c.appendChild(sm); var vz = el('div', 'viz'); vz.setAttribute('data-v', s[0]); c.appendChild(vz); k.appendChild(c);
             });
             sec.appendChild(k); sec.appendChild(el('div', 'qs')); sec.lastChild.style.cssText = 'grid-column:1/-1;display:grid;gap:clamp(14px,1.3vw,22px)';
             stages.appendChild(sec);
@@ -539,6 +584,7 @@
         } else {
             setRing(sec, p.turnout);
         }
+        buildViz(sec, p, isNew);
         count(sec.querySelector('[data-f="voted"]'), p.voters, 3500);
         count(sec.querySelector('[data-f="weight"]'), p.voted_weight, 3500);
         count(sec.querySelector('[data-f="qs"]'), p.questions.length, 3500);
@@ -557,6 +603,7 @@
         Array.prototype.forEach.call(wrap.querySelectorAll('[data-q]'), function (n) { if (keep.indexOf(n.getAttribute('data-q')) < 0) n.remove(); });
     }
 
+    var autoStartT = null, autoArmed = false;
     var info = {}, lastData = null;   // option id => what the spotlight shows
     function render(data) {
         lastData = data;
@@ -566,6 +613,9 @@
         data.polls.forEach(function (p) { renderPoll(p, p.top, data.polls.length > 1); });
         data.polls.forEach(function (p) { stages.appendChild(stages.querySelector('[data-poll="' + p.id + '"]')); });
         chooser.style.display = data.polls.length ? 'none' : '';
+        // the summary counters take ~4.5 s; 3 s after they finish the reveal starts by itself (once per opened poll)
+        if (!data.polls.length) { autoArmed = false; clearTimeout(autoStartT); }
+        else if (!autoArmed && !revealing) { autoArmed = true; clearTimeout(autoStartT); autoStartT = setTimeout(startReveal, 7500); }
         var open = data.polls.length > 0;
         document.getElementById('revealBtn').style.display = (open && !revealing) ? '' : 'none';
         document.getElementById('changeBtn').style.display = (open && !revealing) ? '' : 'none';
@@ -714,7 +764,6 @@
         autoOn = true; ctl.auto.classList.add('on'); ctl.auto.textContent = 'Auto \u2022 on';
         autoStep();
     }
-    var autoStartT = null;
     function startReveal() {
         clearTimeout(autoStartT);
         if (revealing || !chosen().length) return;
@@ -741,8 +790,6 @@
 
     render(cfg.initial);
     schedule();
-    // the summary counters take ~4.5 s to finish; 3 s later the reveal starts by itself
-    if (cfg.initial.polls.length) autoStartT = setTimeout(startReveal, 7500);
 })();
 </script>
 </body>
