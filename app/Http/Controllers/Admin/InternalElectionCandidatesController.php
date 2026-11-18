@@ -322,6 +322,11 @@ class InternalElectionCandidatesController extends Controller
             if(!$candidate){
                 return back()->with('message', 'Candidate was already deleted');
             }
+            // Deleting a candidate cascades to the votes cast for him in the database, so a candidate who has
+            // votes is never deleted from here. Election data is not removed.
+            if(\DB::table('internal_election_votes')->where('candidate_id', $candidate->id)->exists()){
+                return back()->withErrors('This candidate already has votes and cannot be deleted. Votes are never deleted.');
+            }
             if($candidate->image_name){
                 $this->removeFile($candidate->image_name);
             }

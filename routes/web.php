@@ -598,7 +598,6 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::get('internal-election/{id}/candidate-activity', 'InternalElectionController@candidateActivity')->name('internal-election.candidate-activity')->middleware('page-perm:57,view');
     Route::get('internal-election/{id}/district-voting-settings', 'InternalElectionController@districtVotingSettings')->name('internal-election.district-voting-settings')->middleware('page-perm:57,full');
     Route::post('internal-election/{id}/district-voting-settings', 'InternalElectionController@updateDistrictVotingSettings')->name('internal-election.district-voting-settings.update')->middleware('page-perm:57,full');
-    Route::get('internal-election-vote/reset', 'InternalElectionController@reset')->name('internal-election-votes.reset')->middleware('page-perm:57,full');
     Route::get('internal-election-import-allowed-voters-template', 'InternalElectionController@downloadAllowedVotersTemplate')->name('internal-election.import-allowed-voters-template')->middleware('page-perm:57,view');
     Route::get('internal-election/{id}/voter-viewers', 'InternalElectionController@voterViewers')->name('internal-election.voter-viewers')->middleware('page-perm:57,view');
     Route::post('internal-election/{id}/voter-viewers', 'InternalElectionController@addVoterViewer')->name('internal-election.voter-viewers.store')->middleware('page-perm:57,full');
@@ -619,7 +618,6 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     /*Route::resource('national-council-poll.questions.answers','NationalCouncilPollQuestionAnswersController');*/
 
     //National Council Poll — page 58, covers its Questions sub-feature too
-    Route::get('national-council-poll/{id}/clear', 'NationalCouncilPollController@clear')->name('national-council-poll.clear')->middleware('page-perm:58,full');
     // who voted + from which device (never WHAT they voted)
     Route::get('national-council-poll/{id}/voters', 'NationalCouncilPollVotersController@progress')->name('national-council-poll.progress')->middleware('page-perm:58,view');
     Route::get('national-council-poll/{id}/voters/export', 'NationalCouncilPollVotersController@progressExport')->name('national-council-poll.progress.export')->middleware('page-perm:58,view');

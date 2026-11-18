@@ -141,8 +141,8 @@ class CouncilPollAdminTest extends CouncilTestCase
         $poll = $this->pollFromRoster();
         $this->castVotes($poll);
 
-        $this->ctrl->clear($poll->id);
-        $this->assertSame(3, DB::table('council_national_poll_votes')->where('poll_id', $poll->id)->count(), 'published: not cleared');
+        // (the "delete all data" action no longer exists at all - see ElectionDataProtectionTest)
+        $this->assertFalse(method_exists($this->ctrl, 'clear'));
 
         DB::table('council_national_polls')->where('id', $poll->id)->update(['is_published' => 0]);
         $this->ctrl->destroy($poll->id);

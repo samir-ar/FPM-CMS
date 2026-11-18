@@ -422,7 +422,20 @@ class PollsController extends Controller
 
     public function destroy($id)
     {
-        Poll::find($id)->delete();
+        $poll = Poll::find($id);
+        if (!$poll) {
+            return back()->withErrors('Poll not found');
+        }
+
+        // The members' and guests' answers are removed with the poll (database cascade), so a poll that already
+        // has answers is never deleted from here. Hide it instead (the enable/disable switch).
+        $answered = \DB::table('users_polls')->where('poll_id', $poll->id)->exists()
+            || \DB::table('guest_poll_votes')->where('poll_id', $poll->id)->exists();
+        if ($answered) {
+            return back()->withErrors('This poll already has answers and cannot be deleted. Use the enable/disable switch to hide it.');
+        }
+
+        $poll->delete();
         return back()->with('message', 'Poll Deleted Successfully');
     }
 

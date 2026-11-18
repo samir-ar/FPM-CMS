@@ -525,16 +525,6 @@ HTML;
         return view('council-election-votes.report',compact('poll','votes','votersCount','title','electorsCount','totalWeight','votedWeight','ranking','top','meetingStats'));
     }
 
-    public function clear($id){
-        if (CouncilNationalPoll::where('id', $id)->where('is_published', true)->exists()) {
-            return redirect()->route('admin.national-council-poll.index')->with('message', 'A published poll\'s votes cannot be deleted. Unpublish it first.');
-        }
-        CouncilNationalPollVote::where('poll_id',$id)->get()->each(
-            function ($vote){
-                $vote->delete();
-            }
-        );
-        return redirect()->route('admin.national-council-poll.index')->with('message', 'Data has been deleted');
-
-    }
+    // (There is deliberately NO "delete all votes" action any more: votes of an election or a poll are never
+    // wiped from the CMS.)
 }

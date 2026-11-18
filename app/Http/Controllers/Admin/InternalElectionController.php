@@ -80,7 +80,6 @@ class InternalElectionController extends Controller
             'scripts' => ['/js/internal-election.js'],
             'slug'		=> 'Archives',
             'custom_btn' => "<a href='" . route('admin.internal-election.create') ."' class='btn btn-primary'>Add Election</a>",
-            // HIDDEN 2026-11-14 (election day): 'custom_btn1' => "<a class='btn btn-danger' href='" . route('admin.internal-election-votes.reset') . "'>DELETE ALL VOTES</a>",
             'headers'	=> ['id','Title', 'Status', 'Closes at', 'Action'],
             'action' => route('admin.internal-election.index'),
             'columns' => json_encode([
@@ -117,13 +116,6 @@ class InternalElectionController extends Controller
         return response()->json(['message' => 'Closing time updated']);
     }
 
-
-    public function reset(Request $request){
-        // DISABLED 2026-11-14 (election day): was an unguarded GET that truncated ALL votes.
-        abort(404);
-        // InternalElectionVote::truncate();
-        // return redirect()->route('admin.internal-election.index')->with('message', 'Election has been reset successfully');
-    }
 
     public function downloadAllowedVotersTemplate(){
         return Excel::download(new AllowedToVoteTemplateExport(), 'allowed_to_vote_template.xlsx');
@@ -455,6 +447,16 @@ class InternalElectionController extends Controller
     public function destroy($id){
 
         $election = InternalElection::find($id);
+        if(!$election){
+            return back()->withErrors('Election not found');
+        }
+
+        // Deleting an election cascades to its votes in the database, so an election that has votes is never
+        // deleted from here. Election data is not removed.
+        if(\DB::table('internal_election_votes')->where('internal_election_id', $election->id)->exists()){
+            return back()->withErrors('This election already has votes and cannot be deleted. Votes are never deleted.');
+        }
+
         $election->delete();
         return back()->with('message', 'Election Deleted Successfully');
     }
