@@ -643,11 +643,11 @@
     }
 
     /* ================= reveal mode ================= */
-    var steps = [], at = 0, autoTimer = null, revealing = false;
+    var lastPodTop = -1, steps = [], at = 0, autoTimer = null, revealing = false;
     var ctl = { next: document.getElementById('ctlNext'), auto: document.getElementById('ctlAuto'), count: document.getElementById('ctlCount') };
 
     function prepare() {
-        steps = []; at = 0;
+        steps = []; at = 0; lastPodTop = -1;
         Array.prototype.forEach.call(stages.querySelectorAll('.q'), function (q) {
             q.classList.remove('podon');
             var rows = Array.prototype.slice.call(q.querySelectorAll('.row'));
@@ -679,7 +679,8 @@
         var target = s.kind === 'title' ? s.q : (s.pod || s.row);
         if (s.kind === 'pod') s.q.classList.add('podon');
         // rows just appear below the previous one; only move the page when the new item is off screen
-        if (target && target.scrollIntoView && s.kind !== 'row') target.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: s.kind === 'title' ? 'start' : 'center' });
+        if (s.kind === 'pod') { if (lastPodTop !== s.pod.offsetTop) { lastPodTop = s.pod.offsetTop; s.pod.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' }); } }
+        else if (target && target.scrollIntoView && s.kind !== 'row') target.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: s.kind === 'title' ? 'start' : 'center' });
         if (s.kind === 'title') delay = 2600;
         if (s.kind === 'row') {
             showRow(s.row, 1500);
