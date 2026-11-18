@@ -114,10 +114,26 @@ class CouncilPollVotersTest extends CouncilTestCase
             ->assertHeader('content-disposition');
     }
 
+    public function test_one_phone_is_recognised_by_its_hardware_id_even_after_a_reinstall_changed_the_app_id()
+    {
+        // m0 voted from device DEVICE-SHARED..., m2 from DEVICE-OTHER...: two different app installations.
+        // But the hardware id says both are the SAME phone (the app was reinstalled between the two votes).
+        DB::table('council_national_poll_votes')->whereIn('member_id', [(string) $this->m[0], (string) $this->m[2]])->update(['hardware_id' => 'HW-SAME-PHONE-0001']);
+
+        $this->actingAs($this->adminUser(), 'admin');
+        $html = $this->get(route('admin.national-council-poll.progress', $this->poll, false) . '?shared=1&status=voted')->assertOk()->getContent();
+
+        // m0 and m2 are flagged as one phone; m1 (same app id as m0 but no hardware id) is judged by the app id alone
+        $this->assertStringContainsString('HW&nbsp;HW-SAME-PHONE-0001', $html);
+        $this->assertGreaterThanOrEqual(2, substr_count($html, 'shared by 2</span>'));
+        $this->assertStringContainsString('A device was used to vote for more than one member', $html);
+    }
+
     public function test_the_internal_election_dispute_page_shows_the_phone_model_too()
     {
         $vote = new \App\V2\InternalElectionVote();
         $vote->device_id = 'IE-DEVICE-AAAA-BBBB';
+        $vote->hardware_id = 'IE-HW-CCCC-DDDD';
         $vote->device_model = 'Apple iPhone14,5, iOS 17.2';
         $vote->voted_at = now();
         $vote->setRelation('user', (object) ['name' => 'T ie voter', 'member_id' => (string) $this->m[0]]);
@@ -126,12 +142,14 @@ class CouncilPollVotersTest extends CouncilTestCase
             'election' => (object) ['id' => 1, 'title' => 'T election'],
             'allStates' => collect([(object) ['id' => 7, 'name' => 'T district']]),
             'selectedStateId' => 7, 'towns' => collect(), 'selectedTown' => null, 'onlyDuplicateDevices' => false,
-            'suspiciousDeviceIds' => collect(), 'votes' => collect([$vote]),
+            'suspiciousDeviceIds' => collect(), 'suspiciousHardwareIds' => collect(['IE-HW-CCCC-DDDD']), 'votes' => collect([$vote]),
             'errors' => new \Illuminate\Support\ViewErrorBag(),   // normally shared by the web middleware
         ])->render();
 
         $this->assertStringContainsString('<strong>Apple iPhone14,5, iOS 17.2</strong>', $html);
         $this->assertStringContainsString('IE-DEVICE-AAAA-BBBB', $html);
+        $this->assertStringContainsString('IE-HW-CCCC-DDDD', $html);
+        $this->assertStringContainsString('class="danger"', $html, 'a phone (hardware id) that voted for several members is highlighted');
     }
 
     public function test_the_who_voted_for_whom_page_is_not_linked_from_the_polls_list()

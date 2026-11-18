@@ -32,7 +32,7 @@
         <p class="text-muted">{{ $votes->total() }} of {{ $total }} vote{{ $total === 1 ? '' : 's' }}.</p>
         <table class="table table-bordered table-striped">
             <thead>
-                <tr><th>Voter</th><th>Member ID</th><th>Weight</th><th>Question</th><th>Voted for</th><th>Voted at</th><th>Device used</th><th>Phone of the app account</th></tr>
+                <tr><th>Voter</th><th>Member ID</th><th>Weight</th><th>Question</th><th>Voted for</th><th>Voted at</th><th>Phone used</th><th>Phone of the app account</th></tr>
             </thead>
             <tbody>
             @forelse($votes as $v)
@@ -44,11 +44,8 @@
                     <td dir="auto"><strong>{{ $v['candidate'] }}</strong></td>
                     <td>{{ \Carbon\Carbon::parse($v['voted_at'])->format('j M Y, H:i') }}</td>
                     <td>
-                        @if($v['device'])
-                            @if($v['device_model'])<strong>{{ $v['device_model'] }}</strong><br>@endif
-                            <span class="dev">{{ $v['device'] }}</span>
-                            @if($v['device_members'] > 1)<br><span class="label label-warning" style="display:inline-block;margin-top:4px;" title="The same device voted for {{ $v['device_members'] }} members">shared by {{ $v['device_members'] }}</span>@endif
-                        @else <span class="text-muted">not recorded</span> @endif
+                        @include('cms.national_council_poll._phone_cell', ['model' => $v['device_model'], 'hardware' => $v['hardware'], 'device' => $v['device']])
+                        @if($v['device_members'] > 1)<br><span class="label label-warning" style="display:inline-block;margin-top:4px;" title="The same phone voted for {{ $v['device_members'] }} members">shared by {{ $v['device_members'] }}</span>@endif
                     </td>
                     <td>{{ $v['phone'] }}</td>
                 </tr>

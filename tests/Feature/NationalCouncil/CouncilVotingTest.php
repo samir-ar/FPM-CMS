@@ -100,7 +100,7 @@ class CouncilVotingTest extends CouncilTestCase
 
     public function test_a_valid_vote_is_stored_with_the_servers_weight_member_and_device()
     {
-        [, $body] = $this->vote($this->user, ['poll_id' => $this->poll, 'device_id' => 'dev-abc', 'device_model' => 'Samsung SM-A525F, Android 13', 'answers' => [
+        [, $body] = $this->vote($this->user, ['poll_id' => $this->poll, 'device_id' => 'dev-abc', 'device_model' => 'Samsung SM-A525F, Android 13', 'hardware_id' => 'HW-1234abcd', 'answers' => [
             ['question_id' => $this->q1, 'answer_id' => $this->a1],
             ['question_id' => $this->q2, 'answer_id' => $this->a2],
         ]]);
@@ -113,6 +113,7 @@ class CouncilVotingTest extends CouncilTestCase
             $this->assertSame('99900000001', $r->member_id);
             $this->assertSame('dev-abc', $r->device_id);
             $this->assertSame('Samsung SM-A525F, Android 13', $r->device_model, 'the phone make/model is stored with the vote');
+            $this->assertSame('HW-1234abcd', $r->hardware_id, 'the phone\'s hardware id is stored with the vote');
             $this->assertNotNull($r->voted_at);
         }
     }
@@ -142,6 +143,37 @@ class CouncilVotingTest extends CouncilTestCase
         [, $body] = $this->vote($this->user, ['poll_id' => $this->poll, 'answers' => [['question_id' => $this->q1, 'answer_id' => $this->a1]]]);
         $this->assertFalse($this->ok($body), 'and it cannot be voted in');
         $this->assertSame(1, $this->votes($this->poll), 'the earlier vote is still in the database');
+    }
+
+    public function test_regular_poll_answers_record_the_phone_too_for_members_and_guests()
+    {
+        $now = now();
+        $pollId = DB::table('polls')->insertGetId(['show' => 1, 'created_at' => $now, 'updated_at' => $now]);
+        $optionId = DB::table('polls_options')->insertGetId(['poll_id' => $pollId, 'option' => '{}', 'created_at' => $now, 'updated_at' => $now]);
+        $repo = app(ApiRepository::class);
+
+        // a member's answer keeps the installation id, the model and the hardware id
+        $repo->userAnswerPoll(AppUser::find($this->user), $optionId, ['device_id' => 'dev-1', 'device_model' => 'Apple iPhone14,5, iOS 17.2', 'hardware_id' => 'IDFV-1']);
+        $row = DB::table('users_polls')->where('poll_id', $pollId)->first();
+        $this->assertSame('dev-1', $row->device_id);
+        $this->assertSame('Apple iPhone14,5, iOS 17.2', $row->device_model);
+        $this->assertSame('IDFV-1', $row->hardware_id);
+
+        // changing the answer replaces the row and keeps recording the phone
+        $repo->userAnswerPoll(AppUser::find($this->user), $optionId, ['device_id' => 'dev-2', 'device_model' => 'Apple iPhone14,5, iOS 17.2', 'hardware_id' => 'IDFV-1']);
+        $this->assertSame(1, DB::table('users_polls')->where('poll_id', $pollId)->count());
+        $this->assertSame('dev-2', DB::table('users_polls')->where('poll_id', $pollId)->value('device_id'));
+
+        // an older app sends nothing: still works, the columns stay empty
+        $repo->userAnswerPoll(AppUser::find($this->user2), $optionId);
+        $this->assertNull(DB::table('users_polls')->where('app_user_id', $this->user2)->value('hardware_id'));
+
+        // a guest's answer keeps them too
+        $repo->guestAnswerPoll('guest-dev', $optionId, ['device_id' => 'ignored', 'device_model' => 'Samsung SM-A525F, Android 13', 'hardware_id' => 'ANDROID-ID-9']);
+        $guest = DB::table('guest_poll_votes')->where('poll_id', $pollId)->first();
+        $this->assertSame('guest-dev', $guest->device_id, 'the guest is still keyed by the device id');
+        $this->assertSame('Samsung SM-A525F, Android 13', $guest->device_model);
+        $this->assertSame('ANDROID-ID-9', $guest->hardware_id);
     }
 
     public function test_the_weight_cannot_be_chosen_by_the_client()

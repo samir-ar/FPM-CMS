@@ -422,7 +422,8 @@ class ApiRepository
     }
 
 
-    public function userAnswerPoll($user, $option_id)
+    // $device: device_id / device_model / hardware_id of the phone the answer came from (all optional).
+    public function userAnswerPoll($user, $option_id, array $device = [])
     {
         $option = PollOption::find($option_id);
         $poll_id = $option->poll_id;
@@ -431,7 +432,7 @@ class ApiRepository
         $user->polls()->detach($poll_id);
 
         //add the record
-        $user->polls()->attach($poll_id, ['option_id' => $option_id]);
+        $user->polls()->attach($poll_id, ['option_id' => $option_id] + $device);
 
         return true;
     }
@@ -439,14 +440,14 @@ class ApiRepository
     // Anonymous equivalent of userAnswerPoll, keyed by device_id instead of
     // a member — updateOrCreate handles both a first vote and someone
     // changing their answer via the same unique(device_id, poll_id) row.
-    public function guestAnswerPoll($deviceId, $option_id)
+    public function guestAnswerPoll($deviceId, $option_id, array $device = [])
     {
         $option = PollOption::find($option_id);
         $poll_id = $option->poll_id;
 
         GuestPollVote::updateOrCreate(
             ['device_id' => $deviceId, 'poll_id' => $poll_id],
-            ['option_id' => $option_id]
+            ['option_id' => $option_id] + array_intersect_key($device, ['device_model' => 1, 'hardware_id' => 1])
         );
 
         return true;

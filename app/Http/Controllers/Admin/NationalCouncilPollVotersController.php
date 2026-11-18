@@ -28,13 +28,14 @@ class NationalCouncilPollVotersController extends Controller
         $votes = DB::table('council_national_poll_votes as v')
             ->leftJoin('app_users as u', 'u.id', '=', 'v.user_id')
             ->where('v.poll_id', $poll->id)
-            ->get(['v.member_id', 'v.user_id', 'v.device_id', 'v.device_model', 'v.voted_at', 'v.weight', 'u.phone_number as phone', 'u.name as account_name']);
+            ->get(['v.member_id', 'v.user_id', 'v.device_id', 'v.device_model', 'v.hardware_id', 'v.voted_at', 'v.weight', 'u.phone_number as phone', 'u.name as account_name']);
         // a poll with several questions has several vote rows per member: keep one per member
         $byMember = $votes->groupBy(fn($v) => (string) $v->member_id)->map(function ($rows) {
             $first = $rows->sortBy('voted_at')->first();
             $first->voted_at = $rows->min('voted_at');
             $first->device_id = $rows->pluck('device_id')->filter()->first();
             $first->device_model = $rows->pluck('device_model')->filter()->first();
+            $first->hardware_id = $rows->pluck('hardware_id')->filter()->first();
 
             return $first;
         });
@@ -43,8 +44,10 @@ class NationalCouncilPollVotersController extends Controller
         $details = CouncilMemberLookup::detailsFor($memberIds);
         $roles = CouncilRosterMember::whereIn('member_id', $memberIds)->pluck('role', 'member_id');
 
-        // a device that voted for more than one member is the thing to look at
-        $devices = $byMember->filter(fn($v) => $v->device_id)->groupBy('device_id')->map(fn($g) => $g->pluck('member_id')->map(fn($i) => (string) $i)->unique()->values());
+        // one PHONE = its hardware id (survives a reinstall of the app); for votes without one, the installation id.
+        // A phone that voted for more than one member is the thing to look at.
+        $keyOf = fn($v) => $v->hardware_id ?: $v->device_id;
+        $devices = $byMember->filter(fn($v) => $keyOf($v))->groupBy($keyOf)->map(fn($g) => $g->pluck('member_id')->map(fn($i) => (string) $i)->unique()->values());
 
         $rows = [];
         foreach ($permissions as $p) {
@@ -58,8 +61,10 @@ class NationalCouncilPollVotersController extends Controller
                 'voted' => (bool) $v,
                 'voted_at' => $v ? $v->voted_at : null,
                 'device' => $v ? ($v->device_id ?: '') : '',
+                'hardware' => $v ? (string) $v->hardware_id : '',
+                'device_key' => $v ? (string) $keyOf($v) : '',
                 'device_model' => $v ? (string) $v->device_model : '',
-                'device_members' => $v && $v->device_id ? $devices[$v->device_id]->count() : 0,
+                'device_members' => $v && $keyOf($v) ? $devices[$keyOf($v)]->count() : 0,
                 'phone' => $v ? (string) $v->phone : '',
                 'permitted' => true,
             ];
@@ -75,8 +80,10 @@ class NationalCouncilPollVotersController extends Controller
                     'voted' => true,
                     'voted_at' => $v->voted_at,
                     'device' => $v->device_id ?: '',
+                    'hardware' => (string) $v->hardware_id,
+                    'device_key' => (string) $keyOf($v),
                     'device_model' => (string) $v->device_model,
-                    'device_members' => $v->device_id ? $devices[$v->device_id]->count() : 0,
+                    'device_members' => $keyOf($v) ? $devices[$keyOf($v)]->count() : 0,
                     'phone' => (string) $v->phone,
                     'permitted' => false,
                 ];
@@ -122,7 +129,9 @@ class NationalCouncilPollVotersController extends Controller
         $shared = collect($data['devices'])->filter(fn($members) => $members->count() > 1)->map(function ($members, $device) use ($data) {
             return [
                 'device' => $device,
-                'model' => (string) (collect($data['rows'])->firstWhere('device', $device)['device_model'] ?? ''),
+                'model' => (string) (collect($data['rows'])->firstWhere('device_key', $device)['device_model'] ?? ''),
+                'hardware' => (string) (collect($data['rows'])->firstWhere('device_key', $device)['hardware'] ?? ''),
+                'device_id' => (string) (collect($data['rows'])->firstWhere('device_key', $device)['device'] ?? ''),
                 'members' => $members->map(fn($m) => ['id' => $m, 'name' => $data['details'][$m]->UserFullName ?? $m])->all(),
             ];
         })->values();
@@ -157,11 +166,13 @@ class NationalCouncilPollVotersController extends Controller
             ->leftJoin('app_users as u', 'u.id', '=', 'v.user_id')
             ->where('v.poll_id', $poll->id)
             ->orderByDesc('v.voted_at')
-            ->get(['v.member_id', 'v.weight', 'v.device_id', 'v.device_model', 'v.voted_at', 'v.question_id', 'v.answer_id',
+            ->get(['v.member_id', 'v.weight', 'v.device_id', 'v.device_model', 'v.hardware_id', 'v.voted_at', 'v.question_id', 'v.answer_id',
                 'q.question as question', 'a.answer as candidate', 'u.phone_number as phone']);
 
         $details = CouncilMemberLookup::detailsFor($votes->pluck('member_id')->map(fn($i) => (string) $i)->unique()->values()->all());
-        $deviceMembers = $votes->filter(fn($v) => $v->device_id)->groupBy('device_id')->map(fn($g) => $g->pluck('member_id')->unique()->count());
+        // one PHONE = its hardware id (survives a reinstall); for votes without one, the installation id
+        $keyOf = fn($v) => $v->hardware_id ?: $v->device_id;
+        $deviceMembers = $votes->filter(fn($v) => $keyOf($v))->groupBy($keyOf)->map(fn($g) => $g->pluck('member_id')->unique()->count());
 
         return $votes->map(fn($v) => [
             'voter' => $details[(string) $v->member_id]->UserFullName ?? '',
@@ -173,8 +184,9 @@ class NationalCouncilPollVotersController extends Controller
             'candidate' => (string) $v->candidate,
             'voted_at' => $v->voted_at,
             'device' => (string) $v->device_id,
+            'hardware' => (string) $v->hardware_id,
             'device_model' => (string) $v->device_model,
-            'device_members' => $v->device_id ? (int) $deviceMembers[$v->device_id] : 0,
+            'device_members' => $keyOf($v) ? (int) $deviceMembers[$keyOf($v)] : 0,
             'phone' => (string) $v->phone,
         ]);
     }

@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class GuestPollVote extends Model
 {
     protected $table = 'guest_poll_votes';
-    protected $fillable = ['device_id', 'poll_id', 'option_id'];
+    protected $fillable = ['device_id', 'poll_id', 'option_id', 'device_model', 'hardware_id'];
 
     public function option()
     {

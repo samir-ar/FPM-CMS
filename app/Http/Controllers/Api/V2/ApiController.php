@@ -906,6 +906,15 @@ class ApiController extends Controller
         return (int) request('build_number', 0) >= $min;
     }
 
+    // Which phone a vote / answer came from (all optional, trimmed to the 191 characters the columns hold):
+    // the app's random installation id, the phone's make / model / OS version, and the phone's own hardware id.
+    private function deviceMeta($request): array
+    {
+        $clean = fn($key) => ($v = trim((string) $request->input($key))) !== '' ? mb_substr($v, 0, 191) : null;
+
+        return ['device_id' => $clean('device_id'), 'device_model' => $clean('device_model'), 'hardware_id' => $clean('hardware_id')];
+    }
+
     // "Already voted" is decided per MEMBER, not per app account: a member
     // holding two app_users rows must not be able to vote once from each.
     // The user_id arm only keeps rows written before member_id existed working.
@@ -1008,6 +1017,7 @@ class ApiController extends Controller
             'answers.*.answer_id' => 'required|integer',
             'device_id' => 'nullable|string|max:191',
             'device_model' => 'nullable|string|max:191',
+            'hardware_id' => 'nullable|string|max:191',
         ]);
 
         if ($validator->fails()) {
@@ -1070,6 +1080,7 @@ class ApiController extends Controller
                         'weight' => $weight,
                         'device_id' => $request->input('device_id'),
                         'device_model' => $request->input('device_model') ? mb_substr((string) $request->input('device_model'), 0, 191) : null,
+                        'hardware_id' => $request->input('hardware_id') ? mb_substr((string) $request->input('hardware_id'), 0, 191) : null,
                         'voted_at' => now(),
                     ]);
                 }
@@ -1149,6 +1160,9 @@ class ApiController extends Controller
         }
         $validator = Validator::make($request->all(), [
             'option_id' => 'required|exists:polls_options,id',
+            'device_id' => 'nullable|string|max:191',
+            'device_model' => 'nullable|string|max:191',
+            'hardware_id' => 'nullable|string|max:191',
         ]);
 
         if ($validator->fails()) {
@@ -1173,9 +1187,9 @@ class ApiController extends Controller
         }
 
         if (request('user')) {
-            $repo->userAnswerPoll(request('user'), request('option_id'));
+            $repo->userAnswerPoll(request('user'), request('option_id'), $this->deviceMeta($request));
         } else {
-            $repo->guestAnswerPoll(request('device_id'), request('option_id'));
+            $repo->guestAnswerPoll(request('device_id'), request('option_id'), $this->deviceMeta($request));
         }
 
         return response()->json(['message' => 'Thank you for participating.']);
@@ -2596,6 +2610,7 @@ class ApiController extends Controller
                 'voted_at' => now(),
                 'device_id' => request('device_id'),
                 'device_model' => request('device_model') ? mb_substr((string) request('device_model'), 0, 191) : null,
+                'hardware_id' => request('hardware_id') ? mb_substr((string) request('hardware_id'), 0, 191) : null,
             ]);
         } catch (\Illuminate\Database\QueryException $e) {
             if ($e->getCode() === '23000') {

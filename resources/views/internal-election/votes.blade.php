@@ -40,9 +40,12 @@
             @endif
         </form>
 
-        @if($suspiciousDeviceIds->isNotEmpty())
+        @php
+            $suspiciousHardwareIds = $suspiciousHardwareIds ?? collect();
+        @endphp
+        @if($suspiciousDeviceIds->isNotEmpty() || $suspiciousHardwareIds->isNotEmpty())
             <div class="alert alert-danger">
-                ⚠ {{ $suspiciousDeviceIds->count() }} device(s) were used to cast votes for more than one member in this election — rows are highlighted below (across all districts, not just the one selected).
+                ⚠ {{ $suspiciousHardwareIds->count() }} phone(s) (by hardware ID) and {{ $suspiciousDeviceIds->count() }} app installation(s) (by device ID) were used to cast votes for more than one member in this election — rows are highlighted below (across all districts, not just the one selected).
             </div>
         @endif
 
@@ -65,7 +68,8 @@
                 <tbody>
                     @foreach($votes as $vote)
                         @php
-                            $isSuspicious = $vote->device_id && $suspiciousDeviceIds->contains($vote->device_id);
+                            $isSuspicious = ($vote->device_id && $suspiciousDeviceIds->contains($vote->device_id))
+                                || (!empty($vote->hardware_id) && $suspiciousHardwareIds->contains($vote->hardware_id));
                         @endphp
                         <tr class="{{ $isSuspicious ? 'danger' : '' }}">
                             <td>{{ $vote->user->name ?? '—' }}</td>
@@ -73,6 +77,7 @@
                             <td>{{ $vote->voted_at ? \Carbon\Carbon::parse($vote->voted_at)->format('Y-m-d H:i:s') : '—' }}</td>
                             <td>
                                 @if(!empty($vote->device_model))<strong>{{ $vote->device_model }}</strong><br>@endif
+                                @if(!empty($vote->hardware_id))<span title="The phone's own id (survives a reinstall)">HW {{ $vote->hardware_id }}</span><br>@endif
                                 {{ $vote->device_id ?? '—' }}
                                 @if($isSuspicious)
                                     <span class="label label-danger">reused</span>

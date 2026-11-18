@@ -707,6 +707,15 @@ class InternalElectionController extends Controller
             ->havingRaw('COUNT(DISTINCT user_id) > 1')
             ->pluck('device_id');
 
+        // Same check on the phone's own hardware id: it survives a reinstall of the app, so a phone cannot hide
+        // behind the fresh installation id a reinstall gives it.
+        $suspiciousHardwareIds = \DB::table('internal_election_votes')
+            ->where('internal_election_id', $election->id)
+            ->whereNotNull('hardware_id')
+            ->groupBy('hardware_id')
+            ->havingRaw('COUNT(DISTINCT user_id) > 1')
+            ->pluck('hardware_id');
+
         $onlyDuplicateDevices = request()->boolean('only_duplicate_devices');
 
         $votes = collect();
@@ -751,12 +760,13 @@ class InternalElectionController extends Controller
 
             if ($onlyDuplicateDevices) {
                 $votes = $votes->filter(
-                    fn($v) => $v->device_id && $suspiciousDeviceIds->contains($v->device_id)
+                    fn($v) => ($v->device_id && $suspiciousDeviceIds->contains($v->device_id))
+                        || ($v->hardware_id && $suspiciousHardwareIds->contains($v->hardware_id))
                 )->values();
             }
         }
 
-        return view('internal-election.votes', compact('election', 'allStates', 'selectedStateId', 'towns', 'selectedTown', 'votes', 'suspiciousDeviceIds', 'onlyDuplicateDevices'))
+        return view('internal-election.votes', compact('election', 'allStates', 'selectedStateId', 'towns', 'selectedTown', 'votes', 'suspiciousDeviceIds', 'suspiciousHardwareIds', 'onlyDuplicateDevices'))
             ->with('pageTitle', 'Vote Dispute Review - ' . $election->title);
     }
 
