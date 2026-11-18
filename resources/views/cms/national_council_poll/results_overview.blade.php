@@ -198,7 +198,6 @@
     .row, .pod, .cut { transition: opacity .7s cubic-bezier(.2,.8,.2,1), transform .7s cubic-bezier(.2,.8,.2,1), border-color .5s, background .5s; }
     .pod.rh { transform: translateY(40px) scale(.8); animation: none; opacity: 0; }
     /* during the reveal the list starts empty at the last place and grows downward; nothing hidden takes space */
-    body.reveal:not(.finished) .rows { display: flex; flex-direction: column-reverse; }
     body.reveal:not(.finished) .rows .rh { display: none; }
     body.reveal:not(.finished) .q:not(.podon) .podium { display: none; }
     .row.pop, .pod.pop { animation: pop .9s cubic-bezier(.2,1.2,.3,1); }
