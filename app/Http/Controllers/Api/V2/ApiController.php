@@ -1941,21 +1941,35 @@ class ApiController extends Controller
     {
         $user = request('user');
         $memberId = $user->member_id ?? 'unknown';
-        $key = 'directory-pulls:' . $memberId;
+        $hourKey = 'directory-pulls:' . $memberId;
+        $dayKey = 'directory-pulls-day:' . $memberId;
+        $context = ['member_id' => $memberId, 'endpoint' => $endpoint, 'ip' => $request->ip()];
 
-        if (RateLimiter::tooManyAttempts($key, 50)) {
-            Log::warning('directory_pull_rate_limited', ['member_id' => $memberId, 'endpoint' => $endpoint, 'ip' => $request->ip()]);
+        // the daily cap: a person never gets near it, a patient scraper (who stays under the hourly cap all day)
+        // is held to a small number of lists per day
+        if (RateLimiter::tooManyAttempts($dayKey, 150)) {
+            Log::warning('directory_pull_daily_cap', $context);
+            return $this->api_error_response('too_many_requests', 429, 'لقد بلغت الحد اليومي لتصفّح هذه الصفحات، يرجى المحاولة غداً.', 429);
+        }
+
+        if (RateLimiter::tooManyAttempts($hourKey, 50)) {
+            Log::warning('directory_pull_rate_limited', $context);
             return $this->api_error_response('too_many_requests', 429, 'لقد تصفّحت عدداً كبيراً من الصفحات خلال الساعة الأخيرة، يرجى المحاولة مجدداً بعد قليل.', 429);
         }
-        RateLimiter::hit($key, 3600);
 
-        Log::info('directory_pull', [
-            'member_id' => $memberId,
-            'endpoint' => $endpoint,
+        RateLimiter::hit($hourKey, 3600);
+        $today = RateLimiter::hit($dayKey, 86400);
+
+        // the alert: one warning, the moment a member passes 100 pulls in a day (well before the daily cap), so the
+        // log shows WHO is pulling that much without waiting for them to hit the cap
+        if ($today === 100) {
+            Log::warning('directory_pull_heavy_use', $context + ['pulls_today' => $today]);
+        }
+
+        Log::info('directory_pull', $context + [
             'qada' => $request->input('qada'),
             'village' => $request->input('village'),
             'municipality' => $request->input('municipality'),
-            'ip' => $request->ip(),
         ]);
 
         return null;

@@ -31,12 +31,14 @@ class DirectoryEndpointsProtectionTest extends CouncilTestCase
         DB::table('app_users')->whereRaw("TRIM(LEADING '0' FROM member_id) = ?", [ltrim((string) $this->memberId, '0')])->update(['deleted_at' => now()]);
         $this->makeAppUser('T directory reader', (string) $this->memberId, ['token' => self::TOKEN, 'verified' => 1, 'member_status' => 1, 'deleted_at' => null]);
         RateLimiter::clear('directory-pulls:' . $this->memberId);
+        RateLimiter::clear('directory-pulls-day:' . $this->memberId);
         RateLimiter::clear('app-sig-ip:127.0.0.1');
     }
 
     protected function tearDown(): void
     {
         RateLimiter::clear('directory-pulls:' . $this->memberId);
+        RateLimiter::clear('directory-pulls-day:' . $this->memberId);
         RateLimiter::clear('app-sig-ip:127.0.0.1');
         parent::tearDown();
     }
@@ -103,5 +105,28 @@ class DirectoryEndpointsProtectionTest extends CouncilTestCase
         // the document has no cap (it is one small text)
         $p = ['tab' => 'nizham_dakhili'];
         $this->postJson('/api/v2/internal-org', $p, $this->signHeaders('internal-org', $p) + ['token' => self::TOKEN])->assertOk();
+    }
+
+    public function test_a_daily_cap_and_a_heavy_use_alert_catch_a_patient_scraper(): void
+    {
+        \Illuminate\Support\Facades\Log::spy();
+        $params = ['qada' => 'T-qada'];
+        $call = fn () => $this->postJson('/api/v2/municipalities', $params, $this->signHeaders('municipalities', $params) + ['token' => self::TOKEN]);
+
+        // the 100th pull of the day writes ONE alert naming the member
+        for ($i = 0; $i < 99; $i++) {
+            RateLimiter::hit('directory-pulls-day:' . $this->memberId, 86400);
+        }
+        $call()->assertOk();
+        \Illuminate\Support\Facades\Log::shouldHaveReceived('warning')->with('directory_pull_heavy_use', \Mockery::on(fn ($c) => $c['member_id'] == $this->memberId && $c['pulls_today'] === 100))->once();
+
+        // past the daily cap, even with the hourly counter empty, the answer is "try tomorrow"
+        for ($i = 0; $i < 50; $i++) {
+            RateLimiter::hit('directory-pulls-day:' . $this->memberId, 86400);
+        }
+        RateLimiter::clear('directory-pulls:' . $this->memberId);
+        $res = $call()->assertStatus(429);
+        $this->assertStringContainsString('غداً', $res->json('error.message'));
+        \Illuminate\Support\Facades\Log::shouldHaveReceived('warning')->with('directory_pull_daily_cap', \Mockery::any())->once();
     }
 }
