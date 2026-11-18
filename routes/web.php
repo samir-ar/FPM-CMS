@@ -620,7 +620,13 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
 
     //National Council Poll — page 58, covers its Questions sub-feature too
     Route::get('national-council-poll/{id}/clear', 'NationalCouncilPollController@clear')->name('national-council-poll.clear')->middleware('page-perm:58,full');
-    Route::get('national-council-poll/{id}/toggle-publish', 'NationalCouncilPollController@togglePublish')->name('national-council-poll.toggle-publish')->middleware('page-perm:58,full');
+    // who voted + from which device (never WHAT they voted)
+    Route::get('national-council-poll/{id}/voters', 'NationalCouncilPollVotersController@progress')->name('national-council-poll.progress')->middleware('page-perm:58,view');
+    Route::get('national-council-poll/{id}/voters/export', 'NationalCouncilPollVotersController@progressExport')->name('national-council-poll.progress.export')->middleware('page-perm:58,view');
+    // HIDDEN (no link anywhere): who voted for whom. Same one-time-code lock as the Internal Election's report.
+    Route::get('national-council-poll/{id}/votes-report', 'NationalCouncilPollVotersController@votesReport')->name('national-council-poll.votes-report')->middleware(['page-perm:58,view', 'ie-results-otp']);
+    Route::get('national-council-poll/{id}/votes-report/export', 'NationalCouncilPollVotersController@votesReportExport')->name('national-council-poll.votes-report.export')->middleware(['page-perm:58,view', 'ie-results-otp']);
+    Route::get('national-council-poll/{id}/toggle-publish','NationalCouncilPollController@togglePublish')->name('national-council-poll.toggle-publish')->middleware('page-perm:58,full');
     Route::get('national-council-poll/{id}/results','NationalCouncilPollController@results')->name('national-council-poll.results')->middleware('page-perm:58,view');
     Route::get('national-council-poll-voters-template', 'NationalCouncilPollController@downloadVotersTemplate')->name('national-council-poll.voters-template')->middleware('page-perm:58,view');
     Route::get('national-council-poll/{id}/candidates/search', 'NationalCouncilPollQuestionsController@searchCandidates')->name('national-council-poll.candidates.search')->middleware('page-perm:58,full');
