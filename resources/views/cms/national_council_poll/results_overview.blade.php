@@ -694,7 +694,7 @@
             count(s.pod.querySelector('.w'), s.pod.getAttribute('data-final'), 1600);
             showRow(s.row, 1600);
             delay = s.last ? 3600 : 2400;
-            if (s.last) { s.q.classList.add('done'); var b = s.pod.getBoundingClientRect(); setTimeout(function () { confetti(b.left + b.width / 2, b.top + b.height / 3); }, 1500); }
+            if (s.last) { s.q.classList.add('done'); setTimeout(function () { s.q.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' }); }, 150); setTimeout(function () { var b = s.pod.getBoundingClientRect(); confetti(b.left + b.width / 2, b.top + b.height / 3); }, 1500); }
         }
         paintCount();
         if (at >= steps.length) { document.body.classList.add('finished'); }
