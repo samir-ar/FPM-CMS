@@ -1227,7 +1227,15 @@ class ApiController extends Controller
         }
 
         if (request('user')) {
-            $repo->userAnswerPoll(request('user'), request('option_id'), $this->deviceMeta($request));
+            try {
+                $repo->userAnswerPoll(request('user'), request('option_id'), $this->deviceMeta($request));
+            } catch (\Illuminate\Database\QueryException $e) {
+                // two accounts of one member answering at the same instant: the database rule lets only one through
+                if ($e->getCode() === '23000') {
+                    return $this->api_error_response('invalid_parameters', 101, 'لقد شاركت في هذا الاستطلاع مسبقاً');
+                }
+                throw $e;
+            }
         } else {
             $repo->guestAnswerPoll(request('device_id'), request('option_id'), $this->deviceMeta($request));
         }
@@ -2687,6 +2695,8 @@ class ApiController extends Controller
             $user->votes()->attach(request('candidate_id'), [
                 'rank' => 1,
                 'internal_election_id' => $election->id,
+                // the database rule: one vote per member per election, whichever account sends it
+                'member_key' => \App\Support\MemberKey::from($user->member_id),
                 'weight' => 1,
                 'selfie_path' => $election->requires_selfie ? $selfieFilename : null,
                 'voted_at' => now(),

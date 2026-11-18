@@ -209,7 +209,7 @@ Route::group(['namespace' => 'Api', 'prefix' => '', 'middleware' => ['lang']], f
         Route::post('favorite-members', 'ApiController@getFavorites');
         Route::post('current-polls', 'ApiController@getPolls');
         Route::post('previous-polls', 'ApiController@getPreviousPolls');
-        Route::post('answer-poll', 'ApiController@answerPoll');
+        Route::post('answer-poll', 'V2\ApiController@answerPoll');
         Route::post('previous-events', 'ApiController@getPreviousEvents');
         Route::post('upcoming-events', 'ApiController@getUpcomingEvents');
         Route::post('become-a-volunteer', 'ApiController@becomeVolunteer');

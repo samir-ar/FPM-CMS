@@ -446,7 +446,8 @@ class ApiRepository
         $user->polls()->detach($poll_id);
 
         //add the record
-        $user->polls()->attach($poll_id, ['option_id' => $option_id] + $device);
+        // member_key: the database rule "one answer per member per poll" (see the member_key migration)
+        $user->polls()->attach($poll_id, ['option_id' => $option_id, 'member_key' => \App\Support\MemberKey::from($user->member_id)] + $device);
 
         return true;
     }

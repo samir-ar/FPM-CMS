@@ -256,7 +256,7 @@ class ApiRepository
         $user->polls()->detach($poll_id);
 
         //add the record
-        $user->polls()->attach($poll_id, ['option_id' => $option_id]);
+        $user->polls()->attach($poll_id, ['option_id' => $option_id, 'member_key' => \App\Support\MemberKey::from($user->member_id)]);
 
         return true;
     }
