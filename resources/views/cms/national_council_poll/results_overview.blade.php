@@ -159,7 +159,7 @@
     .pcard .tag { padding: 3px 11px; border-radius: 99px; font-size: 11.5px; font-weight: 700; letter-spacing: .04em; background: rgba(255,255,255,.08); border: 1px solid var(--line); color: var(--muted); }
     .pcard .tag.ok { color: var(--green); background: rgba(52,224,160,.1); border-color: rgba(52,224,160,.35); }
     .pcard .tag.or { color: #ffc88a; background: rgba(244,141,36,.14); border-color: rgba(244,141,36,.4); }
-    .pcard .st { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 100%; }
+    .pcard .st { display: flex; justify-content: center; gap: 36px; width: 100%; text-align: center; }
     .pcard .st b { display: block; font-size: 26px; font-weight: 800; letter-spacing: -.02em; }
     .pcard .st span { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
     .pcard .go { margin-top: auto; color: #ffc88a; font-weight: 700; font-size: 14px; }
