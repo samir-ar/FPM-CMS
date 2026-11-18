@@ -729,7 +729,7 @@
     // One step of the reveal. Returns how long (ms) the auto-play should wait before the next one.
     function next() {
         if (!revealing || at >= steps.length) { stopAuto(); return 0; }
-        var s = steps[at++], delay = 1700;
+        var s = steps[at++], delay = 2000;
         var target = s.kind === 'title' ? s.q : (s.pod || s.row);
         if (s.kind === 'pod') s.q.classList.add('podon');
         // rows just appear below the previous one; only move the page when the new item is off screen
@@ -743,7 +743,7 @@
             s.pod.classList.remove('rh'); s.pod.classList.add('pop');
             count(s.pod.querySelector('.w'), s.pod.getAttribute('data-final'), 1600);
             showRow(s.row, 1600);
-            delay = s.last ? 3600 : 2400;
+            delay = s.last ? 3600 : 3000;
             if (s.last) { s.q.classList.add('done'); setTimeout(function () { s.q.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' }); }, 150); setTimeout(function () { var b = s.pod.getBoundingClientRect(); confetti(b.left + b.width / 2, b.top + b.height / 3); }, 1500); }
         }
         paintCount();
