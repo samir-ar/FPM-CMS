@@ -177,8 +177,8 @@
     .rows:hover .row:not(:hover) { opacity: .55; }
     .row:hover { transform: translateX(4px); }
     .elected { margin: 12px 0 8px; padding: 18px 20px; border-radius: 18px; background: rgba(244,141,36,.08); border: 1px solid rgba(244,141,36,.3); }
-    .elt-l { font-size: 12px; font-weight: 800; letter-spacing: .24em; text-transform: uppercase; color: #ffc88a; margin-bottom: 14px; }
-    .elt-list { display: flex; flex-wrap: wrap; gap: 14px 22px; }
+    .elt-l { font-size: 12px; font-weight: 800; letter-spacing: .24em; text-transform: uppercase; color: #ffc88a; margin-bottom: 14px; text-align: center; }
+    .elt-list { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px 22px; }
     .elt { display: flex; align-items: center; gap: 12px; cursor: pointer; padding: 6px 14px 6px 6px; border-radius: 999px; background: rgba(255,255,255,.07); border: 1px solid var(--line); transition: background .2s, transform .2s; }
     .elt:hover { background: rgba(255,255,255,.14); transform: translateY(-2px); }
     .elt .face { width: 46px; height: 46px; flex: none; }
