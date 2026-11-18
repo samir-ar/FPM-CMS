@@ -320,7 +320,8 @@
     function fmt(n) { return Number(n).toLocaleString('en-US'); }
     function votes(n) { return n + (n === 1 ? ' vote' : ' votes'); }
 
-    function count(node, to) {
+    function count(node, to, ms) {
+        ms = ms || 900;
         to = Number(to) || 0;
         var from = Number(node.getAttribute('data-v')); if (isNaN(from)) from = 0;
         node.setAttribute('data-v', to);
@@ -328,7 +329,7 @@
         var t0 = null;
         function step(ts) {
             if (t0 === null) t0 = ts;
-            var k = Math.min(1, (ts - t0) / 900), e = 1 - Math.pow(1 - k, 3);
+            var k = Math.min(1, (ts - t0) / ms), e = 1 - Math.pow(1 - k, 3);
             node.textContent = fmt(Math.round(from + (to - from) * e));
             if (k < 1) requestAnimationFrame(step);
         }
@@ -473,7 +474,7 @@
         Array.prototype.forEach.call(arcs, function (a) { a.style.transition = 'none'; a.style.strokeDashoffset = CIRC; });
         num.textContent = '0';
         void sec.offsetWidth;   // let the empty ring paint first, so the sweep is visible
-        var ms = 2000, t0 = null, offFinal = CIRC * (1 - target / 100);
+        var ms = 4500, t0 = null, offFinal = CIRC * (1 - target / 100);
         function step(ts) {
             if (t0 === null) t0 = ts;
             var k = Math.min(1, (ts - t0) / ms), e = 1 - Math.pow(1 - k, 3);
@@ -516,9 +517,9 @@
         } else {
             setRing(sec, p.turnout);
         }
-        count(sec.querySelector('[data-f="voted"]'), p.voters);
-        count(sec.querySelector('[data-f="weight"]'), p.voted_weight);
-        count(sec.querySelector('[data-f="qs"]'), p.questions.length);
+        count(sec.querySelector('[data-f="voted"]'), p.voters, 3500);
+        count(sec.querySelector('[data-f="weight"]'), p.voted_weight, 3500);
+        count(sec.querySelector('[data-f="qs"]'), p.questions.length, 3500);
         sec.querySelector('[data-s="voted"]').textContent = 'of ' + fmt(p.electors) + ' allowed';
         sec.querySelector('[data-s="weight"]').textContent = 'of ' + fmt(p.total_weight) + ' total weight';
         sec.querySelector('[data-s="qs"]').textContent = '';
