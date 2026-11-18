@@ -168,6 +168,8 @@
     .spot .big { font-size: 84px; }
     .spot .meta { color: var(--muted); margin-top: 10px; font-size: 15px; }
     .row, .pod { cursor: pointer; }
+    .agetag { display: inline-block; margin-inline-start: 10px; padding: 2px 9px; border-radius: 99px; font-size: 11px; font-weight: 700; letter-spacing: .04em; color: #ffc88a; background: rgba(244,141,36,.16); border: 1px solid rgba(244,141,36,.4); vertical-align: middle; }
+    .agetag.dim { color: var(--muted); background: rgba(255,255,255,.06); border-color: var(--line); }
 
     @media (max-width: 1100px) {
         header { flex-wrap: wrap; } .hero, .kpis { grid-column: 1 / -1; } .kpis { grid-template-columns: 1fr; }
@@ -210,7 +212,7 @@
                 <span class="sub">There are no polls yet.</span>
             @endforelse
             <span class="sp"></span>
-            <label class="topn">Mark the top <input type="number" id="top" min="0" value="{{ $top ?: '' }}" placeholder="&ndash;"></label>
+            <label class="topn" title="Leave empty to use the number of winners set on each poll">Winners shown <input type="number" id="top" min="0" value="{{ $top ?: '' }}" placeholder="per poll"></label>
         </div>
     </section>
 
@@ -310,6 +312,8 @@
             node.className = 'row' + (isWin(r, top) ? ' win' : '') + (isLead(r, top, q.cast_weight) ? ' lead' : '');
             node.children[0].textContent = r.rank;
             node.children[2].textContent = r.name;
+            if (r.won_by_age) node.children[2].appendChild(el('span', 'agetag', 'older – wins the tie'));
+            else if (r.tied_with_older) node.children[2].appendChild(el('span', 'agetag dim', 'tie – older ranked first'));
             count(node.querySelector('.fig b'), r.weight);
             node.querySelector('.fig span').textContent = votes(r.votes) + ' · ' + r.pct + '%';
             node.title = r.name + ' — weight ' + r.weight + ', ' + votes(r.votes) + ', ' + r.pct + '% of the weight';
@@ -371,7 +375,7 @@
             stages.appendChild(sec);
         }
         sec.querySelector('.poll-head h3').textContent = p.title;
-        sec.querySelector('.poll-head span').textContent = (p.published ? 'Published' : 'Not published') + (p.closes_at ? ' · ' + (p.closed ? 'closed ' : 'closes ') + p.closes_at : '');
+        sec.querySelector('.poll-head span').textContent = (p.published ? 'Published' : 'Not published') + (p.closes_at ? ' · ' + (p.closed ? 'closed ' : 'closes ') + p.closes_at : '') + (p.top ? ' · ' + p.top + (p.top === 1 ? ' winner' : ' winners') : '');
         sec.querySelector('.poll-head').style.display = showHead ? '' : 'none';
         var off = CIRC * (1 - Math.min(100, p.turnout) / 100);
         Array.prototype.forEach.call(sec.querySelectorAll('.arc'), function (a) { a.style.strokeDashoffset = off; });
@@ -393,11 +397,11 @@
         data.polls.forEach(function (p) { p.questions.forEach(function (q) { q.rows.forEach(function (r) { info[r.id] = { r: r, q: q.text }; }); }); });
         var ids = data.polls.map(function (p) { return String(p.id); });
         Array.prototype.forEach.call(stages.querySelectorAll('[data-poll]'), function (n) { if (ids.indexOf(n.getAttribute('data-poll')) < 0) n.remove(); });
-        data.polls.forEach(function (p) { renderPoll(p, data.top, data.polls.length > 1); });
+        data.polls.forEach(function (p) { renderPoll(p, p.top, data.polls.length > 1); });
         data.polls.forEach(function (p) { stages.appendChild(stages.querySelector('[data-poll="' + p.id + '"]')); });
         emptyBox.style.display = data.polls.length ? 'none' : 'block';
         titleEl.textContent = data.polls.length === 1 ? data.polls[0].title : (data.polls.length ? data.polls.length + ' polls' : 'Results');
-        subEl.textContent = data.polls.length === 1 ? ((data.polls[0].published ? 'Published' : 'Not published') + (data.polls[0].closes_at ? ' · ' + (data.polls[0].closed ? 'closed ' : 'closes ') + data.polls[0].closes_at : '')) : (data.polls.length ? 'Results side by side' : '');
+        subEl.textContent = data.polls.length === 1 ? ((data.polls[0].published ? 'Published' : 'Not published') + (data.polls[0].closes_at ? ' · ' + (data.polls[0].closed ? 'closed ' : 'closes ') + data.polls[0].closes_at : '') + (data.polls[0].top ? ' · ' + data.polls[0].top + (data.polls[0].top === 1 ? ' winner' : ' winners') : '')) : (data.polls.length ? 'Results side by side' : '');
     }
 
     function chosen() { return Array.prototype.map.call(document.querySelectorAll('#picker input[type=checkbox]:checked'), function (c) { return c.value; }); }

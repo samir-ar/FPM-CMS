@@ -352,4 +352,67 @@ class CouncilPollAdminTest extends CouncilTestCase
         // the polls list links to the new page
         $this->get(route('admin.national-council-poll.index', [], false))->assertOk()->assertSee('Results of several polls');
     }
+
+    public function test_number_of_winners_is_set_on_the_forms_and_each_poll_uses_its_own_in_the_results()
+    {
+        $poll = $this->pollFromRoster();
+        $this->actingAs($this->adminUser(), 'admin');
+
+        $this->get(route('admin.national-council-poll.create', [], false))->assertOk()->assertSee("name='winners'", false);
+        $this->get(route('admin.national-council-poll.edit', $poll->id, false))->assertOk()->assertSee("name='winners'", false);
+
+        $this->put(route('admin.national-council-poll.update', $poll->id, false), ['title' => 'T election', 'winners' => '4'])->assertRedirect();
+        $this->assertSame(4, (int) DB::table('council_national_polls')->where('id', $poll->id)->value('winners'));
+        $this->post(route('admin.national-council-poll.store', [], false), ['title' => 'T seats', 'winners' => '7'])->assertRedirect();
+        $this->assertSame(7, (int) DB::table('council_national_polls')->where('title', 'T seats')->value('winners'));
+        $this->put(route('admin.national-council-poll.update', $poll->id, false), ['title' => 'T election', 'winners' => 'abc'])->assertRedirect();
+        $this->assertNull(DB::table('council_national_polls')->where('id', $poll->id)->value('winners'), 'nonsense or empty = not set');
+
+        // results: each poll's own number, unless the box on the page is filled
+        $other = DB::table('council_national_polls')->where('title', 'T seats')->value('id');
+        $url = route('admin.national-council-poll.results-overview.data', [], false);
+        $json = $this->getJson($url . '?polls[]=' . $poll->id . '&polls[]=' . $other)->assertOk()->json('polls');
+        $this->assertSame([0, 7], array_column($json, 'top'));
+        $json = $this->getJson($url . '?polls[]=' . $poll->id . '&polls[]=' . $other . '&top=2')->assertOk()->json('polls');
+        $this->assertSame([2, 2], array_column($json, 'top'));
+    }
+
+    public function test_on_equal_weight_the_older_candidate_wins_and_an_unknown_age_is_left_for_a_human()
+    {
+        $poll = $this->pollFromRoster();
+        [$q] = $this->castVotes($poll);   // A and B both end on weight 5, C on 0
+        $a = DB::table('answer_council_national_polls')->where('question_id', $q)->where('answer', 'A')->value('id');
+        $b = DB::table('answer_council_national_polls')->where('question_id', $q)->where('answer', 'B')->value('id');
+        DB::table('answer_council_national_polls')->where('id', $a)->update(['member_id' => (string) $this->members[0]]);
+        DB::table('answer_council_national_polls')->where('id', $b)->update(['member_id' => (string) $this->members[1]]);
+        $this->actingAs($this->adminUser(), 'admin');
+        $url = route('admin.national-council-poll.results-overview.data', [], false) . '?polls[]=' . $poll->id . '&top=1';
+        $rows = fn() => collect($this->getJson($url)->assertOk()->json('polls.0.questions.0'))->only(['rows', 'tie_at_cutoff'])->all();
+
+        // B is older: B takes the place, A is second, and nothing is left undecided
+        DB::table('fpm_users')->where('MemberId', $this->members[0])->update(['BirthDate' => '1980-05-05']);
+        DB::table('fpm_users')->where('MemberId', $this->members[1])->update(['BirthDate' => '1962-01-01']);
+        $r = $rows();
+        $this->assertSame(['B', 'A'], array_slice(array_column($r['rows'], 'name'), 0, 2));
+        $this->assertSame([1, 2], array_slice(array_column($r['rows'], 'rank'), 0, 2));
+        $this->assertTrue($r['rows'][0]['won_by_age']);
+        $this->assertTrue($r['rows'][1]['tied_with_older']);
+        $this->assertFalse($r['tie_at_cutoff'], 'age settled it');
+
+        // the other way round
+        DB::table('fpm_users')->where('MemberId', $this->members[0])->update(['BirthDate' => '1950-05-05']);
+        $this->assertSame(['A', 'B'], array_slice(array_column($rows()['rows'], 'name'), 0, 2));
+
+        // same birth date: age cannot separate them, so they share the place and the cut-off tie is flagged
+        DB::table('fpm_users')->where('MemberId', $this->members[1])->update(['BirthDate' => '1950-05-05']);
+        $r = $rows();
+        $this->assertSame([1, 1], array_slice(array_column($r['rows'], 'rank'), 0, 2));
+        $this->assertTrue($r['tie_at_cutoff']);
+
+        // an unknown / placeholder birth date is never treated as "oldest"
+        DB::table('fpm_users')->where('MemberId', $this->members[1])->update(['BirthDate' => '1900-01-01']);
+        $r = $rows();
+        $this->assertSame([1, 1], array_slice(array_column($r['rows'], 'rank'), 0, 2));
+        $this->assertTrue($r['tie_at_cutoff']);
+    }
 }

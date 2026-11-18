@@ -140,6 +140,7 @@ class NationalCouncilPollController extends Controller
                         $this->drawHtml('checkbox', 'Publish', 'is_published', $poll->is_published, '1', '', 'col-md-6'),
                         $this->drawHtml('select-box', 'Council meeting (optional)', 'meeting_id', (string) $poll->meeting_id, $this->meetingOptions(), null, 'col-md-6'),
                         $this->drawHtml('date-time-picker', 'Closes at (optional; after this time the poll shows as closed in the app and nobody can vote)', 'closes_at', $poll->closes_at ? \Carbon\Carbon::parse($poll->closes_at)->format('Y-m-d\TH:i') : '', null, '', 'col-md-6'),
+                        $this->drawHtml('number', 'Number of winners (seats) - on a tie in weight the older candidate wins', 'winners', $poll->winners, null, '1', 'col-md-6'),
                            ],
                 ],
                 [
@@ -188,6 +189,7 @@ class NationalCouncilPollController extends Controller
                             $this->drawHtml('checkbox', 'Publish', 'is_published', null, '1', '', 'col-md-6'),
                             $this->drawHtml('select-box', 'Council meeting (optional)', 'meeting_id', '', $this->meetingOptions(), null, 'col-md-6'),
                             $this->drawHtml('date-time-picker', 'Closes at (optional; after this time the poll shows as closed in the app and nobody can vote)', 'closes_at', '', null, '', 'col-md-6'),
+                            $this->drawHtml('number', 'Number of winners (seats) - on a tie in weight the older candidate wins', 'winners', '', null, '1', 'col-md-6'),
                             $this->drawHtml('checkbox', 'Load the voter list from the council roster', 'from_roster', null, '1', '', 'col-md-6'),
                         ],
                     ],  [
@@ -384,6 +386,7 @@ HTML;
         $poll->title  = $request->title;
         $poll->meeting_id = $request->meeting_id ?: null;
         $poll->closes_at = $request->closes_at ? \Carbon\Carbon::parse($request->closes_at)->toDateTimeString() : null;
+        $poll->winners = $this->winnersFrom($request);
         $poll->save();
 
         if ($request->excel) {
@@ -421,6 +424,7 @@ HTML;
                 $poll->title  = $request->title;
                 $poll->meeting_id = $request->meeting_id ?: null;
                 $poll->closes_at = $request->closes_at ? \Carbon\Carbon::parse($request->closes_at)->toDateTimeString() : null;
+                $poll->winners = $this->winnersFrom($request);
                 $poll->save();
 
                 if ($request->from_roster) {
@@ -518,12 +522,21 @@ HTML;
     public function results(Request $request, $id){
 
         $poll = CouncilNationalPoll::with('meeting')->find($id);
-        $top = max(0, (int) $request->get('top', 0));
+        // how many seats: the ?top= box if given, otherwise what was set on the poll
+        $top = max(0, (int) $request->get('top', 0)) ?: (int) $poll->winners;
 
         $data = $this->resultsData($poll, $top);
         $data['title'] = $poll->title;
 
         return view('council-election-votes.report', $data);
+    }
+
+    // "Number of winners" from the form: a whole number from 1 to 200, or empty (= not set).
+    private function winnersFrom(Request $request): ?int
+    {
+        $n = (int) $request->get('winners');
+
+        return $n >= 1 ? min($n, 200) : null;
     }
 
     // GLOBAL results page: tick one or several polls and see the results of all the ticked ones on one page.
@@ -567,7 +580,9 @@ HTML;
                 continue;
             }
 
-            $d = $this->resultsData($poll, $top);
+            // seats: the "Mark the top" box when filled, otherwise the number of winners set on this poll
+            $seats = $top ?: (int) $poll->winners;
+            $d = $this->resultsData($poll, $seats);
             $questions = [];
             foreach ($poll->questions as $question) {
                 $r = $d['ranking'][$question->id];
@@ -584,6 +599,8 @@ HTML;
                         'votes' => $row['votes'],
                         'pct' => $row['pct'],
                         'rank' => $row['rank'],
+                        'won_by_age' => $row['won_by_age'],
+                        'tied_with_older' => $row['tied_with_older'],
                     ])->values()->all(),
                 ];
             }
@@ -594,6 +611,7 @@ HTML;
                 'published' => (bool) $poll->is_published,
                 'closes_at' => $poll->closes_at ? \Carbon\Carbon::parse($poll->closes_at)->format('d M Y H:i') : null,
                 'closed' => $poll->isClosed(),
+                'top' => $seats,
                 'electors' => $d['electorsCount'],
                 'voters' => $d['votersCount'],
                 'turnout' => $d['electorsCount'] ? round($d['votersCount'] * 100 / $d['electorsCount'], 1) : 0,
@@ -623,13 +641,24 @@ HTML;
         $votedWeight = (int) $votes->unique(fn($v) => ($v->member_id ?: 'u' . $v->user_id) . '|' . $v->question_id)
             ->groupBy('question_id')->map(fn($g) => $g->sum('weight'))->max();
 
-        // ranked results per question: weighted total first, raw votes second
+        // birth dates of the candidates picked from the member list (the tie-break: the older one wins)
+        $candidateIds = $poll->questions->flatMap(fn($q) => $q->answers->pluck('member_id'))->filter()->unique()->values()->all();
+        $births = [];
+        if ($candidateIds) {
+            foreach (DB::table('fpm_users')->whereIn('MemberId', $candidateIds)->pluck('BirthDate', 'MemberId') as $mid => $d) {
+                // a missing or placeholder date (0000-00-00, 1900-...) means "unknown", never "the oldest"
+                $d = $d ? substr((string) $d, 0, 10) : null;
+                $births[(string) $mid] = ($d && $d > '1900-01-02') ? $d : null;
+            }
+        }
+
+        // ranked results per question: weighted total first; on equal weight the older candidate wins
         $ranking = [];
         foreach ($poll->questions as $question) {
             $qVotes = $votes->where('question_id', $question->id);
             $castWeight = (int) $qVotes->sum('weight');
 
-            $rows = $question->answers->map(function ($answer) use ($qVotes, $castWeight) {
+            $rows = $question->answers->map(function ($answer) use ($qVotes, $castWeight) {   // (ages: see $births above)
                 $a = $qVotes->where('answer_id', $answer->id);
                 $w = (int) $a->sum('weight');
                 return [
@@ -640,18 +669,42 @@ HTML;
                     'votes' => $a->count(),
                     'pct' => $castWeight ? round($w * 100 / $castWeight, 1) : 0,
                 ];
-            })->sortByDesc(fn($r) => [$r['weight'], $r['votes']])->values();
+            })->map(function ($r) use ($births) {
+                $r['birth'] = $r['member_id'] ? ($births[(string) $r['member_id']] ?? null) : null;
+                return $r;
+            })->sort(function ($a, $b) {
+                // weight first; when two are equal the OLDER candidate (earlier birth date) wins; candidates
+                // with no known birth date go after those who have one, then by name so the order is stable
+                if ($a['weight'] !== $b['weight']) return $b['weight'] <=> $a['weight'];
+                if ($a['birth'] !== $b['birth']) {
+                    if ($a['birth'] === null) return 1;
+                    if ($b['birth'] === null) return -1;
+                    return strcmp($a['birth'], $b['birth']);
+                }
+                return strcmp((string) $a['answer'], (string) $b['answer']);
+            })->values();
 
+            // Places follow the order above: two get the same place only when they are equal in weight AND age
+            // cannot separate them (same birth date, or one/both unknown).
             $rank = 0; $prev = null;
             $rows = $rows->map(function ($r, $i) use (&$rank, &$prev) {
-                if ($prev === null || $r['weight'] !== $prev) { $rank = $i + 1; }
-                $prev = $r['weight'];
+                $ageSeparates = $prev && $prev['weight'] === $r['weight'] && $prev['birth'] !== null && $r['birth'] !== null && $prev['birth'] !== $r['birth'];
+                if (!$prev || $prev['weight'] !== $r['weight'] || $ageSeparates) { $rank = $i + 1; }
+                $prev = $r;
                 $r['rank'] = $rank;
                 return $r;
             });
+            // mark who WON a weight tie because he is older, so the page can say so
+            $rows = $rows->map(function ($r, $i) use ($rows) {
+                $next = $rows[$i + 1] ?? null;
+                $prev = $rows[$i - 1] ?? null;
+                $r['won_by_age'] = $r['weight'] > 0 && $next && $next['weight'] === $r['weight'] && $r['birth'] !== null && $next['birth'] !== null && $next['birth'] !== $r['birth'];
+                $r['tied_with_older'] = $r['weight'] > 0 && $prev && $prev['weight'] === $r['weight'] && $prev['birth'] !== null && $r['birth'] !== null && $prev['birth'] !== $r['birth'];
+                return $r;
+            });
 
-            // a tie across the cut-off line (e.g. 6th and 7th equal) needs a human decision
-            $tieAtCutoff = $top > 0 && $rows->count() > $top && $rows[$top - 1]['weight'] === $rows[$top]['weight'] && $rows[$top]['weight'] > 0;
+            // only a tie that age cannot settle (same place on both sides of the cut-off) needs a human decision
+            $tieAtCutoff = $top > 0 && $rows->count() > $top && $rows[$top - 1]['rank'] === $rows[$top]['rank'] && $rows[$top]['weight'] > 0;
 
             $ranking[$question->id] = ['rows' => $rows, 'cast_weight' => $castWeight, 'tie_at_cutoff' => $tieAtCutoff];
         }
