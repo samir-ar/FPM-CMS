@@ -373,10 +373,12 @@
             pod.appendChild(el('div', 'pc', votes(r.votes) + ' \u00b7 ' + r.pct + '%'));
             return pod;
         }
-        [1, 0, 2].forEach(function (i) { if (rows[i]) box.appendChild(make(rows[i], i)); });
-        if (rows.length > 3) {
-            box.appendChild(el('div', 'pbreak'));
-            rows.slice(3).forEach(function (r, j) { box.appendChild(make(r, j + 3)); });
+        // a tree: 1st alone on top, then 2nd+3rd, then 4th-6th, then 7th-10th ...
+        var i = 0, size = 1;
+        while (i < rows.length) {
+            if (i) box.appendChild(el('div', 'pbreak'));
+            rows.slice(i, i + size).forEach(function (r, j) { box.appendChild(make(r, i + j)); });
+            i += size; size++;
         }
     }
 
