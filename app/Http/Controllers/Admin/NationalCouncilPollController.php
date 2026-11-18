@@ -96,7 +96,7 @@ class NationalCouncilPollController extends Controller
             'pageTitle'	=> 'إستبيان مجلس الوطني',
             'table_title' => '',
             'slug'		=> 'national-council-poll',
-            'custom_btn' => "<a href='" . route('admin.national-council-poll.create') ."' class='btn btn-primary'>Add National Council Poll</a>",
+            'custom_btn' => "<a href='" . route('admin.national-council-poll.create') ."' class='btn btn-primary'>Add National Council Poll</a> <a href='" . route('admin.national-council-poll.results-overview') ."' class='btn btn-default' style='margin-left:6px;'>Results of several polls</a>",
             'headers'	=> ['id', 'Title', 'Publish','Closes at','Results','questions','Creation Date','Action'],
             'scripts' => ['/js/council-poll-list.js'],
             'action' => route('admin.national-council-poll.index'),
@@ -518,6 +518,47 @@ HTML;
     public function results(Request $request, $id){
 
         $poll = CouncilNationalPoll::with('meeting')->find($id);
+        $top = max(0, (int) $request->get('top', 0));
+
+        $data = $this->resultsData($poll, $top);
+        $data['title'] = $poll->title;
+
+        return view('council-election-votes.report', $data);
+    }
+
+    // GLOBAL results page: tick one or several polls and see the results of all the ticked ones on one page.
+    // Same permission as the single-poll results (Council polls, view). Nothing here changes any data.
+    public function resultsOverview(Request $request)
+    {
+        $polls = CouncilNationalPoll::orderByDesc('id')->get(['id', 'title', 'is_published', 'closes_at', 'created_at']);
+
+        $chosen = collect((array) $request->get('polls', []))->map(fn($v) => (int) $v)->filter()->unique()->values();
+        $top = max(0, (int) $request->get('top', 0));
+
+        $sections = [];
+        foreach ($chosen as $pollId) {
+            $poll = CouncilNationalPoll::with('meeting', 'questions.answers')->find($pollId);
+            if ($poll) {
+                $sections[] = $this->resultsData($poll, $top);
+            }
+        }
+
+        return view('cms.national_council_poll.results_overview')->with([
+            'layout' => 'layouts.cms',
+            'pageTitle' => 'نتائج المجلس الوطني',
+            'polls' => $polls,
+            'chosen' => $chosen->all(),
+            'top' => $top,
+            'sections' => $sections,
+        ]);
+    }
+
+    // The numbers of ONE poll's results, shared by the single-poll results page and the global one so both always
+    // agree: turnout, weights and, per question, the ranking by weighted total then raw votes.
+    private function resultsData(CouncilNationalPoll $poll, int $top): array
+    {
+        $id = $poll->id;
+
         $votes = CouncilNationalPollVote::with('user')->where("poll_id",$id)->get();
 
         // one row per member who voted (member-level, not per app account)
@@ -530,7 +571,6 @@ HTML;
             ->groupBy('question_id')->map(fn($g) => $g->sum('weight'))->max();
 
         // ranked results per question: weighted total first, raw votes second
-        $top = max(0, (int) $request->get('top', 0));
         $ranking = [];
         foreach ($poll->questions as $question) {
             $qVotes = $votes->where('question_id', $question->id);
@@ -563,8 +603,7 @@ HTML;
 
         $meetingStats = $poll->meeting ? $poll->meeting->stats() : null;
 
-        $title = $poll->title;
-        return view('council-election-votes.report',compact('poll','votes','votersCount','title','electorsCount','totalWeight','votedWeight','ranking','top','meetingStats'));
+        return compact('poll','votes','votersCount','electorsCount','totalWeight','votedWeight','ranking','top','meetingStats');
     }
 
     // (There is deliberately NO "delete all votes" action any more: votes of an election or a poll are never

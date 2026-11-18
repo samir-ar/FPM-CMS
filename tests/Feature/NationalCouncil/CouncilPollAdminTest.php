@@ -315,4 +315,33 @@ class CouncilPollAdminTest extends CouncilTestCase
         $this->assertStringContainsString('save-poll-closes-at-btn', $row['closes']);
         $this->assertStringContainsStringIgnoringCase('closed', $row['closes']);
     }
+
+    public function test_the_global_results_page_shows_one_or_several_chosen_polls()
+    {
+        $this->actingAs($this->adminUser(), 'admin');
+        $a = $this->pollFromRoster();
+        DB::table('council_national_polls')->where('id', $a->id)->update(['title' => 'T results A']);
+        $q = DB::table('council_national_poll_questions')->insertGetId(['poll_id' => $a->id, 'question' => 'T question A', 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('answer_council_national_polls')->insert(['question_id' => $q, 'answer' => 'T candidate A', 'created_at' => now(), 'updated_at' => now()]);
+        $bId = DB::table('council_national_polls')->insertGetId(['title' => 'T results B', 'is_published' => 0, 'created_at' => now(), 'updated_at' => now()]);
+        $url = route('admin.national-council-poll.results-overview', [], false);
+
+        // nothing chosen: the picker lists both polls, no results yet
+        $this->get($url)->assertOk()->assertSee('T results A')->assertSee('T results B')->assertDontSee('T candidate A');
+
+        // one poll chosen: only its results
+        $this->get($url . '?polls[]=' . $a->id)->assertOk()->assertSee('T question A')->assertSee('T candidate A');
+
+        // several chosen: all of them on the page (B has no questions yet)
+        $this->get($url . '?polls[]=' . $a->id . '&polls[]=' . $bId)->assertOk()->assertSee('T candidate A')->assertSee('This poll has no questions yet.');
+
+        // an id that does not exist is ignored, not a crash
+        $this->get($url . '?polls[]=99999999')->assertOk()->assertSee('None of the chosen polls could be found.');
+
+        // the single-poll report still works after the refactor
+        $this->get(route('admin.national-council-poll.results', $a->id, false))->assertOk()->assertSee('T question A');
+
+        // the polls list links to the new page
+        $this->get(route('admin.national-council-poll.index', [], false))->assertOk()->assertSee('Results of several polls');
+    }
 }
