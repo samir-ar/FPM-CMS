@@ -22,8 +22,6 @@ class CouncilPollAdminTest extends CouncilTestCase
 
         auth('admin')->setUser($this->adminUser());
         $this->ctrl = app(NationalCouncilPollController::class);
-        // the results pages are locked behind the one-time phone code: these tests are past it
-        $this->withSession(['ie_results_otp_verified_until' => now()->addMinutes(30)]);
 
         // roster of 3, weights 5 / 3 / 2
         $this->members = $this->sampleMemberIds(4);
@@ -418,21 +416,5 @@ class CouncilPollAdminTest extends CouncilTestCase
         $r = $rows();
         $this->assertSame([1, 1], array_slice(array_column($r['rows'], 'rank'), 0, 2));
         $this->assertTrue($r['tie_at_cutoff']);
-    }
-
-    public function test_the_results_pages_need_the_one_time_phone_code(): void
-    {
-        $this->actingAs($this->adminUser(), 'admin');
-        $this->flushSession();   // no phone code verified
-
-        foreach ([
-            route('admin.national-council-poll.results-overview', [], false),
-            route('admin.national-council-poll.results-overview.data', [], false) . '?polls[]=1',
-            route('admin.national-council-poll.results', 1, false),
-        ] as $url) {
-            $res = $this->get($url);
-            $res->assertRedirect();
-            $this->assertStringContainsString('results-otp', $res->headers->get('Location'), $url);
-        }
     }
 }
