@@ -59,4 +59,35 @@ class PollMemberAnswerTest extends CouncilTestCase
         $this->assertSame(200, $this->answer($other, $o2));
         $this->assertSame(2, $this->answers($pollId));
     }
+
+    private function guestAnswer(int $optionId, string $deviceId, ?string $hardwareId): int
+    {
+        $req = Request::create('/api/v2/answer-poll', 'POST', ['option_id' => $optionId, 'device_id' => $deviceId] + ($hardwareId ? ['hardware_id' => $hardwareId] : []));
+        app()->instance('request', $req);
+
+        return app(ApiController::class)->answerPoll($req, app(ApiRepository::class))->getStatusCode();
+    }
+
+    public function test_a_guest_counts_once_per_phone_not_per_app_install(): void
+    {
+        $now = now();
+        $pollId = DB::table('polls')->insertGetId([
+            'question' => json_encode(['ar' => 'T guest poll', 'en' => 'T guest poll']), 'show' => 1, 'show_for_guest' => 1,
+            'expiry_date' => now()->addDay(), 'created_at' => $now, 'updated_at' => $now,
+        ]);
+        $o = DB::table('polls_options')->insertGetId(['poll_id' => $pollId, 'option' => json_encode(['ar' => 'A', 'en' => 'A']), 'created_at' => $now, 'updated_at' => $now]);
+
+        $this->assertSame(200, $this->guestAnswer($o, 'T-dev-1', 'T-phone-1'));
+        // app data cleared / reinstalled: new device_id, same phone -> refused
+        $this->assertSame(400, $this->guestAnswer($o, 'T-dev-2', 'T-phone-1'));
+        // same app install again -> refused
+        $this->assertSame(400, $this->guestAnswer($o, 'T-dev-1', 'T-phone-1'));
+        $this->assertSame(1, DB::table('guest_poll_votes')->where('poll_id', $pollId)->count());
+        // a different phone is a different guest
+        $this->assertSame(200, $this->guestAnswer($o, 'T-dev-3', 'T-phone-2'));
+        // an old app build with no hardware id still works, keyed by device_id
+        $this->assertSame(200, $this->guestAnswer($o, 'T-dev-4', null));
+        $this->assertSame(400, $this->guestAnswer($o, 'T-dev-4', null));
+        $this->assertSame(3, DB::table('guest_poll_votes')->where('poll_id', $pollId)->count());
+    }
 }

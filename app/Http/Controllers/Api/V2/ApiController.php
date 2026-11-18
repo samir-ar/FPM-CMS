@@ -1207,6 +1207,23 @@ class ApiController extends Controller
             return $this->api_error_response('invalid_parameters', 101, 'لقد شاركت في هذا الاستطلاع مسبقاً');
         }
 
+        // A guest counts once per PHONE: the hardware id is the physical identity of the phone (clearing the app's
+        // data or reinstalling gives it a new device_id, never a new hardware_id). The device_id is only the
+        // fallback for app builds that do not send a hardware id.
+        if (!request('user')) {
+            $meta = $this->deviceMeta($request);
+            $already = \App\V2\GuestPollVote::where('poll_id', $poll->id)
+                ->where(function ($q) use ($meta) {
+                    $q->where('device_id', $meta['device_id']);
+                    if ($meta['hardware_id']) {
+                        $q->orWhere('hardware_id', $meta['hardware_id']);
+                    }
+                })->exists();
+            if ($already) {
+                return $this->api_error_response('invalid_parameters', 101, 'لقد شاركت في هذا الاستطلاع مسبقاً');
+            }
+        }
+
         if (request('user')) {
             $repo->userAnswerPoll(request('user'), request('option_id'), $this->deviceMeta($request));
         } else {
