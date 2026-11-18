@@ -59,41 +59,39 @@ class UserRepository
         return $user ? true : false;
     }
 
+    // The account a login belongs to. The MEMBER ID is the identity: the account of this member (leading zero
+    // ignored) is reused whatever phone number it was created with, and the account of ANOTHER member is never
+    // returned just because they share a phone number (families do: about 1,000 members share a phone). Before, the
+    // match was "this member id OR this phone, newest first", so a member logging in on a shared phone could take
+    // over the other member's account row (new member id, name, photo and token written onto it).
+    //
+    // An active account always wins over a soft-deleted one (a trashed one is only restored when the member has no
+    // active account at all). Without a member id (not used by any caller today) it falls back to the phone alone.
     public function getUserByPhoneNumber($phone_number, $member_id = null)
     {
-        $applyMatch = function ($query) use ($phone_number, $member_id) {
+        $phone = $this->normalizePhone($phone_number);
+
+        $applyMatch = function ($query) use ($phone, $member_id) {
             if ($member_id) {
-                //member_id is the real unique FPM identifier — match on it as well
-                //as phone (which can vary in stored format, e.g. leading '+' or
-                //not). Matching only on phone let duplicate rows for the same
-                //member go unmatched whenever the stored/incoming phone format
-                //didn't line up.
-                $query->where(function ($q) use ($phone_number, $member_id) {
-                    $q->where('member_id', $member_id)
-                        ->orWhereRaw("TRIM(LEADING '+' FROM phone_number) = ?", [$this->normalizePhone($phone_number)]);
-                });
+                $stripped = ltrim((string) $member_id, '0');
+                $ids = array_values(array_unique(array_filter([(string) $member_id, $stripped, '0' . $stripped], fn ($v) => $v !== '' && $v !== '0')));
+                $query->whereIn('member_id', $ids);
             } else {
-                $query->whereRaw("TRIM(LEADING '+' FROM phone_number) = ?", [$this->normalizePhone($phone_number)]);
+                $query->whereRaw("TRIM(LEADING '+' FROM phone_number) = ?", [$phone]);
             }
 
-            return $query;
+            // the account that already has this phone first, then the most recently used
+            return $query->orderByRaw("CASE WHEN TRIM(LEADING '+' FROM phone_number) = ? THEN 0 ELSE 1 END", [$phone])
+                ->orderBy('updated_at', 'desc')->orderBy('id', 'desc');
         };
 
-        //An already-active row always wins first — never let a soft-deleted
-        //row (even one touched more recently, e.g. by cleanup work) outrank
-        //a currently-active account and get restored on top of it, which
-        //would produce two active rows instead of one.
-        $user = $applyMatch(AppUser::query())->orderBy('updated_at', 'desc')->first();
+        $user = $applyMatch(AppUser::query())->first();
 
         if ($user) {
             return $user;
         }
 
-        //No active row matched: a soft-delete (accidental or intentional)
-        //would otherwise make this lookup blind and spawn a brand new
-        //duplicate row on next login — restore the most recently updated
-        //trashed match instead.
-        $user = $applyMatch(AppUser::onlyTrashed())->orderBy('updated_at', 'desc')->first();
+        $user = $applyMatch(AppUser::onlyTrashed())->first();
 
         if ($user) {
             $user->restore();
