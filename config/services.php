@@ -89,4 +89,12 @@ return [
         'bundle_id' => env('APP_STORE_CONNECT_BUNDLE_ID', 'com.microbits.fpm'),
     ],
 
+    // SMS provider used for the login codes. The values come only from .env.
+    'sms' => [
+        'url' => env('SMS_URL', 'https://globesms.net/smshub/api.php'),
+        'username' => env('SMS_USERNAME'),
+        'password' => env('SMS_PASSWORD'),
+        'from' => env('SMS_FROM'),
+    ],
+
 ];

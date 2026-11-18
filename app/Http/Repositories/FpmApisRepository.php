@@ -77,16 +77,22 @@ class FpmApisRepository
 
     public function sendSMS($data)
     {
-        $endpoint = "https://globesms.net/smshub/api.php";
+        $sms = config('services.sms');
+        if (empty($sms['username']) || empty($sms['password'])) {
+            // fail loudly: without this the login codes would silently stop being sent
+            throw new \RuntimeException('SMS provider login is not configured: set SMS_USERNAME and SMS_PASSWORD in .env');
+        }
+
+        $endpoint = $sms['url'] ?: 'https://globesms.net/smshub/api.php';
 
         $client = new Client();
 
         $response = $client->request('GET', $endpoint, [
             'query' => [
-                'username' => 'I T',
-                'password' => 'Fpm@Mob',
+                'username' => $sms['username'],
+                'password' => $sms['password'],
                 'action' => 'sendsms',
-                'from' => 'FPM-IT.Mob',
+                'from' => $sms['from'],
                 'to' => $data['phone_number'],
                 'text' => $data['message'],
             ],
