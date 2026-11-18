@@ -143,21 +143,21 @@
     .empty b { display: block; font-size: 24px; color: var(--text); margin-bottom: 8px; }
 
     /* ---------- "choose a poll" cards ---------- */
-    .pcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: clamp(14px, 1.3vw, 22px); }
-    .pcard { text-align: start; cursor: pointer; color: var(--text); font-family: inherit; padding: 22px 24px; border-radius: var(--radius); background: var(--card); border: 1px solid var(--line); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow: 0 24px 60px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.06); transition: transform .2s, border-color .2s, background .2s; display: flex; flex-direction: column; gap: 16px; }
+    .pcards { display: flex; flex-wrap: wrap; justify-content: center; gap: clamp(16px, 1.6vw, 28px); }
+    .pcard { width: min(100%, 400px); text-align: center; align-items: center; cursor: pointer; color: var(--text); font-family: inherit; padding: 22px 24px; border-radius: var(--radius); background: var(--card); border: 1px solid var(--line); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow: 0 24px 60px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.06); transition: transform .2s, border-color .2s, background .2s; display: flex; flex-direction: column; gap: 16px; }
     .pcard:hover { transform: translateY(-4px); border-color: rgba(244,141,36,.7); background: rgba(0,24,42,.26); }
     .pcard:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
     .pcard .t { font-size: 22px; font-weight: 800; line-height: 1.25; unicode-bidi: plaintext; }
-    .pcard .tags { display: flex; gap: 8px; flex-wrap: wrap; }
+    .pcard .tags { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
     .pcard .tag { padding: 3px 11px; border-radius: 99px; font-size: 11.5px; font-weight: 700; letter-spacing: .04em; background: rgba(255,255,255,.08); border: 1px solid var(--line); color: var(--muted); }
     .pcard .tag.ok { color: var(--green); background: rgba(52,224,160,.1); border-color: rgba(52,224,160,.35); }
     .pcard .tag.or { color: #ffc88a; background: rgba(244,141,36,.14); border-color: rgba(244,141,36,.4); }
-    .pcard .st { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .pcard .st { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 100%; }
     .pcard .st b { display: block; font-size: 26px; font-weight: 800; letter-spacing: -.02em; }
     .pcard .st span { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
     .pcard .go { margin-top: auto; color: #ffc88a; font-weight: 700; font-size: 14px; }
-    .pick-title { font-size: clamp(22px, 2vw, 30px); font-weight: 800; margin: 6px 0 2px; }
-    .pick-sub { color: var(--muted); margin-bottom: 18px; }
+    .pick-title { font-size: clamp(26px, 2.4vw, 38px); font-weight: 800; margin: 18px 0 4px; text-align: center; }
+    .pick-sub { color: var(--muted); margin-bottom: 28px; text-align: center; }
 
     /* ---------- reveal mode (the presenter uncovers the results step by step) ---------- */
     .btn.go { background: var(--orange); border-color: var(--orange); color: #2b1500; font-weight: 800; box-shadow: 0 0 22px rgba(244,141,36,.45); }
