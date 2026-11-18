@@ -535,22 +535,75 @@ HTML;
         $chosen = collect((array) $request->get('polls', []))->map(fn($v) => (int) $v)->filter()->unique()->values();
         $top = max(0, (int) $request->get('top', 0));
 
-        $sections = [];
-        foreach ($chosen as $pollId) {
-            $poll = CouncilNationalPoll::with('meeting', 'questions.answers')->find($pollId);
-            if ($poll) {
-                $sections[] = $this->resultsData($poll, $top);
-            }
-        }
-
         return view('cms.national_council_poll.results_overview')->with([
             'layout' => 'layouts.cms',
             'pageTitle' => 'نتائج المجلس الوطني',
             'polls' => $polls,
             'chosen' => $chosen->all(),
             'top' => $top,
-            'sections' => $sections,
+            // first paint comes with the page; after that the page asks resultsOverviewData() every few seconds
+            'initial' => $this->resultsPayload($chosen->all(), $top),
+            'dataUrl' => route('admin.national-council-poll.results-overview.data'),
         ]);
+    }
+
+    // JSON for the live results page (same permission as the page; read-only).
+    public function resultsOverviewData(Request $request)
+    {
+        $chosen = collect((array) $request->get('polls', []))->map(fn($v) => (int) $v)->filter()->unique()->values()->all();
+        $top = max(0, (int) $request->get('top', 0));
+
+        return response()->json($this->resultsPayload($chosen, $top));
+    }
+
+    // Everything the live page draws, as plain arrays: per chosen poll its headline numbers and, per question,
+    // the ranked rows (with the candidate's photo when he was picked from the member list).
+    private function resultsPayload(array $pollIds, int $top): array
+    {
+        $out = [];
+        foreach ($pollIds as $pollId) {
+            $poll = CouncilNationalPoll::with('meeting', 'questions.answers')->find($pollId);
+            if (!$poll) {
+                continue;
+            }
+
+            $d = $this->resultsData($poll, $top);
+            $questions = [];
+            foreach ($poll->questions as $question) {
+                $r = $d['ranking'][$question->id];
+                $questions[] = [
+                    'id' => $question->id,
+                    'text' => $question->question,
+                    'cast_weight' => $r['cast_weight'],
+                    'tie_at_cutoff' => $r['tie_at_cutoff'],
+                    'rows' => $r['rows']->map(fn($row) => [
+                        'id' => $row['id'],
+                        'name' => $row['answer'],
+                        'photo' => $row['member_id'] ? url('/api/v2/member-photo/' . $row['member_id']) : null,
+                        'weight' => $row['weight'],
+                        'votes' => $row['votes'],
+                        'pct' => $row['pct'],
+                        'rank' => $row['rank'],
+                    ])->values()->all(),
+                ];
+            }
+
+            $out[] = [
+                'id' => $poll->id,
+                'title' => $poll->title,
+                'published' => (bool) $poll->is_published,
+                'closes_at' => $poll->closes_at ? \Carbon\Carbon::parse($poll->closes_at)->format('d M Y H:i') : null,
+                'closed' => $poll->isClosed(),
+                'electors' => $d['electorsCount'],
+                'voters' => $d['votersCount'],
+                'turnout' => $d['electorsCount'] ? round($d['votersCount'] * 100 / $d['electorsCount'], 1) : 0,
+                'total_weight' => $d['totalWeight'],
+                'voted_weight' => $d['votedWeight'],
+                'questions' => $questions,
+            ];
+        }
+
+        return ['polls' => $out, 'top' => $top, 'at' => now()->format('H:i:s')];
     }
 
     // The numbers of ONE poll's results, shared by the single-poll results page and the global one so both always
@@ -581,6 +634,8 @@ HTML;
                 $w = (int) $a->sum('weight');
                 return [
                     'answer' => $answer->answer,
+                    'id' => $answer->id,
+                    'member_id' => $answer->member_id,
                     'weight' => $w,
                     'votes' => $a->count(),
                     'pct' => $castWeight ? round($w * 100 / $castWeight, 1) : 0,

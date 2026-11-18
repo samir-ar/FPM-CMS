@@ -626,6 +626,7 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::get('national-council-poll/{id}/votes-report', 'NationalCouncilPollVotersController@votesReport')->name('national-council-poll.votes-report')->middleware(['page-perm:58,view', 'ie-results-otp']);
     Route::get('national-council-poll/{id}/votes-report/export', 'NationalCouncilPollVotersController@votesReportExport')->name('national-council-poll.votes-report.export')->middleware(['page-perm:58,view', 'ie-results-otp']);
     Route::get('national-council-poll/{id}/toggle-publish','NationalCouncilPollController@togglePublish')->name('national-council-poll.toggle-publish')->middleware('page-perm:58,full');
+    Route::get('national-council-poll-results/data','NationalCouncilPollController@resultsOverviewData')->name('national-council-poll.results-overview.data')->middleware('page-perm:58,view');
     Route::get('national-council-poll-results','NationalCouncilPollController@resultsOverview')->name('national-council-poll.results-overview')->middleware('page-perm:58,view');
     Route::get('national-council-poll/{id}/results','NationalCouncilPollController@results')->name('national-council-poll.results')->middleware('page-perm:58,view');
     Route::get('national-council-poll-voters-template', 'NationalCouncilPollController@downloadVotersTemplate')->name('national-council-poll.voters-template')->middleware('page-perm:58,view');

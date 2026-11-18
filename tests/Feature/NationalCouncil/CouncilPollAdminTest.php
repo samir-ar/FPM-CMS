@@ -333,10 +333,18 @@ class CouncilPollAdminTest extends CouncilTestCase
         $this->get($url . '?polls[]=' . $a->id)->assertOk()->assertSee('T question A')->assertSee('T candidate A');
 
         // several chosen: all of them on the page (B has no questions yet)
-        $this->get($url . '?polls[]=' . $a->id . '&polls[]=' . $bId)->assertOk()->assertSee('T candidate A')->assertSee('This poll has no questions yet.');
+        $this->get($url . '?polls[]=' . $a->id . '&polls[]=' . $bId)->assertOk()->assertSee('T candidate A')->assertSee('T results B');
 
-        // an id that does not exist is ignored, not a crash
-        $this->get($url . '?polls[]=99999999')->assertOk()->assertSee('None of the chosen polls could be found.');
+        // the live page keeps asking this JSON for fresh numbers
+        $json = $this->getJson(route('admin.national-council-poll.results-overview.data', [], false) . '?polls[]=' . $a->id . '&polls[]=' . $bId . '&polls[]=99999999&top=1', ['X-Requested-With' => 'XMLHttpRequest'])->assertOk()->json();
+        $this->assertSame([$a->id, $bId], array_column($json['polls'], 'id'), 'an id that does not exist is ignored, not a crash');
+        $this->assertSame(1, $json['top']);
+        $rowA = $json['polls'][0]['questions'][0]['rows'][0];
+        $this->assertSame('T candidate A', $rowA['name']);
+        $this->assertSame(0, $rowA['weight']);
+        $this->assertSame([], $json['polls'][1]['questions']);
+        $this->assertArrayHasKey('turnout', $json['polls'][0]);
+        $this->assertSame([], $this->getJson(route('admin.national-council-poll.results-overview.data', [], false), ['X-Requested-With' => 'XMLHttpRequest'])->json('polls'), 'nothing chosen, nothing returned');
 
         // the single-poll report still works after the refactor
         $this->get(route('admin.national-council-poll.results', $a->id, false))->assertOk()->assertSee('T question A');
