@@ -167,4 +167,101 @@ class CouncilVotingTest extends CouncilTestCase
         $this->assertStringContainsString('app_update_required', json_encode($body));
         $this->assertSame(0, $this->votes($this->poll));
     }
+
+    // ---- several published polls at once (the app lists them all) ----
+
+    private function api(string $method, int $userId, array $payload = []): array
+    {
+        $req = Request::create('/api/v2/x', 'POST', $payload);
+        $req->merge(['user' => AppUser::find($userId)]);
+        $res = app(ApiController::class)->$method($req, app(ApiRepository::class));
+
+        return [$res->getStatusCode(), json_decode($res->getContent(), true)];
+    }
+
+    // permit $userId's member in $this->otherPoll as well, so he is in two published polls
+    private function permitInOtherPoll(string $memberId, int $weight = 7): void
+    {
+        DB::table('council_national_poll_permissions')->insert(['poll_id' => $this->otherPoll, 'member_id' => $memberId, 'vote_weight' => $weight, 'created_at' => now(), 'updated_at' => now()]);
+    }
+
+    public function test_the_app_lists_every_published_poll_the_member_is_permitted_for()
+    {
+        $this->permitInOtherPoll('99900000001');
+        $unpublished = DB::table('council_national_polls')->insertGetId(['title' => 'T draft', 'is_published' => 0, 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('council_national_poll_permissions')->insert(['poll_id' => $unpublished, 'member_id' => '99900000001', 'vote_weight' => 7, 'created_at' => now(), 'updated_at' => now()]);
+
+        [, $body] = $this->api('listNationalCouncilPolls', $this->user);
+
+        $ids = array_column($body['polls'], 'id');
+        $this->assertContains($this->poll, $ids);
+        $this->assertContains($this->otherPoll, $ids, 'a second published poll is listed too, not only the latest');
+        $this->assertNotContains($unpublished, $ids, 'an unpublished poll never is');
+        $this->assertTrue(collect($body['polls'])->every(fn($p) => $p['can_i_vote'] === true && $p['voted'] === false));
+
+        // a member who is only in the first poll sees only that one
+        [, $b2] = $this->api('listNationalCouncilPolls', $this->user2);
+        $this->assertSame([$this->poll], array_column($b2['polls'], 'id'));
+    }
+
+    public function test_voting_one_poll_marks_it_voted_and_leaves_the_other_open()
+    {
+        $this->permitInOtherPoll('99900000001');
+
+        // vote in the OLDER poll (not the latest one) - must work now
+        [, $body] = $this->vote($this->user, ['poll_id' => $this->poll, 'answers' => [['question_id' => $this->q1, 'answer_id' => $this->a1], ['question_id' => $this->q2, 'answer_id' => $this->a2]]]);
+        $this->assertTrue($this->ok($body));
+
+        [, $list] = $this->api('listNationalCouncilPolls', $this->user);
+        $byId = collect($list['polls'])->keyBy('id');
+        $this->assertTrue($byId[$this->poll]['voted']);
+        $this->assertFalse($byId[$this->poll]['can_i_vote']);
+        $this->assertSame('لقد قمت بالتصويت', $byId[$this->poll]['message']);
+        $this->assertTrue($byId[$this->otherPoll]['can_i_vote'], 'the other poll is still open');
+
+        // and the other poll can be voted too, with its own weight
+        [, $b2] = $this->vote($this->user, ['poll_id' => $this->otherPoll, 'answers' => [['question_id' => $this->qOther, 'answer_id' => $this->aOther]]]);
+        $this->assertTrue($this->ok($b2));
+        $this->assertSame(1, $this->votes($this->otherPoll));
+    }
+
+    public function test_the_app_gets_one_chosen_poll_with_candidate_photos_but_never_one_it_may_not_vote_in()
+    {
+        [$pick] = $this->sampleMemberIds(1);
+        DB::table('answer_council_national_polls')->where('id', $this->a1)->update(['member_id' => (string) $pick]);
+        $this->permitInOtherPoll('99900000001');
+
+        [, $poll] = $this->api('getLatestNationalCouncilPoll', $this->user, ['poll_id' => $this->poll]);
+        $this->assertSame($this->poll, $poll['id']);
+        $answers = collect($poll['questions'])->pluck('answers')->flatten(1);
+        $candidate = $answers->firstWhere('id', $this->a1);
+        $this->assertStringContainsString('/api/v2/member-photo/' . $pick, $candidate['photo']);
+        $this->assertNull($answers->firstWhere('id', $this->a2)['photo'], 'a hand-typed option has no photo');
+        $this->assertArrayNotHasKey('member_id', $candidate, 'the member id itself is not sent to voters');
+
+        // a poll the member is not permitted for is refused
+        [, $refused] = $this->api('getLatestNationalCouncilPoll', $this->user2, ['poll_id' => $this->otherPoll]);
+        $this->assertArrayNotHasKey('questions', $refused);
+
+        // a poll he has already voted in is refused too
+        $this->vote($this->user, ['poll_id' => $this->poll, 'answers' => [['question_id' => $this->q1, 'answer_id' => $this->a1]]]);
+        [, $again] = $this->api('getLatestNationalCouncilPoll', $this->user, ['poll_id' => $this->poll]);
+        $this->assertArrayNotHasKey('questions', $again);
+
+        // without poll_id the old behaviour (the latest one) still answers, for older app builds
+        [, $old] = $this->api('getLatestNationalCouncilPoll', $this->user);
+        $this->assertArrayHasKey('questions', $old);
+    }
+
+    public function test_a_poll_candidates_photo_is_served_publicly_but_other_members_stay_private()
+    {
+        [$pick, $stranger] = $this->sampleMemberIds(2);
+        $jpeg = "\xFF\xD8\xFF\xE0" . str_repeat('x', 200);
+        DB::table('fpm_users')->where('MemberId', $pick)->update(['PersonImage' => $jpeg]);
+        DB::table('fpm_users')->where('MemberId', $stranger)->update(['PersonImage' => $jpeg]);
+        DB::table('answer_council_national_polls')->where('id', $this->a1)->update(['member_id' => (string) $pick]);
+
+        $this->get('/api/v2/member-photo/' . $pick)->assertOk();
+        $this->get('/api/v2/member-photo/' . $stranger)->assertNotFound();
+    }
 }

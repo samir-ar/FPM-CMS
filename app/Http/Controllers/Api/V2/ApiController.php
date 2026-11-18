@@ -939,10 +939,47 @@ class ApiController extends Controller
         return 401;
     }
 
+    // EVERY published poll the member is permitted for, each with whether he can still vote in it, so the app
+    // can list them all (like the Internal Election's list) instead of only the latest one.
+    public function listNationalCouncilPolls(Request $request, ApiRepository $apiRepository)
+    {
+        if (!$this->meetsNationalCouncilMinBuild()) {
+            return $this->api_error_response('app_update_required', 101, 'يرجى تحديث التطبيق للمشاركة في التصويت');
+        }
+
+        $user = $request->user;
+
+        $polls = $apiRepository->getNationalCouncilPolls($user)->map(function ($poll) use ($user) {
+            $voted = $this->nationalCouncilVoteExists($poll->id, $user);
+
+            return [
+                'id' => $poll->id,
+                'title' => $poll->title,
+                'can_i_vote' => !$voted,
+                'voted' => $voted,
+                'message' => $voted ? 'لقد قمت بالتصويت' : 'يمكنك التصويت',
+            ];
+        })->values();
+
+        return response()->json(['polls' => $polls]);
+    }
+
     public function getLatestNationalCouncilPoll(Request $request, ApiRepository $apiRepository)
     {
         if (!$this->meetsNationalCouncilMinBuild()) {
             return $this->api_error_response('app_update_required', 101, 'يرجى تحديث التطبيق للمشاركة في التصويت');
+        }
+
+        // A specific poll was asked for (the new app lists all polls): it must be one of the published polls this
+        // member is permitted for, and he must not have voted in it yet. Without poll_id the old behaviour stays
+        // (the latest one), so older app builds keep working.
+        if ($request->filled('poll_id')) {
+            $poll = $apiRepository->getNationalCouncilPolls($request->user)->firstWhere('id', (int) $request->input('poll_id'));
+            if (!$poll || $this->nationalCouncilVoteExists($poll->id, $request->user)) {
+                return $this->api_error_response('missing_parameters', 101, implode(', ', ['message' => 'لا يمكنك التصويت']));
+            }
+
+            return response()->json($poll->format());
         }
 
         //Return a poll
@@ -978,12 +1015,12 @@ class ApiController extends Controller
 
         $user = $request->user;
 
-        // The poll being voted on is decided by the server (the one published
-        // poll this member is permitted for), never trusted from the request:
-        // previously poll_id was taken from the request and could point at
-        // any poll, including an unpublished one or one the member isn't in.
-        $poll = $apiRepository->getNationalCouncil($user);
-        if (!$poll || (int) $poll->id !== (int) $request->poll_id) {
+        // The poll being voted on must be one of the PUBLISHED polls this member is permitted for (the server
+        // decides that, the request only names which of them): previously poll_id was taken from the request and
+        // could point at any poll, including an unpublished one or one the member isn't in. A member can now be
+        // in several published polls at once, so it is looked up in the whole list, not just the latest.
+        $poll = $apiRepository->getNationalCouncilPolls($user)->firstWhere('id', (int) $request->poll_id);
+        if (!$poll) {
             return $this->api_error_response('can_vote', 101, 'لا يمكنك التصويت');
         }
 
@@ -1465,14 +1502,23 @@ class ApiController extends Controller
         // photos have to show in the app for everyone - so it may only serve
         // the photo of someone who is actually a representative or a candidate.
         // Before this any member id returned that member's real photo to anyone.
+        $isPollCandidate = \DB::table('answer_council_national_polls')->where('member_id', (string) $memberId)->exists();
+
         $isPublicFace = \DB::table('persons')->where('member_id', $memberId)->exists()
-            || \DB::table('internal_election_candidates')->where('member_id', $memberId)->exists();
+            || \DB::table('internal_election_candidates')->where('member_id', $memberId)->exists()
+            || $isPollCandidate;
 
         if (!$isPublicFace) {
             abort(404);
         }
 
-        $bytes = \DB::table('fpm_users')->where('MemberId', $memberId)->value('PersonImage');
+        // A National Council poll candidate shows his Representatives picture when he has one (usually the newer
+        // photo), like the council pages in the CMS; otherwise the member-list photo below.
+        if ($isPollCandidate && ($repUrl = \App\Support\CouncilMemberLookup::repImageUrl($memberId))) {
+            return redirect()->away($repUrl)->header('Cache-Control', 'public, max-age=3600');
+        }
+
+        $bytes =\DB::table('fpm_users')->where('MemberId', $memberId)->value('PersonImage');
 
         if (empty($bytes)) {
             abort(404);

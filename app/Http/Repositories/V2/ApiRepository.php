@@ -116,6 +116,14 @@ class ApiRepository
         })->first()) ? $poll->poll : null;
     }
 
+    // EVERY published poll this member is permitted for (newest first), not just the latest one.
+    public function getNationalCouncilPolls(AppUser $user)
+    {
+        $pollIds = $user->nationalCouncilPollPermitted()->pluck('poll_id')->unique()->values();
+
+        return CouncilNationalPoll::whereIn('id', $pollIds)->where('is_published', true)->orderByDesc('id')->get();
+    }
+
     public function getNewsByGroups($groups_ids, $guestOnly = false)
     {
         $groups_ids = $groups_ids ?? [];

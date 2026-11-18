@@ -53,6 +53,7 @@ Route::group(['namespace' => 'Api\V2', 'prefix' => 'v2/', 'middleware' => ['lang
         // from signing on both sides - see app_signature_interceptor.dart).
         Route::group(['middleware' => ['app-signature']], function () {
             Route::post('national-council-poll-can-i-vote', 'ApiController@canIVoteToNationalCouncilPollMessage');
+            Route::post('national-council-polls', 'ApiController@listNationalCouncilPolls');
             Route::post('national-council-poll-get', 'ApiController@getLatestNationalCouncilPoll');
             Route::post('national-council-poll-vote', 'ApiController@voteToNationalPoll');
         });
