@@ -451,14 +451,15 @@ class InternalElectionController extends Controller
             return back()->withErrors('Election not found');
         }
 
-        // Deleting an election cascades to its votes in the database, so an election that has votes is never
-        // deleted from here. Election data is not removed.
-        if(\DB::table('internal_election_votes')->where('internal_election_id', $election->id)->exists()){
-            return back()->withErrors('This election already has votes and cannot be deleted. Votes are never deleted.');
+        // An election that is live cannot be deleted by accident: switch it off first.
+        if($election->is_active){
+            return back()->withErrors('This election is active. Deactivate it first, then delete it.');
         }
 
+        // Only MARKS the election as deleted: it disappears from the CMS list and from the app, but the election,
+        // its candidates and every vote stay in the database.
         $election->delete();
-        return back()->with('message', 'Election Deleted Successfully');
+        return back()->with('message', 'Election deleted. Its data (candidates and votes) is kept in the database.');
     }
 
     // Lets a non-candidate (e.g. campaign/party staff) see one district's

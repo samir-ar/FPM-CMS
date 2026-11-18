@@ -1002,7 +1002,7 @@ class ApiController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'poll_id' => 'required|integer|exists:council_national_polls,id',
+            'poll_id' => 'required|integer|exists:council_national_polls,id,deleted_at,NULL',
             'answers' => 'required|array|min:1',
             'answers.*.question_id' => 'required|integer',
             'answers.*.answer_id' => 'required|integer',

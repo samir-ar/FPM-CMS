@@ -130,6 +130,20 @@ class CouncilVotingTest extends CouncilTestCase
         $this->assertSame(0, DB::table('council_national_poll_votes')->where('member_id', '99900000001')->count());
     }
 
+    public function test_a_deleted_poll_disappears_from_the_app_and_cannot_be_voted_but_its_votes_stay()
+    {
+        // one vote already cast, then the poll is marked as deleted
+        $this->vote($this->user2, ['poll_id' => $this->poll, 'answers' => [['question_id' => $this->q1, 'answer_id' => $this->a1]]]);
+        DB::table('council_national_polls')->where('id', $this->poll)->update(['deleted_at' => now()]);
+
+        [, $list] = $this->api('listNationalCouncilPolls', $this->user);
+        $this->assertNotContains($this->poll, array_column($list['polls'], 'id'), 'gone from the app list');
+
+        [, $body] = $this->vote($this->user, ['poll_id' => $this->poll, 'answers' => [['question_id' => $this->q1, 'answer_id' => $this->a1]]]);
+        $this->assertFalse($this->ok($body), 'and it cannot be voted in');
+        $this->assertSame(1, $this->votes($this->poll), 'the earlier vote is still in the database');
+    }
+
     public function test_the_weight_cannot_be_chosen_by_the_client()
     {
         $this->vote($this->user, ['poll_id' => $this->poll, 'weight' => 999, 'answers' => [['question_id' => $this->q1, 'answer_id' => $this->a1]]]);
@@ -262,7 +276,10 @@ class CouncilVotingTest extends CouncilTestCase
         [, $again] = $this->api('getLatestNationalCouncilPoll', $this->user, ['poll_id' => $this->poll]);
         $this->assertArrayNotHasKey('questions', $again);
 
-        // without poll_id the old behaviour (the latest one) still answers, for older app builds
+        // without poll_id the old behaviour (the latest one) still answers, for older app builds.
+        // "Latest" = the newest permission row, so make the other poll's clearly newer (both were created in the
+        // same second, which made the order a coin toss).
+        DB::table('council_national_poll_permissions')->where('poll_id', $this->otherPoll)->where('member_id', '99900000001')->update(['created_at' => now()->addMinute()]);
         [, $old] = $this->api('getLatestNationalCouncilPoll', $this->user);
         $this->assertArrayHasKey('questions', $old);
     }

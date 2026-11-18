@@ -146,7 +146,10 @@ class CouncilPollAdminTest extends CouncilTestCase
 
         DB::table('council_national_polls')->where('id', $poll->id)->update(['is_published' => 0]);
         $this->ctrl->destroy($poll->id);
-        $this->assertTrue(DB::table('council_national_polls')->where('id', $poll->id)->exists(), 'has votes: not deleted');
+        // "delete" only marks the poll as deleted; the poll row and its votes stay in the database
+        $this->assertTrue(DB::table('council_national_polls')->where('id', $poll->id)->exists(), 'the row is kept');
+        $this->assertNotNull(DB::table('council_national_polls')->where('id', $poll->id)->value('deleted_at'));
+        $this->assertSame(3, DB::table('council_national_poll_votes')->where('poll_id', $poll->id)->count(), 'the votes are kept');
     }
 
     public function test_the_poll_pages_render_with_the_voter_tools()

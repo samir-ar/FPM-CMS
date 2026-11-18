@@ -427,16 +427,9 @@ class PollsController extends Controller
             return back()->withErrors('Poll not found');
         }
 
-        // The members' and guests' answers are removed with the poll (database cascade), so a poll that already
-        // has answers is never deleted from here. Hide it instead (the enable/disable switch).
-        $answered = \DB::table('users_polls')->where('poll_id', $poll->id)->exists()
-            || \DB::table('guest_poll_votes')->where('poll_id', $poll->id)->exists();
-        if ($answered) {
-            return back()->withErrors('This poll already has answers and cannot be deleted. Use the enable/disable switch to hide it.');
-        }
-
+        // Poll uses soft deletes: this only marks it as deleted, and its answers stay in the database.
         $poll->delete();
-        return back()->with('message', 'Poll Deleted Successfully');
+        return back()->with('message', 'Poll deleted. Its answers are kept in the database.');
     }
 
     public function toggleActive($id)

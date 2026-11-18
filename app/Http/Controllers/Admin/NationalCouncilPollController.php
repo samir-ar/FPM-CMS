@@ -464,12 +464,21 @@ HTML;
 
     public function destroy($id)
     {
-        if (CouncilNationalPollVote::where('poll_id', $id)->exists()) {
-            return back()->with('message', 'This poll already has votes and cannot be deleted.');
-        }
         $poll = CouncilNationalPoll::find($id);
+        if (!$poll) {
+            return back()->with('message', 'Poll was already deleted');
+        }
+
+        // A poll that is live cannot be deleted by accident: unpublish it first.
+        if ($poll->is_published) {
+            return back()->withErrors('"' . $poll->title . '" is published. Unpublish it first, then delete it.');
+        }
+
+        // Only MARKS the poll as deleted: it disappears from the CMS list and from the app, but the poll, its
+        // questions, its voters and every vote stay in the database.
         $poll->delete();
-        return back()->with('message', 'Poll Deleted Successfully');
+
+        return back()->with('message', 'Poll deleted. Its data (questions, voters and votes) is kept in the database.');
 
     }
 

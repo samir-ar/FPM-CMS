@@ -188,7 +188,7 @@ class InternalElectionCandidatesController extends Controller
 
     public function store(Request $request){
         $this->validate($request, [
-            'election_id' => 'required|exists:internal_elections,id',
+            'election_id' => 'required|exists:internal_elections,id,deleted_at,NULL',
             'source' => 'required|in:fpm,manual',
             'member_id' => 'required_if:source,fpm|nullable|exists:fpm_users,MemberId',
             'first_name' => 'required',
