@@ -1943,7 +1943,7 @@ class ApiController extends Controller
         $memberId = $user->member_id ?? 'unknown';
         $key = 'directory-pulls:' . $memberId;
 
-        if (RateLimiter::tooManyAttempts($key, 200)) {
+        if (RateLimiter::tooManyAttempts($key, 50)) {
             Log::warning('directory_pull_rate_limited', ['member_id' => $memberId, 'endpoint' => $endpoint, 'ip' => $request->ip()]);
             return $this->api_error_response('too_many_requests', 429, 'لقد تصفّحت عدداً كبيراً من الصفحات خلال الساعة الأخيرة، يرجى المحاولة مجدداً بعد قليل.', 429);
         }
