@@ -141,6 +141,13 @@ class CouncilPollVotersTest extends CouncilTestCase
 
         $this->assertStringContainsString('/voters', $list, 'the voters page IS linked');
         $this->assertStringNotContainsString('votes-report', $list, 'the who-voted-for-whom page is not');
+
+        // the red "delete all data" button is gone from the list, for published and unpublished polls alike
+        $this->assertStringNotContainsString('DELETE ALL DATA', $list);
+        $this->assertStringNotContainsString('/clear', $list);
+        DB::table('council_national_polls')->where('id', $this->poll)->update(['is_published' => 0]);
+        $unpublished = json_encode($this->getJson(route('admin.national-council-poll.index', [], false), ['X-Requested-With' => 'XMLHttpRequest'])->json('data'));
+        $this->assertStringNotContainsString('DELETE ALL DATA', $unpublished);
         $this->assertStringNotContainsString('votes-report', $this->get(route('admin.national-council-poll.progress', $this->poll, false))->getContent());
     }
 }

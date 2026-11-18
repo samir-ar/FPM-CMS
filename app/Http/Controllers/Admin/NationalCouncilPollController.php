@@ -69,9 +69,9 @@ class NationalCouncilPollController extends Controller
                         '<i class="fa fa-edit" aria-hidden="true"></i></a>'.
                         "<a title='Who voted' style='margin:0 12px;' href='" . route('admin.national-council-poll.progress', $row->id) . "'><i class='fa fa-users' aria-hidden='true'></i></a>".
                         "<a data-toggle='modal' class='delete-link' href='#deleteModal' id='" .route('admin.national-council-poll.destroy', $row->id) . "'>".
-                        "<i class='fa fa-trash' style='color: red;' aria-hidden='true'></i>".
-                        ($row->is_published ? '' : "<a title='X DELETE ALL DATA X' data-toggle='modal' style='margin-left:10px;' class='delete-link' href='".route('admin.national-council-poll.clear', $row->id) . "'><i class='fa fa-window-close-o' style='color: red;' aria-hidden='true'></i></a>");
-
+                        "<i class='fa fa-trash' style='color: red;' aria-hidden='true'></i>";
+                    // the red "X DELETE ALL DATA X" button was removed from this list on purpose (a single mis-click
+                    // wiped a poll's votes); the page itself is not linked from here any more
                 })
 
                 ->rawColumns(['is_published','action','questions','results'])
