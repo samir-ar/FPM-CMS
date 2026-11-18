@@ -714,8 +714,10 @@
         autoOn = true; ctl.auto.classList.add('on'); ctl.auto.textContent = 'Auto \u2022 on';
         autoStep();
     }
+    var autoStartT = null;
     function startReveal() {
-        if (!chosen().length) return;
+        clearTimeout(autoStartT);
+        if (revealing || !chosen().length) return;
         live = false; clearInterval(timer);
         refresh().then(function () {
             revealing = true; document.body.classList.add('reveal');
@@ -739,6 +741,8 @@
 
     render(cfg.initial);
     schedule();
+    // the summary counters take ~4.5 s to finish; 3 s later the reveal starts by itself
+    if (cfg.initial.polls.length) autoStartT = setTimeout(startReveal, 7500);
 })();
 </script>
 </body>
