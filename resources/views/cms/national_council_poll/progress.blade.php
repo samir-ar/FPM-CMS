@@ -6,7 +6,7 @@
     .tile { background:#fff; border:1px solid #e3e8ec; border-radius:6px; padding:14px 18px; margin-bottom:12px; }
     .tile .n { font-size:28px; font-weight:700; line-height:1.1; }
     .tile .l { color:#667; font-size:12px; text-transform:uppercase; letter-spacing:.06em; }
-    .dev { font-family: monospace; font-size:11px; color:#556; }
+    .dev { display:inline-block; font-family: monospace; font-size:13px; color:#223; background:#eef1f4; border:1px solid #cfd8de; border-radius:4px; padding:3px 7px; word-break:break-all; max-width:300px; line-height:1.35; }
     tr.not-voted td { opacity:.65; }
 </style>
 
@@ -31,7 +31,7 @@
                 <h4><i class="fa fa-warning"></i> A device was used to vote for more than one member</h4>
                 @foreach($sharedDevices as $d)
                     <p style="margin-bottom:6px;">
-                        <span class="dev" title="{{ $d['device'] }}">{{ substr($d['device'], 0, 12) }}…</span> &mdash;
+                        <span class="dev">{{ $d['device'] }}</span> &mdash;
                         @foreach($d['members'] as $m)<span dir="auto">{{ $m['name'] }}</span> (#{{ $m['id'] }})@if(!$loop->last), @endif @endforeach
                     </p>
                 @endforeach
@@ -70,8 +70,8 @@
                     </td>
                     <td>
                         @if($r['device'])
-                            <span class="dev" title="{{ $r['device'] }}">{{ substr($r['device'], 0, 12) }}…</span>
-                            @if($r['device_members'] > 1)<span class="label label-warning" title="The same device voted for {{ $r['device_members'] }} members">shared by {{ $r['device_members'] }}</span>@endif
+                            <span class="dev">{{ $r['device'] }}</span>
+                            @if($r['device_members'] > 1)<br><span class="label label-warning" style="display:inline-block;margin-top:4px;" title="The same device voted for {{ $r['device_members'] }} members">shared by {{ $r['device_members'] }}</span>@endif
                         @elseif($r['voted'])<span class="text-muted">not recorded</span>@endif
                     </td>
                     <td>{{ $r['phone'] }}</td>

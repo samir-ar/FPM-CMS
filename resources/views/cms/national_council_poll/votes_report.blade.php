@@ -2,7 +2,7 @@
 
 @section('content')
 <style>
-    .dev { font-family: monospace; font-size:11px; color:#556; }
+    .dev { display:inline-block; font-family: monospace; font-size:13px; color:#223; background:#eef1f4; border:1px solid #cfd8de; border-radius:4px; padding:3px 7px; word-break:break-all; max-width:300px; line-height:1.35; }
 </style>
 <div class="box box-danger">
     <div class="box-header with-border">
@@ -45,8 +45,8 @@
                     <td>{{ \Carbon\Carbon::parse($v['voted_at'])->format('j M Y, H:i') }}</td>
                     <td>
                         @if($v['device'])
-                            <span class="dev" title="{{ $v['device'] }}">{{ substr($v['device'], 0, 12) }}…</span>
-                            @if($v['device_members'] > 1)<span class="label label-warning" title="The same device voted for {{ $v['device_members'] }} members">shared by {{ $v['device_members'] }}</span>@endif
+                            <span class="dev">{{ $v['device'] }}</span>
+                            @if($v['device_members'] > 1)<br><span class="label label-warning" style="display:inline-block;margin-top:4px;" title="The same device voted for {{ $v['device_members'] }} members">shared by {{ $v['device_members'] }}</span>@endif
                         @else <span class="text-muted">not recorded</span> @endif
                     </td>
                     <td>{{ $v['phone'] }}</td>
