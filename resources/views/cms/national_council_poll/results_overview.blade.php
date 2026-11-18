@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Live results - National Council</title>
+    <title>Results - National Council</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
 @verbatim
@@ -45,7 +45,7 @@
     h1 { font-size: clamp(22px, 2.4vw, 40px); font-weight: 800; line-height: 1.1; margin-top: 4px; }
     .sub { color: var(--muted); font-size: 14px; margin-top: 4px; }
     .tools { display: flex; align-items: center; gap: 12px; flex: none; }
-    .live { cursor: pointer; user-select: none; display: inline-flex; align-items: center; gap: 9px; padding: 9px 16px; border-radius: 999px; background: rgba(52,224,160,.12); border: 1px solid rgba(52,224,160,.35); font-size: 13px; font-weight: 700; letter-spacing: .14em; color: var(--green); }
+    .live { user-select: none; display: inline-flex; align-items: center; gap: 9px; padding: 9px 16px; border-radius: 999px; background: rgba(52,224,160,.12); border: 1px solid rgba(52,224,160,.35); font-size: 13px; font-weight: 700; letter-spacing: .14em; color: var(--green); }
     .live i { width: 9px; height: 9px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 0 rgba(52,224,160,.7); animation: ping 1.8s infinite; }
     .live.paused { background: rgba(255,255,255,.07); border-color: var(--line); color: var(--muted); }
     .live.paused i { background: var(--muted); animation: none; }
@@ -159,6 +159,30 @@
     .pick-title { font-size: clamp(26px, 2.4vw, 38px); font-weight: 800; margin: 18px 0 4px; text-align: center; }
     .pick-sub { color: var(--muted); margin-bottom: 28px; text-align: center; }
 
+    /* ---------- interactive bits ---------- */
+    .qtools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 10px 0 6px; }
+    .qsearch { flex: 0 1 280px; padding: 9px 14px; border-radius: 12px; background: var(--card-strong); border: 1px solid var(--line); color: var(--text); font: 500 14px 'Inter', 'Tajawal', sans-serif; }
+    .qsearch::placeholder { color: var(--faint); }
+    .tgl { cursor: pointer; padding: 9px 16px; border-radius: 12px; background: var(--card-strong); border: 1px solid var(--line); color: var(--muted); font: 700 13px 'Inter', sans-serif; transition: all .2s; }
+    .tgl:hover { color: var(--text); }
+    .tgl.on { background: var(--orange); border-color: var(--orange); color: #2b1500; }
+    .row.fx { display: none; }
+    .rows:hover .row:not(:hover) { opacity: .55; }
+    .row:hover { transform: translateX(4px); }
+    .elected { margin: 12px 0 8px; padding: 18px 20px; border-radius: 18px; background: rgba(244,141,36,.08); border: 1px solid rgba(244,141,36,.3); }
+    .elt-l { font-size: 12px; font-weight: 800; letter-spacing: .24em; text-transform: uppercase; color: #ffc88a; margin-bottom: 14px; }
+    .elt-list { display: flex; flex-wrap: wrap; gap: 14px 22px; }
+    .elt { display: flex; align-items: center; gap: 12px; cursor: pointer; padding: 6px 14px 6px 6px; border-radius: 999px; background: rgba(255,255,255,.07); border: 1px solid var(--line); transition: background .2s, transform .2s; }
+    .elt:hover { background: rgba(255,255,255,.14); transform: translateY(-2px); }
+    .elt .face { width: 46px; height: 46px; flex: none; }
+    .elt .nm { font-size: 15px; font-weight: 700; unicode-bidi: plaintext; }
+    .elt.tie { border-style: dashed; color: #ffc88a; cursor: default; padding: 12px 18px; }
+    .qnav { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; }
+    .qnav button { cursor: pointer; padding: 8px 16px; border-radius: 999px; background: var(--card-strong); border: 1px solid var(--line); color: var(--muted); font: 700 13px 'Inter', 'Tajawal', sans-serif; max-width: 360px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; transition: all .2s; unicode-bidi: plaintext; }
+    .qnav button:hover { background: var(--orange); border-color: var(--orange); color: #2b1500; }
+    body.reveal .qtools, body.reveal .qnav { display: none; }
+    body.reveal .q:not(.done) .elected { display: none !important; }
+
     /* ---------- reveal mode (the presenter uncovers the results step by step) ---------- */
     .btn.go { background: var(--orange); border-color: var(--orange); color: #2b1500; font-weight: 800; box-shadow: 0 0 22px rgba(244,141,36,.45); }
     .btn.go:hover { background: #ffa443; }
@@ -204,14 +228,17 @@
     <div class="brand">
         <div class="mark"><img src="{{ asset('council-board/fpm-logo.png') }}" alt=""></div>
         <div style="min-width:0">
-            <div class="kicker">National Council &middot; Live results</div>
+            <div class="kicker">National Council &middot; Results</div>
             <h1 class="auto" id="title">Results</h1>
             <div class="sub" id="subtitle"></div>
         </div>
     </div>
     <div class="tools">
-        <div class="live" id="live" title="Click to pause / resume the live updates"><i></i><span id="liveText">LIVE</span></div>
+        <div class="live paused" id="live"><i></i><span id="liveText">RESULTS</span></div>
         <div id="clock">--:--:--</div>
+        <button class="btn" id="replayBtn" type="button" style="display:none" title="Play the entrance animation again">Replay</button>
+        <button class="btn" id="refreshBtn" type="button" style="display:none">Refresh</button>
+        <button class="btn" id="changeBtn" type="button" style="display:none">Change poll</button>
         <button class="btn go" id="revealBtn" type="button">Start reveal</button>
         <button class="btn" id="fs" type="button">Full screen</button>
         <a class="btn" href="{{ route('admin.national-council-poll.index') }}">Back</a>
@@ -219,7 +246,7 @@
 </header>
 
 <main>
-    <section class="card" id="pickerCard" style="display:none;">
+    <section class="card" id="pickerCard" style="display:none !important;">
         <div class="picker" id="picker">
             <span class="sub" style="margin:0 6px 0 0;">Poll</span>
             @foreach($polls as $p)
@@ -285,7 +312,7 @@
     var stages = document.getElementById('stages'), chooser = document.getElementById('chooser'), pickerCard = document.getElementById('pickerCard');
     var liveBtn = document.getElementById('live'), liveText = document.getElementById('liveText');
     var topInput = document.getElementById('top'), titleEl = document.getElementById('title'), subEl = document.getElementById('subtitle');
-    var live = true, timer = null, reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var live = false, timer = null, reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
     var CIRC = 2 * Math.PI * 100;   // ring radius 100 in a 240 box
 
     function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
@@ -379,11 +406,44 @@
         }
     }
 
+    // "Elected" strip: who holds the seats (only when the poll has a number of winners)
+    function renderElected(box, q, top) {
+        var win = q.rows.filter(function (r) { return isWin(r, top); });
+        if (!top || !win.length || q.cast_weight <= 0) { box.style.display = 'none'; return; }
+        box.style.display = ''; box.textContent = '';
+        box.appendChild(el('div', 'elt-l', 'Elected \u00b7 ' + win.length + ' of ' + top + (top === 1 ? ' seat' : ' seats')));
+        var list = el('div', 'elt-list');
+        win.forEach(function (r) {
+            var it = el('div', 'elt'); it.setAttribute('data-id', r.id);
+            var f = el('div', 'face'); f.appendChild(avatar(r.name, r.photo)); it.appendChild(f); it.appendChild(el('div', 'nm', r.name));
+            list.appendChild(it);
+        });
+        if (q.tie_at_cutoff) list.appendChild(el('div', 'elt tie', 'Last seat tied \u2013 a decision is needed'));
+        box.appendChild(list);
+    }
+    // search box + "Winners only" toggle of one question
+    function applyFilter(node) {
+        var term = node.querySelector('.qsearch').value.trim().toLowerCase();
+        var only = node.querySelector('.tgl').classList.contains('on');
+        Array.prototype.forEach.call(node.querySelectorAll('.row'), function (row) {
+            var hide = (term && row.querySelector('.nm').textContent.toLowerCase().indexOf(term) < 0) || (only && !row.classList.contains('win') && !row.classList.contains('lead'));
+            row.classList.toggle('fx', !!hide);
+        });
+        Array.prototype.forEach.call(node.querySelectorAll('.cut'), function (c) { c.style.display = (term || only) ? 'none' : ''; });
+    }
+
     function renderQuestion(wrap, q, top) {
         var node = wrap.querySelector('[data-q="' + q.id + '"]');
         if (!node) {
             node = el('section', 'card q'); node.setAttribute('data-q', q.id);
             node.appendChild(el('div', 'q-title')); node.appendChild(el('div', 'q-sub'));
+            node.appendChild(el('div', 'elected'));
+            var tools = el('div', 'qtools');
+            var inp = el('input', 'qsearch'); inp.type = 'search'; inp.placeholder = 'Find a candidate\u2026';
+            var tg = el('button', 'tgl', 'Winners only'); tg.type = 'button';
+            inp.addEventListener('input', function () { applyFilter(node); });
+            tg.addEventListener('click', function () { tg.classList.toggle('on'); applyFilter(node); });
+            tools.appendChild(inp); tools.appendChild(tg); node.appendChild(tools);
             node.appendChild(el('div', 'podium')); node.appendChild(el('div', 'rows')); node.appendChild(el('div', 'wait'));
             wrap.appendChild(node);
         }
@@ -394,6 +454,8 @@
         var pod = node.querySelector('.podium');
         if (q.cast_weight > 0) { renderPodium(pod, q, top); pod.style.display = ''; } else { pod.style.display = 'none'; }
         renderRows(node.querySelector('.rows'), q, top);
+        renderElected(node.querySelector('.elected'), q, top);
+        applyFilter(node);
         node.querySelector('.wait').textContent = q.cast_weight > 0 ? '' : 'Waiting for the first vote…';
     }
 
@@ -430,21 +492,31 @@
         sec.querySelector('[data-s="weight"]').textContent = 'of ' + fmt(p.total_weight) + ' total weight';
         sec.querySelector('[data-s="qs"]').textContent = '';
         var wrap = sec.querySelector('.qs');
+        var nav = sec.querySelector('.qnav'); if (nav) nav.remove();
+        if (p.questions.length > 1) {
+            nav = el('div', 'qnav');
+            p.questions.forEach(function (q) { var b = el('button', null, q.text); b.type = 'button'; b.addEventListener('click', function () { var t = wrap.querySelector('[data-q="' + q.id + '"]'); if (t) t.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' }); }); nav.appendChild(b); });
+            sec.insertBefore(nav, wrap);
+        }
         p.questions.forEach(function (q) { renderQuestion(wrap, q, top); });
         var keep = p.questions.map(function (q) { return String(q.id); });
         Array.prototype.forEach.call(wrap.querySelectorAll('[data-q]'), function (n) { if (keep.indexOf(n.getAttribute('data-q')) < 0) n.remove(); });
     }
 
-    var info = {};   // option id => what the spotlight shows
+    var info = {}, lastData = null;   // option id => what the spotlight shows
     function render(data) {
+        lastData = data;
         data.polls.forEach(function (p) { p.questions.forEach(function (q) { q.rows.forEach(function (r) { info[r.id] = { r: r, q: q.text }; }); }); });
         var ids = data.polls.map(function (p) { return String(p.id); });
         Array.prototype.forEach.call(stages.querySelectorAll('[data-poll]'), function (n) { if (ids.indexOf(n.getAttribute('data-poll')) < 0) n.remove(); });
         data.polls.forEach(function (p) { renderPoll(p, p.top, data.polls.length > 1); });
         data.polls.forEach(function (p) { stages.appendChild(stages.querySelector('[data-poll="' + p.id + '"]')); });
         chooser.style.display = data.polls.length ? 'none' : '';
-        pickerCard.style.display = data.polls.length ? '' : 'none';
-        if (!revealing) document.getElementById('revealBtn').style.display = data.polls.length ? '' : 'none';
+        var open = data.polls.length > 0;
+        document.getElementById('revealBtn').style.display = (open && !revealing) ? '' : 'none';
+        document.getElementById('changeBtn').style.display = (open && !revealing) ? '' : 'none';
+        document.getElementById('refreshBtn').style.display = (open && !revealing) ? '' : 'none';
+        document.getElementById('replayBtn').style.display = (open && !revealing) ? '' : 'none';
         titleEl.textContent = data.polls.length === 1 ? data.polls[0].title : (data.polls.length ? data.polls.length + ' polls' : 'Results');
         subEl.textContent = data.polls.length === 1 ? ((data.polls[0].published ? 'Published' : 'Not published') + (data.polls[0].closes_at ? ' · ' + (data.polls[0].closed ? 'closed ' : 'closes ') + data.polls[0].closes_at : '') + (data.polls[0].top ? ' · ' + data.polls[0].top + (data.polls[0].top === 1 ? ' winner' : ' winners') : '')) : (data.polls.length ? 'Results side by side' : '');
     }
@@ -457,10 +529,11 @@
         if (!chosen().length) { render({ polls: [], top: 0 }); return Promise.resolve(); }
         return fetch(cfg.dataUrl + '?' + query(), { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }, credentials: 'same-origin' })
             .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
-            .then(function (d) { liveBtn.classList.remove('lost'); if (live) liveText.textContent = 'LIVE'; render(d); })
-            .catch(function () { liveBtn.classList.add('lost'); liveText.textContent = 'RECONNECTING'; });
+            .then(function (d) { liveBtn.classList.remove('lost'); liveText.textContent = 'RESULTS'; render(d); })
+            .catch(function () { liveBtn.classList.add('lost'); liveText.textContent = 'COULD NOT LOAD'; });
     }
-    function schedule() { clearInterval(timer); if (live) timer = setInterval(function () { if (!document.hidden) refresh(); }, cfg.every); }
+    // The voting is over when these results are shown, so nothing refreshes by itself (use Refresh to re-read).
+    function schedule() {}
 
     document.getElementById('picker').addEventListener('change', function (e) { if (e.target === topInput) return; setUrl(); refresh(); });
     // a card in the "choose a poll" step opens that poll
@@ -470,7 +543,9 @@
         if (r) { r.checked = true; setUrl(); refresh(); }
     });
     var tt; topInput.addEventListener('input', function () { clearTimeout(tt); tt = setTimeout(function () { setUrl(); refresh(); }, 350); });
-    liveBtn.addEventListener('click', function () { live = !live; liveBtn.classList.toggle('paused', !live); liveBtn.classList.remove('lost'); liveText.textContent = live ? 'LIVE' : 'PAUSED'; schedule(); if (live) refresh(); });
+    document.getElementById('changeBtn').addEventListener('click', function () { location.href = location.pathname; });
+    document.getElementById('refreshBtn').addEventListener('click', function () { refresh(); });
+    document.getElementById('replayBtn').addEventListener('click', function () { if (!lastData) return; stages.textContent = ''; render(lastData); window.scrollTo({ top: 0, behavior: 'smooth' }); });
     function toggleFull() { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); }
     document.getElementById('fs').addEventListener('click', toggleFull);
     document.addEventListener('keydown', function (e) { if ((e.key === 'f' || e.key === 'F') && !/INPUT|TEXTAREA/.test((e.target || {}).tagName || '')) toggleFull(); });
@@ -492,8 +567,8 @@
     }
     spot.addEventListener('click', function () { spot.classList.remove('on'); });
     stages.addEventListener('click', function (e) {
-        var n = e.target.closest('.row, .pod');
-        if (n && !n.classList.contains('rh')) openSpot(n.getAttribute('data-id'));
+        var n = e.target.closest('.row, .pod, .elt');
+        if (n && !n.classList.contains('rh') && n.getAttribute('data-id')) openSpot(n.getAttribute('data-id'));
     });
 
     /* ================= confetti (no library) ================= */
@@ -558,7 +633,7 @@
             s.pod.classList.remove('rh'); s.pod.classList.add('pop');
             count(s.pod.querySelector('.w'), s.pod.getAttribute('data-final'));
             showRow(s.row);
-            if (s.last) { var b = s.pod.getBoundingClientRect(); confetti(b.left + b.width / 2, b.top + b.height / 3); }
+            if (s.last) { s.q.classList.add('done'); var b = s.pod.getBoundingClientRect(); confetti(b.left + b.width / 2, b.top + b.height / 3); }
         }
         paintCount();
         if (at >= steps.length) stopAuto();
@@ -578,6 +653,7 @@
             document.getElementById('revealBtn').style.display = 'none';
             window.scrollTo({ top: 0 });
             prepare();
+            setTimeout(toggleAuto, 900);   // starts playing by itself; pause / Next stay available
         });
     }
     document.getElementById('revealBtn').addEventListener('click', startReveal);
