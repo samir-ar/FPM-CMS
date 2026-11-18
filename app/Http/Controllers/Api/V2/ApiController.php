@@ -1201,6 +1201,12 @@ class ApiController extends Controller
             return $this->api_error_response('invalid_parameters', 101, 'هذا الاستطلاع للأعضاء فقط');
         }
 
+        // One answer per MEMBER: if any app account carrying this member id (with or without a leading zero) has
+        // already answered this poll, it is not answered again - not from the same account, not from another.
+        if (request('user') && $this->memberHasAnsweredPoll(request('user'), $poll->id)) {
+            return $this->api_error_response('invalid_parameters', 101, 'لقد شاركت في هذا الاستطلاع مسبقاً');
+        }
+
         if (request('user')) {
             $repo->userAnswerPoll(request('user'), request('option_id'), $this->deviceMeta($request));
         } else {
@@ -2448,6 +2454,25 @@ class ApiController extends Controller
             //this member has already voted
             return 401;
         }
+    }
+
+    // True when this member (through any app account carrying their member id, with or without a leading zero)
+    // already answered the poll.
+    private function memberHasAnsweredPoll($user, $pollId): bool
+    {
+        $stripped = ltrim((string) $user->member_id, '0');
+        $ids = array_values(array_unique(array_filter([(string) $user->member_id, $stripped, '0' . $stripped], fn ($v) => $v !== '' && $v !== '0')));
+
+        return \DB::table('users_polls')
+            ->join('app_users', 'app_users.id', '=', 'users_polls.app_user_id')
+            ->where('users_polls.poll_id', $pollId)
+            ->where(function ($q) use ($user, $ids) {
+                $q->where('users_polls.app_user_id', $user->id);
+                if ($ids) {
+                    $q->orWhereIn('app_users.member_id', $ids);
+                }
+            })
+            ->exists();
     }
 
     // True when this member already has a vote in the election - through ANY app account that carries their member
