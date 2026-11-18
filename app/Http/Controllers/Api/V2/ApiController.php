@@ -1210,7 +1210,7 @@ class ApiController extends Controller
         // One answer per MEMBER: if any app account carrying this member id (with or without a leading zero) has
         // already answered this poll, it is not answered again - not from the same account, not from another.
         if (request('user') && $this->memberHasAnsweredPoll(request('user'), $poll->id)) {
-            return $this->api_error_response('invalid_parameters', 101, 'لقد شاركت في هذا الاستطلاع مسبقاً');
+            return $this->api_error_response('already_voted', 101, 'لقد شاركت في هذا الاستطلاع مسبقاً');
         }
 
         // A guest counts once per PHONE: the hardware id is the physical identity of the phone (clearing the app's
@@ -1222,7 +1222,7 @@ class ApiController extends Controller
                     $q->where('hardware_id', $meta['hardware_id'])->orWhere('device_id', $meta['device_id']);
                 })->exists();
             if ($already) {
-                return $this->api_error_response('invalid_parameters', 101, 'لقد شاركت في هذا الاستطلاع مسبقاً');
+                return $this->api_error_response('already_voted', 101, 'لقد شاركت في هذا الاستطلاع مسبقاً');
             }
         }
 
@@ -1232,7 +1232,7 @@ class ApiController extends Controller
             } catch (\Illuminate\Database\QueryException $e) {
                 // two accounts of one member answering at the same instant: the database rule lets only one through
                 if ($e->getCode() === '23000') {
-                    return $this->api_error_response('invalid_parameters', 101, 'لقد شاركت في هذا الاستطلاع مسبقاً');
+                    return $this->api_error_response('already_voted', 101, 'لقد شاركت في هذا الاستطلاع مسبقاً');
                 }
                 throw $e;
             }

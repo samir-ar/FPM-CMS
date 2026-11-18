@@ -51,6 +51,7 @@ class PollMemberAnswerTest extends CouncilTestCase
         // same account again, another account, the zero-padded id: all refused, nothing added or changed
         foreach ([$first, $second, $zero] as $u) {
             $this->assertSame(400, $this->answer($u, $o2), 'a member who answered cannot answer again');
+            $this->assertSame('already_voted', json_decode($this->lastBody, true)['error']['debugger'], 'the app is told it is the "already voted" case');
         }
         $this->assertSame(1, $this->answers($pollId));
         $this->assertSame($o1, (int) DB::table('users_polls')->where('poll_id', $pollId)->value('option_id'), 'the first answer stays');
