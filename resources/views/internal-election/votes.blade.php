@@ -57,7 +57,7 @@
                         <th>Voter</th>
                         <th>Member ID</th>
                         <th>Voted At</th>
-                        <th>Device ID</th>
+                        <th>Phone / Device ID</th>
                         <th>Selfie (captured at vote time)</th>
                         <th>On-file Photo</th>
                     </tr>
@@ -72,6 +72,7 @@
                             <td>{{ $vote->user->member_id ?? '—' }}</td>
                             <td>{{ $vote->voted_at ? \Carbon\Carbon::parse($vote->voted_at)->format('Y-m-d H:i:s') : '—' }}</td>
                             <td>
+                                @if(!empty($vote->device_model))<strong>{{ $vote->device_model }}</strong><br>@endif
                                 {{ $vote->device_id ?? '—' }}
                                 @if($isSuspicious)
                                     <span class="label label-danger">reused</span>

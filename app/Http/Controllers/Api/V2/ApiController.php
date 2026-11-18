@@ -1007,6 +1007,7 @@ class ApiController extends Controller
             'answers.*.question_id' => 'required|integer',
             'answers.*.answer_id' => 'required|integer',
             'device_id' => 'nullable|string|max:191',
+            'device_model' => 'nullable|string|max:191',
         ]);
 
         if ($validator->fails()) {
@@ -1068,6 +1069,7 @@ class ApiController extends Controller
                         'answer_id' => (int) $answer['answer_id'],
                         'weight' => $weight,
                         'device_id' => $request->input('device_id'),
+                        'device_model' => $request->input('device_model') ? mb_substr((string) $request->input('device_model'), 0, 191) : null,
                         'voted_at' => now(),
                     ]);
                 }
@@ -2593,6 +2595,7 @@ class ApiController extends Controller
                 'selfie_path' => $election->requires_selfie ? $selfieFilename : null,
                 'voted_at' => now(),
                 'device_id' => request('device_id'),
+                'device_model' => request('device_model') ? mb_substr((string) request('device_model'), 0, 191) : null,
             ]);
         } catch (\Illuminate\Database\QueryException $e) {
             if ($e->getCode() === '23000') {

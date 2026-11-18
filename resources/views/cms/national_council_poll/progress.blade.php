@@ -31,7 +31,7 @@
                 <h4><i class="fa fa-warning"></i> A device was used to vote for more than one member</h4>
                 @foreach($sharedDevices as $d)
                     <p style="margin-bottom:6px;">
-                        <span class="dev">{{ $d['device'] }}</span> &mdash;
+                        @if($d['model'])<strong>{{ $d['model'] }}</strong> @endif<span class="dev">{{ $d['device'] }}</span> &mdash;
                         @foreach($d['members'] as $m)<span dir="auto">{{ $m['name'] }}</span> (#{{ $m['id'] }})@if(!$loop->last), @endif @endforeach
                     </p>
                 @endforeach
@@ -70,6 +70,7 @@
                     </td>
                     <td>
                         @if($r['device'])
+                            @if($r['device_model'])<strong>{{ $r['device_model'] }}</strong><br>@endif
                             <span class="dev">{{ $r['device'] }}</span>
                             @if($r['device_members'] > 1)<br><span class="label label-warning" style="display:inline-block;margin-top:4px;" title="The same device voted for {{ $r['device_members'] }} members">shared by {{ $r['device_members'] }}</span>@endif
                         @elseif($r['voted'])<span class="text-muted">not recorded</span>@endif

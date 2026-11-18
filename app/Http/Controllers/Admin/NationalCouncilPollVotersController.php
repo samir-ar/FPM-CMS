@@ -28,12 +28,13 @@ class NationalCouncilPollVotersController extends Controller
         $votes = DB::table('council_national_poll_votes as v')
             ->leftJoin('app_users as u', 'u.id', '=', 'v.user_id')
             ->where('v.poll_id', $poll->id)
-            ->get(['v.member_id', 'v.user_id', 'v.device_id', 'v.voted_at', 'v.weight', 'u.phone_number as phone', 'u.name as account_name']);
+            ->get(['v.member_id', 'v.user_id', 'v.device_id', 'v.device_model', 'v.voted_at', 'v.weight', 'u.phone_number as phone', 'u.name as account_name']);
         // a poll with several questions has several vote rows per member: keep one per member
         $byMember = $votes->groupBy(fn($v) => (string) $v->member_id)->map(function ($rows) {
             $first = $rows->sortBy('voted_at')->first();
             $first->voted_at = $rows->min('voted_at');
             $first->device_id = $rows->pluck('device_id')->filter()->first();
+            $first->device_model = $rows->pluck('device_model')->filter()->first();
 
             return $first;
         });
@@ -57,6 +58,7 @@ class NationalCouncilPollVotersController extends Controller
                 'voted' => (bool) $v,
                 'voted_at' => $v ? $v->voted_at : null,
                 'device' => $v ? ($v->device_id ?: '') : '',
+                'device_model' => $v ? (string) $v->device_model : '',
                 'device_members' => $v && $v->device_id ? $devices[$v->device_id]->count() : 0,
                 'phone' => $v ? (string) $v->phone : '',
                 'permitted' => true,
@@ -73,6 +75,7 @@ class NationalCouncilPollVotersController extends Controller
                     'voted' => true,
                     'voted_at' => $v->voted_at,
                     'device' => $v->device_id ?: '',
+                    'device_model' => (string) $v->device_model,
                     'device_members' => $v->device_id ? $devices[$v->device_id]->count() : 0,
                     'phone' => (string) $v->phone,
                     'permitted' => false,
@@ -119,6 +122,7 @@ class NationalCouncilPollVotersController extends Controller
         $shared = collect($data['devices'])->filter(fn($members) => $members->count() > 1)->map(function ($members, $device) use ($data) {
             return [
                 'device' => $device,
+                'model' => (string) (collect($data['rows'])->firstWhere('device', $device)['device_model'] ?? ''),
                 'members' => $members->map(fn($m) => ['id' => $m, 'name' => $data['details'][$m]->UserFullName ?? $m])->all(),
             ];
         })->values();
@@ -153,7 +157,7 @@ class NationalCouncilPollVotersController extends Controller
             ->leftJoin('app_users as u', 'u.id', '=', 'v.user_id')
             ->where('v.poll_id', $poll->id)
             ->orderByDesc('v.voted_at')
-            ->get(['v.member_id', 'v.weight', 'v.device_id', 'v.voted_at', 'v.question_id', 'v.answer_id',
+            ->get(['v.member_id', 'v.weight', 'v.device_id', 'v.device_model', 'v.voted_at', 'v.question_id', 'v.answer_id',
                 'q.question as question', 'a.answer as candidate', 'u.phone_number as phone']);
 
         $details = CouncilMemberLookup::detailsFor($votes->pluck('member_id')->map(fn($i) => (string) $i)->unique()->values()->all());
@@ -169,6 +173,7 @@ class NationalCouncilPollVotersController extends Controller
             'candidate' => (string) $v->candidate,
             'voted_at' => $v->voted_at,
             'device' => (string) $v->device_id,
+            'device_model' => (string) $v->device_model,
             'device_members' => $v->device_id ? (int) $deviceMembers[$v->device_id] : 0,
             'phone' => (string) $v->phone,
         ]);

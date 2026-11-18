@@ -31,16 +31,16 @@ class CouncilPollVotersTest extends CouncilTestCase
             DB::table('council_national_poll_permissions')->insert(['poll_id' => $this->poll, 'member_id' => (string) $member, 'vote_weight' => $i + 1, 'created_at' => $now, 'updated_at' => $now]);
         }
 
-        $vote = function (int $i, int $answer, string $device) use ($now) {
+        $vote = function (int $i, int $answer, string $device, ?string $model) use ($now) {
             $userId = $this->makeAppUser('T voter ' . $i, (string) $this->m[$i]);
             DB::table('council_national_poll_votes')->insert([
                 'user_id' => $userId, 'member_id' => (string) $this->m[$i], 'poll_id' => $this->poll, 'question_id' => $this->question,
-                'answer_id' => $answer, 'weight' => $i + 1, 'device_id' => $device, 'voted_at' => $now->copy()->addSeconds($i), 'created_at' => $now, 'updated_at' => $now,
+                'answer_id' => $answer, 'weight' => $i + 1, 'device_id' => $device, 'device_model' => $model, 'voted_at' => $now->copy()->addSeconds($i), 'created_at' => $now, 'updated_at' => $now,
             ]);
         };
-        $vote(0, $this->answerA, 'DEVICE-SHARED-0000-1111');
-        $vote(1, $this->answerB, 'DEVICE-SHARED-0000-1111');
-        $vote(2, $this->answerA, 'DEVICE-OTHER-2222-3333');
+        $vote(0, $this->answerA, 'DEVICE-SHARED-0000-1111', 'Samsung SM-A525F, Android 13');
+        $vote(1, $this->answerB, 'DEVICE-SHARED-0000-1111', 'Samsung SM-A525F, Android 13');
+        $vote(2, $this->answerA, 'DEVICE-OTHER-2222-3333', null);   // an older app build: no model sent
     }
 
     public function test_the_voters_page_shows_who_voted_and_the_device_but_never_what_anybody_voted()
@@ -57,6 +57,9 @@ class CouncilPollVotersTest extends CouncilTestCase
         $this->assertStringContainsString('DEVICE-SHARED', $html);
         $this->assertStringContainsString('DEVICE-OTHER-', $html);
         $this->assertStringContainsString('A device was used to vote for more than one member', $html);
+
+        // the phone model is shown next to the device (and once in the shared-device warning)
+        $this->assertGreaterThanOrEqual(3, substr_count($html, 'Samsung SM-A525F, Android 13'));
 
         // secrecy: the candidates' names never appear on this page
         $this->assertStringNotContainsString('مرشحة الف', $html);
@@ -94,6 +97,7 @@ class CouncilPollVotersTest extends CouncilTestCase
         $this->assertStringContainsString('مرشحة الف', $html);
         $this->assertStringContainsString('مرشحة باء', $html);
         $this->assertStringContainsString('shared by 2', $html);
+        $this->assertSame(2, substr_count($html, '<strong>Samsung SM-A525F, Android 13</strong>'), 'the model of the two votes that carry one');
         $this->assertSame(3, substr_count($html, 'class="dev"'), 'one row per vote');
     }
 
@@ -108,6 +112,26 @@ class CouncilPollVotersTest extends CouncilTestCase
 
         $this->get(route('admin.national-council-poll.votes-report.export', $this->poll, false) . '?answer_id=' . $this->answerB)->assertOk()
             ->assertHeader('content-disposition');
+    }
+
+    public function test_the_internal_election_dispute_page_shows_the_phone_model_too()
+    {
+        $vote = new \App\V2\InternalElectionVote();
+        $vote->device_id = 'IE-DEVICE-AAAA-BBBB';
+        $vote->device_model = 'Apple iPhone14,5, iOS 17.2';
+        $vote->voted_at = now();
+        $vote->setRelation('user', (object) ['name' => 'T ie voter', 'member_id' => (string) $this->m[0]]);
+
+        $html = view('internal-election.votes')->with([
+            'election' => (object) ['id' => 1, 'title' => 'T election'],
+            'allStates' => collect([(object) ['id' => 7, 'name' => 'T district']]),
+            'selectedStateId' => 7, 'towns' => collect(), 'selectedTown' => null, 'onlyDuplicateDevices' => false,
+            'suspiciousDeviceIds' => collect(), 'votes' => collect([$vote]),
+            'errors' => new \Illuminate\Support\ViewErrorBag(),   // normally shared by the web middleware
+        ])->render();
+
+        $this->assertStringContainsString('<strong>Apple iPhone14,5, iOS 17.2</strong>', $html);
+        $this->assertStringContainsString('IE-DEVICE-AAAA-BBBB', $html);
     }
 
     public function test_the_who_voted_for_whom_page_is_not_linked_from_the_polls_list()

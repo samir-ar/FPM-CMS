@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class CouncilNationalPollVote extends Model
 {
-    protected $fillable = ['poll_id','question_id','answer_id','user_id','member_id','weight','device_id','voted_at'];
+    protected $fillable = ['poll_id','question_id','answer_id','user_id','member_id','weight','device_id','device_model','voted_at'];
 
     public function user(){
         return $this->belongsTo(AppUser::class,'user_id');

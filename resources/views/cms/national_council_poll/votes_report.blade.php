@@ -45,6 +45,7 @@
                     <td>{{ \Carbon\Carbon::parse($v['voted_at'])->format('j M Y, H:i') }}</td>
                     <td>
                         @if($v['device'])
+                            @if($v['device_model'])<strong>{{ $v['device_model'] }}</strong><br>@endif
                             <span class="dev">{{ $v['device'] }}</span>
                             @if($v['device_members'] > 1)<br><span class="label label-warning" style="display:inline-block;margin-top:4px;" title="The same device voted for {{ $v['device_members'] }} members">shared by {{ $v['device_members'] }}</span>@endif
                         @else <span class="text-muted">not recorded</span> @endif

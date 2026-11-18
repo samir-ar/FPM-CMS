@@ -100,7 +100,7 @@ class CouncilVotingTest extends CouncilTestCase
 
     public function test_a_valid_vote_is_stored_with_the_servers_weight_member_and_device()
     {
-        [, $body] = $this->vote($this->user, ['poll_id' => $this->poll, 'device_id' => 'dev-abc', 'answers' => [
+        [, $body] = $this->vote($this->user, ['poll_id' => $this->poll, 'device_id' => 'dev-abc', 'device_model' => 'Samsung SM-A525F, Android 13', 'answers' => [
             ['question_id' => $this->q1, 'answer_id' => $this->a1],
             ['question_id' => $this->q2, 'answer_id' => $this->a2],
         ]]);
@@ -112,8 +112,22 @@ class CouncilVotingTest extends CouncilTestCase
             $this->assertEquals(7, $r->weight);
             $this->assertSame('99900000001', $r->member_id);
             $this->assertSame('dev-abc', $r->device_id);
+            $this->assertSame('Samsung SM-A525F, Android 13', $r->device_model, 'the phone make/model is stored with the vote');
             $this->assertNotNull($r->voted_at);
         }
+    }
+
+    public function test_the_phone_model_is_optional_and_never_longer_than_the_column()
+    {
+        // an older app build sends no model: the vote still works, the model stays empty
+        [, $old] = $this->vote($this->user2, ['poll_id' => $this->poll, 'answers' => [['question_id' => $this->q1, 'answer_id' => $this->a1]]]);
+        $this->assertTrue($this->ok($old));
+        $this->assertNull(DB::table('council_national_poll_votes')->where('member_id', '99900000002')->value('device_model'));
+
+        // an over-long value is refused by validation instead of breaking the insert
+        [, $long] = $this->vote($this->user, ['poll_id' => $this->poll, 'device_model' => str_repeat('x', 500), 'answers' => [['question_id' => $this->q1, 'answer_id' => $this->a1]]]);
+        $this->assertFalse($this->ok($long));
+        $this->assertSame(0, DB::table('council_national_poll_votes')->where('member_id', '99900000001')->count());
     }
 
     public function test_the_weight_cannot_be_chosen_by_the_client()
