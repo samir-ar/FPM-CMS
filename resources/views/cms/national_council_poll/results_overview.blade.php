@@ -197,6 +197,10 @@
     .rh { opacity: 0; transform: translateY(22px) scale(.97); pointer-events: none; }
     .row, .pod, .cut { transition: opacity .7s cubic-bezier(.2,.8,.2,1), transform .7s cubic-bezier(.2,.8,.2,1), border-color .5s, background .5s; }
     .pod.rh { transform: translateY(40px) scale(.8); animation: none; opacity: 0; }
+    /* during the reveal the list starts empty at the last place and grows downward; nothing hidden takes space */
+    body.reveal:not(.finished) .rows { display: flex; flex-direction: column-reverse; }
+    body.reveal:not(.finished) .rows .rh { display: none; }
+    body.reveal:not(.finished) .q:not(.podon) .podium { display: none; }
     .row.pop, .pod.pop { animation: pop .9s cubic-bezier(.2,1.2,.3,1); }
     @keyframes pop { 0% { box-shadow: 0 0 0 0 rgba(244,141,36,.8); } 100% { box-shadow: 0 0 0 26px rgba(244,141,36,0); } }
     .ctl { position: fixed; z-index: 30; left: 50%; bottom: 22px; transform: translateX(-50%); display: none; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 999px; background: rgba(0,24,42,.72); border: 1px solid var(--line); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); box-shadow: 0 18px 50px rgba(0,0,0,.45); }
@@ -644,6 +648,7 @@
     function prepare() {
         steps = []; at = 0;
         Array.prototype.forEach.call(stages.querySelectorAll('.q'), function (q) {
+            q.classList.remove('podon');
             var rows = Array.prototype.slice.call(q.querySelectorAll('.row'));
             var pods = Array.prototype.slice.call(q.querySelectorAll('.pod')).sort(function (a, b) { return +b.getAttribute('data-pos') - +a.getAttribute('data-pos'); });
             var podIds = pods.map(function (p) { return p.getAttribute('data-id'); });
@@ -671,9 +676,15 @@
         if (!revealing || at >= steps.length) { stopAuto(); return 0; }
         var s = steps[at++], delay = 1700;
         var target = s.kind === 'title' ? s.q : (s.pod || s.row);
-        if (target && target.scrollIntoView) target.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' });
+        if (s.kind === 'pod') s.q.classList.add('podon');
+        // rows just appear below the previous one; only move the page when the new item is off screen
+        if (target && target.scrollIntoView && s.kind !== 'row') target.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: s.kind === 'title' ? 'start' : 'center' });
         if (s.kind === 'title') delay = 2600;
-        if (s.kind === 'row') showRow(s.row, 1500);
+        if (s.kind === 'row') {
+            showRow(s.row, 1500);
+            var rr = s.row.getBoundingClientRect();
+            if (rr.bottom > window.innerHeight - 110) window.scrollBy({ top: rr.bottom - window.innerHeight + 140, behavior: reduce ? 'auto' : 'smooth' });
+        }
         if (s.kind === 'pod') {
             // a winner: his number climbs from 0 slowly, his row fills in the list underneath
             s.pod.classList.remove('rh'); s.pod.classList.add('pop');
