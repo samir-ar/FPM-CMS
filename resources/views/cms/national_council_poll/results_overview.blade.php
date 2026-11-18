@@ -411,7 +411,7 @@
         var win = q.rows.filter(function (r) { return isWin(r, top); });
         if (!top || !win.length || q.cast_weight <= 0) { box.style.display = 'none'; return; }
         box.style.display = ''; box.textContent = '';
-        box.appendChild(el('div', 'elt-l', 'Elected \u00b7 ' + win.length + ' of ' + top + (top === 1 ? ' seat' : ' seats')));
+        box.appendChild(el('div', 'elt-l', 'Elected \u00b7 ' + top + (top === 1 ? ' seat' : ' seats')));
         var list = el('div', 'elt-list');
         win.forEach(function (r) {
             var it = el('div', 'elt'); it.setAttribute('data-id', r.id);
