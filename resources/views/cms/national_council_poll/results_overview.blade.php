@@ -679,13 +679,10 @@
         var target = s.kind === 'title' ? s.q : (s.pod || s.row);
         if (s.kind === 'pod') s.q.classList.add('podon');
         // rows just appear below the previous one; only move the page when the new item is off screen
-        if (s.kind === 'pod') { var pr = s.pod.getBoundingClientRect(); if (pr.top < 70 || pr.bottom > window.innerHeight - 40) s.pod.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'nearest' }); }
-        else if (target && target.scrollIntoView && s.kind !== 'row') target.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: s.kind === 'title' ? 'start' : 'center' });
+        // no scrolling during the reveal: rows stack up where you are, the winners' tree opens at the end
         if (s.kind === 'title') delay = 2600;
         if (s.kind === 'row') {
             showRow(s.row, 1500);
-            var rr = s.row.getBoundingClientRect();
-            if (rr.bottom > window.innerHeight - 110) window.scrollBy({ top: rr.bottom - window.innerHeight + 140, behavior: reduce ? 'auto' : 'smooth' });
         }
         if (s.kind === 'pod') {
             // a winner: his number climbs from 0 slowly, his row fills in the list underneath
