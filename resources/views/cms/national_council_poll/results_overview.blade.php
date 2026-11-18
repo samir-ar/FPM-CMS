@@ -291,7 +291,6 @@
                     </div>
                     <div class="st">
                         <div><b>{{ $p->electors }}</b><span>Voters</span></div>
-                        <div><b>{{ $p->voters }}</b><span>Voted</span></div>
                         <div><b>{{ $p->question_count }}</b><span>Questions</span></div>
                     </div>
                     <div class="go">Open results &rarr;</div>
