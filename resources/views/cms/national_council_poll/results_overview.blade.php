@@ -110,7 +110,8 @@
     .pod .badge { position: absolute; inset-inline-end: -4px; bottom: -2px; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 16px; background: #003a5e; border: 2px solid rgba(255,255,255,.4); }
     .pod.p1 .badge, .pod.win .badge { border-color: var(--orange); color: #ffc88a; }
     .pod.p1 .face::before { content: ''; position: absolute; inset: -10px; border-radius: 50%; background: radial-gradient(circle, rgba(244,141,36,.5), transparent 68%); filter: blur(10px); z-index: -1; }
-    .podium { row-gap: 30px; }
+    .podium { flex-direction: column; align-items: center; row-gap: 30px; }
+    .prow { display: flex; justify-content: center; align-items: flex-end; gap: clamp(18px, 3vw, 48px); flex-wrap: wrap; }
     .pbreak { flex-basis: 100%; height: 0; }
     .pod.pn { width: clamp(130px, 13vw, 190px); }
     .pod.pn .face { width: clamp(72px, 6.4vw, 96px); height: clamp(72px, 6.4vw, 96px); }
@@ -199,6 +200,8 @@
     .pod.rh { transform: translateY(40px) scale(.8); animation: none; opacity: 0; }
     /* during the reveal the list starts empty at the last place and grows downward; nothing hidden takes space */
     body.reveal:not(.finished) .rows .rh { display: none; }
+    body.reveal:not(.finished) .pod.rh { display: none; }
+    body.reveal:not(.finished) .prow:not(:has(.pod:not(.rh))) { display: none; }
     body.reveal:not(.finished) .q:not(.podon) .podium { display: none; }
     .row.pop, .pod.pop { animation: pop .9s cubic-bezier(.2,1.2,.3,1); }
     @keyframes pop { 0% { box-shadow: 0 0 0 0 rgba(244,141,36,.8); } 100% { box-shadow: 0 0 0 26px rgba(244,141,36,0); } }
@@ -376,8 +379,9 @@
         // a tree: 1st alone on top, then 2nd+3rd, then 4th-6th, then 7th-10th ...
         var i = 0, size = 1;
         while (i < rows.length) {
-            if (i) box.appendChild(el('div', 'pbreak'));
-            rows.slice(i, i + size).forEach(function (r, j) { box.appendChild(make(r, i + j)); });
+            var pr = el('div', 'prow');
+            rows.slice(i, i + size).forEach(function (r, j) { pr.appendChild(make(r, i + j)); });
+            box.appendChild(pr);
             i += size; size++;
         }
     }
