@@ -543,7 +543,9 @@ HTML;
     // Same permission as the single-poll results (Council polls, view). Nothing here changes any data.
     public function resultsOverview(Request $request)
     {
-        $polls = CouncilNationalPoll::orderByDesc('id')->get(['id', 'title', 'is_published', 'closes_at', 'winners', 'created_at'])->map(function ($p) {
+        // only PUBLISHED polls are listed (a closed one stays until it is unpublished); an unpublished poll is
+        // not an election the members saw, so it has no results page
+        $polls = CouncilNationalPoll::where('is_published', 1)->orderByDesc('id')->get(['id', 'title', 'is_published', 'closes_at', 'winners', 'created_at'])->map(function ($p) {
             // what the "choose a poll" cards show
             $p->electors = CouncilNationalPollPermission::where('poll_id', $p->id)->count();
             $p->voters = CouncilNationalPollVote::where('poll_id', $p->id)->distinct()->count(DB::raw("COALESCE(NULLIF(member_id,''), CONCAT('u', user_id))"));
@@ -584,7 +586,7 @@ HTML;
         $out = [];
         foreach ($pollIds as $pollId) {
             $poll = CouncilNationalPoll::with('meeting', 'questions.answers')->find($pollId);
-            if (!$poll) {
+            if (!$poll || !$poll->is_published) {
                 continue;
             }
 
