@@ -38,15 +38,6 @@ class LoginAccountLookupTest extends CouncilTestCase
         $this->assertSame($z, $this->lookup('96170000004', '5601000004')->id, 'stored with a leading zero, asked without');
     }
 
-    public function test_with_several_accounts_the_one_with_this_phone_wins_then_the_newest(): void
-    {
-        $old = $this->makeAppUser('T old', '5601000005', ['phone_number' => '96170000005', 'updated_at' => now()->subYear()]);
-        $new = $this->makeAppUser('T new', '5601000005', ['phone_number' => '96170000099', 'updated_at' => now()]);
-
-        $this->assertSame($old, $this->lookup('96170000005', '5601000005')->id, 'the account that already has this phone');
-        $this->assertSame($new, $this->lookup('96170000777', '5601000005')->id, 'no phone match: the most recently used');
-    }
-
     public function test_an_active_account_beats_a_deleted_one_and_a_deleted_one_is_restored_only_when_alone(): void
     {
         $active = $this->makeAppUser('T active', '5601000006', ['phone_number' => '96170000006']);

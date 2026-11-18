@@ -69,12 +69,12 @@ class MemberOneVoteDatabaseRuleTest extends CouncilTestCase
         $b = $this->makeAppUser('T acct B (zero-padded)', '05580000001');
 
         $repo = app(ApiRepository::class);
-        $repo->userAnswerPoll(AppUser::find($a), $o1);
+        $repo->userAnswerPoll(AppUser::withTrashed()->find($a), $o1);
         $this->assertSame('5580000001', DB::table('users_polls')->where('app_user_id', $a)->value('member_key'));
 
         // the repository call bypasses the code-level "already answered" check: the database must stop it
         try {
-            $repo->userAnswerPoll(AppUser::find($b), $o1);
+            $repo->userAnswerPoll(AppUser::withTrashed()->find($b), $o1);
             $this->fail('the database should have refused the second answer of the same member');
         } catch (QueryException $e) {
             $this->assertSame('23000', $e->getCode());

@@ -63,11 +63,15 @@ class DedupeAppUsers extends Command
             ? 'Running for real — losing rows WILL be soft-deleted, canonical rows WILL be updated.'
             : 'DRY RUN — no changes will be written. Pass --commit to actually apply.');
 
+        // A member id with and without a leading zero (0100100129 / 100100129) is the SAME member: group on the
+        // zero-stripped id. Accounts without a member id are never grouped together.
         $duplicateMemberIds = AppUser::whereNull('deleted_at')
-            ->select('member_id')
-            ->groupBy('member_id')
+            ->whereNotNull('member_id')
+            ->whereRaw("TRIM(LEADING '0' FROM member_id) <> ''")
+            ->selectRaw("TRIM(LEADING '0' FROM member_id) AS member_key")
+            ->groupBy('member_key')
             ->havingRaw('COUNT(*) > 1')
-            ->pluck('member_id');
+            ->pluck('member_key');
 
         if ($limit) {
             $duplicateMemberIds = $duplicateMemberIds->take((int) $limit);
@@ -93,7 +97,7 @@ class DedupeAppUsers extends Command
 
         foreach ($duplicateMemberIds as $memberId) {
             $rows = AppUser::whereNull('deleted_at')
-                ->where('member_id', $memberId)
+                ->whereRaw("TRIM(LEADING '0' FROM member_id) = ?", [$memberId])
                 ->orderByDesc('updated_at')
                 ->orderByDesc('id')
                 ->get();

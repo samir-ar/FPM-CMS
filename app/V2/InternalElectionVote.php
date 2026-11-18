@@ -26,6 +26,7 @@ class InternalElectionVote extends Model
     }
 
     public function user(){
-        return $this->belongsTo(AppUser::class);
+        // withTrashed: a vote cast from an account that was later hidden by the duplicate clean-up must still show its voter
+        return $this->belongsTo(AppUser::class)->withTrashed();
     }
 }

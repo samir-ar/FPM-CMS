@@ -15,7 +15,7 @@ class InternalElectionMemberVoteTest extends CouncilTestCase
         $m = new \ReflectionMethod(ApiController::class, 'memberHasVotedInElection');
         $m->setAccessible(true);
 
-        return $m->invoke(app(ApiController::class), AppUser::find($userId), $electionId);
+        return $m->invoke(app(ApiController::class), AppUser::withTrashed()->find($userId), $electionId);
     }
 
     public function test_a_vote_by_one_account_blocks_every_account_of_the_same_member(): void

@@ -57,8 +57,16 @@ abstract class CouncilTestCase extends TestCase
         return $ids;
     }
 
+    // The database allows ONE active app account per member (unique index on active_member_key). A second account
+    // of the same member (leading zero ignored) is therefore created hidden (soft-deleted), exactly like the leftovers
+    // of the duplicate clean-up: it can hold votes, but it cannot log in. Use AppUser::withTrashed()->find() for it.
     protected function makeAppUser(string $name, ?string $memberId, array $extra = []): int
     {
+        if ($memberId !== null && ltrim($memberId, '0') !== '' && !array_key_exists('deleted_at', $extra)
+            && DB::table('app_users')->whereNull('deleted_at')->whereRaw("TRIM(LEADING '0' FROM member_id) = ?", [ltrim($memberId, '0')])->exists()) {
+            $extra['deleted_at'] = now();
+        }
+
         return DB::table('app_users')->insertGetId($extra + [
             'name' => $name,
             'member_id' => $memberId,

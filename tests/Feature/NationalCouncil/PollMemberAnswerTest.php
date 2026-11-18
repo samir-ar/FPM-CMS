@@ -16,7 +16,7 @@ class PollMemberAnswerTest extends CouncilTestCase
     private function answer(int $userId, int $optionId): int
     {
         $req = Request::create('/api/v2/answer-poll', 'POST', ['option_id' => $optionId]);
-        $req->merge(['user' => AppUser::find($userId)]);
+        $req->merge(['user' => AppUser::withTrashed()->find($userId)]);
         app()->instance('request', $req);   // answerPoll reads the global request() helper
 
         $res = app(ApiController::class)->answerPoll($req, app(ApiRepository::class));

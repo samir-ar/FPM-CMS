@@ -24,8 +24,9 @@ class UsersImport implements ToCollection
                 continue;
             }
 
-            //Check if exist
-            if(AppUser::where('member_id',$row[0])->where('phone_number',$row[2])->count()>0){
+            //Check if exist: one account per MEMBER (leading zero ignored), whatever phone it was created with
+            $key = ltrim((string) $row[0], '0');
+            if($key === '' || AppUser::whereRaw("TRIM(LEADING '0' FROM member_id) = ?", [$key])->count()>0){
                 continue;
             }
 

@@ -50,7 +50,7 @@ class CouncilVotingTest extends CouncilTestCase
     private function vote(int $userId, array $payload): array
     {
         $req = Request::create('/api/v2/national-council-poll-vote', 'POST', $payload);
-        $req->merge(['user' => AppUser::find($userId)]);
+        $req->merge(['user' => AppUser::withTrashed()->find($userId)]);
         $res = app(ApiController::class)->voteToNationalPoll($req, app(ApiRepository::class));
 
         return [$res->getStatusCode(), json_decode($res->getContent(), true)];
@@ -153,19 +153,19 @@ class CouncilVotingTest extends CouncilTestCase
         $repo = app(ApiRepository::class);
 
         // a member's answer keeps the installation id, the model and the hardware id
-        $repo->userAnswerPoll(AppUser::find($this->user), $optionId, ['device_id' => 'dev-1', 'device_model' => 'Apple iPhone14,5, iOS 17.2', 'hardware_id' => 'IDFV-1']);
+        $repo->userAnswerPoll(AppUser::withTrashed()->find($this->user), $optionId, ['device_id' => 'dev-1', 'device_model' => 'Apple iPhone14,5, iOS 17.2', 'hardware_id' => 'IDFV-1']);
         $row = DB::table('users_polls')->where('poll_id', $pollId)->first();
         $this->assertSame('dev-1', $row->device_id);
         $this->assertSame('Apple iPhone14,5, iOS 17.2', $row->device_model);
         $this->assertSame('IDFV-1', $row->hardware_id);
 
         // changing the answer replaces the row and keeps recording the phone
-        $repo->userAnswerPoll(AppUser::find($this->user), $optionId, ['device_id' => 'dev-2', 'device_model' => 'Apple iPhone14,5, iOS 17.2', 'hardware_id' => 'IDFV-1']);
+        $repo->userAnswerPoll(AppUser::withTrashed()->find($this->user), $optionId, ['device_id' => 'dev-2', 'device_model' => 'Apple iPhone14,5, iOS 17.2', 'hardware_id' => 'IDFV-1']);
         $this->assertSame(1, DB::table('users_polls')->where('poll_id', $pollId)->count());
         $this->assertSame('dev-2', DB::table('users_polls')->where('poll_id', $pollId)->value('device_id'));
 
         // an older app sends nothing: still works, the columns stay empty
-        $repo->userAnswerPoll(AppUser::find($this->user2), $optionId);
+        $repo->userAnswerPoll(AppUser::withTrashed()->find($this->user2), $optionId);
         $this->assertNull(DB::table('users_polls')->where('app_user_id', $this->user2)->value('hardware_id'));
 
         // a guest's answer keeps them too
@@ -233,7 +233,7 @@ class CouncilVotingTest extends CouncilTestCase
     private function api(string $method, int $userId, array $payload = []): array
     {
         $req = Request::create('/api/v2/x', 'POST', $payload);
-        $req->merge(['user' => AppUser::find($userId)]);
+        $req->merge(['user' => AppUser::withTrashed()->find($userId)]);
         $res = app(ApiController::class)->$method($req, app(ApiRepository::class));
 
         return [$res->getStatusCode(), json_decode($res->getContent(), true)];
@@ -374,7 +374,7 @@ class CouncilVotingTest extends CouncilTestCase
     {
         $this->closePoll($this->poll, now()->subMinute());
         $req = Request::create('/api/v2/x', 'POST');
-        $req->merge(['user' => AppUser::find($this->user)]);
+        $req->merge(['user' => AppUser::withTrashed()->find($this->user)]);
         $this->assertSame(404, app(ApiController::class)->canIVoteToNationalCouncilPoll($req, app(ApiRepository::class)));
     }
 

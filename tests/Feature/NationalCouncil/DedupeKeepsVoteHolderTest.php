@@ -21,6 +21,13 @@ class DedupeKeepsVoteHolderTest extends CouncilTestCase
 
     public function test_the_account_holding_the_vote_is_kept_and_unclear_groups_are_left_alone(): void
     {
+        // This tool was a one-off clean-up. Once the database forbids two active accounts per member (unique index
+        // app_users_one_active_account_per_member) there is nothing left for it to merge, and this scenario cannot
+        // be built any more.
+        if (DB::select("SHOW INDEX FROM app_users WHERE Key_name = 'app_users_one_active_account_per_member'")) {
+            $this->markTestSkipped('The database now forbids duplicate active accounts, so there is nothing to deduplicate.');
+        }
+
         $now = now();
 
         // --- A: an old, unverified account holds the election vote; the newer verified one with a push token does not

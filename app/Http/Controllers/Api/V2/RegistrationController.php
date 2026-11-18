@@ -112,7 +112,15 @@ class RegistrationController extends Controller
         if(!$user = $userRepo->getUserByPhoneNumber(request('phone_number'), request('member_id'))){
 
             // a brand-new account gets an unusable placeholder token (and stays unverified) until the code is entered
-            $user = $userRepo->addUser(array_merge($request->all(), ['token' => strtoupper(bin2hex(random_bytes(16)))]));
+            try {
+                $user = $userRepo->addUser(array_merge($request->all(), ['token' => strtoupper(bin2hex(random_bytes(16)))]));
+            } catch (\Illuminate\Database\QueryException $e) {
+                // two logins of the same member at the same instant: the database allows only one active account per
+                // member, so use the one that won the race
+                if ($e->getCode() !== '23000' || !($user = $userRepo->getUserByPhoneNumber(request('phone_number'), request('member_id')))) {
+                    throw $e;
+                }
+            }
         }
 
         else{
