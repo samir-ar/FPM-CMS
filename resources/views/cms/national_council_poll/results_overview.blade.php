@@ -81,7 +81,7 @@
     .poll-head h3 { font-size: clamp(22px, 2vw, 32px); font-weight: 800; line-height: 1.2; }
     .poll-head span { color: var(--muted); font-size: 13px; }
     .hero { grid-column: span 4; display: flex; flex-direction: column; align-items: center; }
-    .gauge { position: relative; width: min(100%, 250px); aspect-ratio: 1; margin: 2px auto 8px; }
+    .gauge { cursor: pointer; position: relative; width: min(100%, 250px); aspect-ratio: 1; margin: 2px auto 8px; }
     .gauge svg { width: 100%; height: 100%; overflow: visible; }
     .gauge .track { fill: none; stroke: rgba(255,255,255,.08); stroke-width: 24; }
     .gauge .arc { fill: none; stroke-width: 24; stroke-linecap: round; stroke: var(--orange); transition: stroke-dashoffset 1.4s cubic-bezier(.2,.8,.2,1); }
@@ -460,8 +460,33 @@
         node.querySelector('.wait').textContent = q.cast_weight > 0 ? '' : 'Waiting for the first vote…';
     }
 
+    function turnoutText(v) { return String(v).replace(/\.0$/, ''); }
+    function setRing(sec, turnout) {
+        var off = CIRC * (1 - Math.min(100, turnout) / 100);
+        Array.prototype.forEach.call(sec.querySelectorAll('.arc'), function (a) { a.style.strokeDashoffset = off; });
+        sec.querySelector('[data-f="turnout"]').textContent = turnoutText(turnout);
+    }
+    function animateRing(sec) {
+        var target = Math.min(100, Number(sec.__turnout) || 0);
+        var arcs = sec.querySelectorAll('.arc'), num = sec.querySelector('[data-f="turnout"]');
+        if (reduce) { setRing(sec, target); return; }
+        Array.prototype.forEach.call(arcs, function (a) { a.style.transition = 'none'; a.style.strokeDashoffset = CIRC; });
+        num.textContent = '0';
+        void sec.offsetWidth;   // let the empty ring paint first, so the sweep is visible
+        var ms = 2000, t0 = null, offFinal = CIRC * (1 - target / 100);
+        function step(ts) {
+            if (t0 === null) t0 = ts;
+            var k = Math.min(1, (ts - t0) / ms), e = 1 - Math.pow(1 - k, 3);
+            Array.prototype.forEach.call(arcs, function (a) { a.style.strokeDashoffset = CIRC - (CIRC - offFinal) * e; });
+            num.textContent = k < 1 ? (Math.round(target * e * 10) / 10).toFixed(1) : turnoutText(target);
+            if (k < 1) requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
+    }
+
     function renderPoll(p, top, showHead) {
         var sec = stages.querySelector('[data-poll="' + p.id + '"]');
+        var isNew = !sec;
         if (!sec) {
             sec = el('div', 'poll'); sec.setAttribute('data-poll', p.id);
             var head = el('div', 'poll-head'); head.appendChild(el('h3', 'auto')); head.appendChild(el('span')); sec.appendChild(head);
@@ -483,9 +508,14 @@
         sec.querySelector('.poll-head h3').textContent = p.title;
         sec.querySelector('.poll-head span').textContent = (p.published ? 'Published' : 'Not published') + (p.closes_at ? ' · ' + (p.closed ? 'closed ' : 'closes ') + p.closes_at : '') + (p.top ? ' · ' + p.top + (p.top === 1 ? ' winner' : ' winners') : '');
         sec.querySelector('.poll-head').style.display = showHead ? '' : 'none';
-        var off = CIRC * (1 - Math.min(100, p.turnout) / 100);
-        Array.prototype.forEach.call(sec.querySelectorAll('.arc'), function (a) { a.style.strokeDashoffset = off; });
-        sec.querySelector('[data-f="turnout"]').textContent = String(p.turnout).replace(/\.0$/, '');
+        sec.__turnout = p.turnout;
+        if (isNew) {
+            // the ring sweeps from 0 up to the turnout while the number counts; click the ring to watch it again
+            animateRing(sec);
+            sec.querySelector('.gauge').addEventListener('click', function () { animateRing(sec); });
+        } else {
+            setRing(sec, p.turnout);
+        }
         count(sec.querySelector('[data-f="voted"]'), p.voters);
         count(sec.querySelector('[data-f="weight"]'), p.voted_weight);
         count(sec.querySelector('[data-f="qs"]'), p.questions.length);
