@@ -167,7 +167,8 @@
     .pick-sub { color: var(--muted); margin-bottom: 28px; text-align: center; }
 
     /* ---------- interactive bits ---------- */
-    .qtools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 10px 0 6px; }
+    .qtools { display: none !important; }
+    .qtools-old { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 10px 0 6px; }
     .qsearch { flex: 0 1 280px; padding: 9px 14px; border-radius: 12px; background: var(--card-strong); border: 1px solid var(--line); color: var(--text); font: 500 14px 'Inter', 'Tajawal', sans-serif; }
     .qsearch::placeholder { color: var(--faint); }
     .tgl { cursor: pointer; padding: 9px 16px; border-radius: 12px; background: var(--card-strong); border: 1px solid var(--line); color: var(--muted); font: 700 13px 'Inter', sans-serif; transition: all .2s; }
