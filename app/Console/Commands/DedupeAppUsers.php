@@ -14,7 +14,12 @@ use Illuminate\Support\Facades\DB;
  * the fix. No new duplicates should be forming.
  *
  * For each member_id with more than one non-deleted row:
- *   1. Pick a "canonical" row: prefer verified=1, then prefer a non-empty
+ *   0. VOTES COME FIRST: if one of the rows holds votes/answers (internal
+ *      election, regular poll, council poll) that row is the canonical one,
+ *      so a vote is never left sitting on a hidden account. If SEVERAL rows
+ *      of the same member hold votes the group is SKIPPED and reported for a
+ *      human to look at - nothing is touched.
+ *   1. Otherwise pick a "canonical" row: prefer verified=1, then prefer a non-empty
  *      player_id (push token), tie-break by most recently updated.
  *   2. Merge any non-null field from the losing rows into the canonical row
  *      wherever the canonical row's own value is null/empty (defensive —
@@ -68,7 +73,16 @@ class DedupeAppUsers extends Command
 
         $this->info("Found {$duplicateMemberIds->count()} duplicate group(s) to process.");
 
+        // every account that holds at least one vote / answer, in any voting feature
+        $voteHolders = collect()
+            ->merge(DB::table('internal_election_votes')->distinct()->pluck('user_id'))
+            ->merge(DB::table('users_polls')->distinct()->pluck('app_user_id'))
+            ->merge(DB::table('council_national_poll_votes')->distinct()->pluck('user_id'))
+            ->flip();
+
         $groupsProcessed = 0;
+        $groupsSkipped = [];
+        $keptVoteHolder = 0;
         $rowsSoftDeleted = 0;
         $fieldsMerged = 0;
         $scanAccessRescued = 0;
@@ -88,13 +102,26 @@ class DedupeAppUsers extends Command
                 continue; // race condition / already resolved since the id list was pulled
             }
 
+            // Votes first: the account holding votes is the one that must stay visible.
+            $holders = $rows->filter(fn(AppUser $row) => $voteHolders->has($row->id));
+            if ($holders->count() > 1) {
+                $groupsSkipped[$memberId] = $holders->pluck('id')->implode(', ');
+                $progress->advance();
+                continue;
+            }
+
             // Score: verified=1 is worth more than having a push token —
             // matches the investigation finding that "verified" is the
             // stronger signal of a row actually being someone's real,
             // currently-used account.
-            $canonical = $rows->sortByDesc(function (AppUser $row) {
-                return ($row->verified ? 2 : 0) + (!empty($row->player_id) ? 1 : 0);
-            })->first();
+            $canonical = $holders->count() === 1
+                ? $holders->first()
+                : $rows->sortByDesc(function (AppUser $row) {
+                    return ($row->verified ? 2 : 0) + (!empty($row->player_id) ? 1 : 0);
+                })->first();
+            if ($holders->count() === 1) {
+                $keptVoteHolder++;
+            }
 
             $losers = $rows->reject(fn(AppUser $row) => $row->id === $canonical->id);
 
@@ -155,8 +182,14 @@ class DedupeAppUsers extends Command
                 ['Rows ' . ($commit ? 'soft-deleted' : 'that WOULD be soft-deleted'), $rowsSoftDeleted],
                 ['Fields ' . ($commit ? 'merged' : 'that WOULD be merged'), $fieldsMerged],
                 ['can_scan_checkin rescues', $scanAccessRescued],
+                ['Groups where the account holding votes was kept', $keptVoteHolder],
+                ['Groups SKIPPED (several accounts hold votes - needs a human)', count($groupsSkipped)],
             ]
         );
+
+        foreach ($groupsSkipped as $memberId => $ids) {
+            $this->warn("SKIPPED member_id={$memberId}: accounts holding votes: {$ids}");
+        }
 
         if (!$commit) {
             $this->warn('This was a dry run — nothing was written. Re-run with --commit to actually apply.');
