@@ -91,9 +91,8 @@ class PollMemberAnswerTest extends CouncilTestCase
         DB::table('groups_polls')->insert(['poll_id' => $pollId, 'group_group_id' => 81, 'created_at' => now(), 'updated_at' => now()]);
         $this->assertCount(1, $repo->getPreviousPolls(null, [$groupId], 'T-dev-2', 'T-phone-1'), 'found by hardware id');
         $this->assertCount(0, $repo->getPreviousPolls(null, [$groupId], 'T-dev-unknown', null), 'a phone we have never seen has none');
-        // an old app build with no hardware id still works, keyed by device_id
-        $this->assertSame(200, $this->guestAnswer($o, 'T-dev-4', null));
+        // an old app build that sends no hardware id cannot vote as a guest at all (it has to update)
         $this->assertSame(400, $this->guestAnswer($o, 'T-dev-4', null));
-        $this->assertSame(3, DB::table('guest_poll_votes')->where('poll_id', $pollId)->count());
+        $this->assertSame(2, DB::table('guest_poll_votes')->where('poll_id', $pollId)->count());
     }
 }
