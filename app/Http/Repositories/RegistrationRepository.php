@@ -21,12 +21,8 @@ class RegistrationRepository
         //create pin verification
 
 
-        if(request('phone_number') == '+9613706108'){
-            $user->verification_nb = '1111';
-
-        }else{
-            $user->verification_nb = $this->generatePIN();
-        }
+        // no fixed codes: this older copy is no longer routed, but it must not keep a back door either
+        $user->verification_nb = $this->generatePIN();
 
         $user->verified = true;
         $user->save();

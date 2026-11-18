@@ -150,4 +150,14 @@ class LoginOtpTest extends CouncilTestCase
         $res = $ctrl->deleteAccount();
         $this->assertSame(400, $res->getStatusCode());
     }
+
+    public function test_only_apples_review_number_has_a_fixed_code(): void
+    {
+        $repo = app(RegistrationRepository::class);
+        $this->assertTrue($repo->usesFixedReviewCode('96176979532'));
+        $this->assertTrue($repo->usesFixedReviewCode('+96176979532'));
+        foreach (['96171106394', '+96171106394', '+96178837076', '96178837076', '+9613956719', '9613956719', '+9613706108', '', null] as $phone) {
+            $this->assertFalse($repo->usesFixedReviewCode($phone), 'no fixed code for ' . var_export($phone, true));
+        }
+    }
 }

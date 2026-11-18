@@ -3001,7 +3001,7 @@ class ApiController extends Controller
         $user = request('user');
 
         //generate pin
-        if ($user->phone_number == "+96171106394" || $user->phone_number == "96171106394" || $user->phone_number == "+96171106394" || $user->phone_number == '96176979532' || $user->phone_number == '+96176979532' || $user->phone_number == '+9613956719') {
+        if (app(\App\Http\Repositories\V2\RegistrationRepository::class)->usesFixedReviewCode($user->phone_number)) {
             $user->verification_nb = '1111';
         } else {
             $user->verification_nb = $this->generatePIN();

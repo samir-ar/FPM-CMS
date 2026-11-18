@@ -17,12 +17,21 @@ class RegistrationRepository
 {
     use TokenTrait;
 
+    // The ONE account whose login code is always 1111: the test account Apple's App Review signs in with (it cannot
+    // receive an SMS). Every other number gets a random code by SMS.
+    public const APPLE_REVIEW_PHONE = '96176979532';
+
+    public function usesFixedReviewCode($phone): bool
+    {
+        return ltrim(trim((string) $phone), '+') === self::APPLE_REVIEW_PHONE;
+    }
+
     public function sendVerificationPin(AppUser $user)
     {
         //create pin verification
 
 
-        if(request('phone_number') == "+96171106394" ||request('phone_number') == "96171106394" ||request('phone_number') == "+96178837076" ||request('phone_number') == "+96171106394" || request('phone_number') == '96176979532' || request('phone_number') == '+96176979532' || request('phone_number') == '+9613956719'){
+        if($this->usesFixedReviewCode(request('phone_number'))){
             $user->verification_nb = '1111';
             $user->email = 'liwaa.alhamra@tedmob.com';
         }else{
