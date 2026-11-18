@@ -196,7 +196,7 @@
     .btn.go:hover { background: #ffa443; }
     .rh { opacity: 0; transform: translateY(22px) scale(.97); pointer-events: none; }
     .row, .pod, .cut { transition: opacity .7s cubic-bezier(.2,.8,.2,1), transform .7s cubic-bezier(.2,.8,.2,1), border-color .5s, background .5s; }
-    .pod.rh { transform: translateY(40px) scale(.8); }
+    .pod.rh { transform: translateY(40px) scale(.8); animation: none; opacity: 0; }
     .row.pop, .pod.pop { animation: pop .9s cubic-bezier(.2,1.2,.3,1); }
     @keyframes pop { 0% { box-shadow: 0 0 0 0 rgba(244,141,36,.8); } 100% { box-shadow: 0 0 0 26px rgba(244,141,36,0); } }
     .ctl { position: fixed; z-index: 30; left: 50%; bottom: 22px; transform: translateX(-50%); display: none; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 999px; background: rgba(0,24,42,.72); border: 1px solid var(--line); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); box-shadow: 0 18px 50px rgba(0,0,0,.45); }
