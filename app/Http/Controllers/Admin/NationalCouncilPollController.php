@@ -56,6 +56,17 @@ class NationalCouncilPollController extends Controller
                         "<a href='{$url}' class='btn btn-xs btn-success' style='margin-left:6px;' onclick=\"return confirm('Publish this poll now? Members will be able to see and vote in it.');\">Publish</a>";
                 })
 
+                ->addColumn('closes', function($row){
+                    $value = $row->closes_at ? \Carbon\Carbon::parse($row->closes_at)->format('Y-m-d\TH:i') : '';
+                    $closed = $row->closes_at && \Carbon\Carbon::parse($row->closes_at)->isPast();
+
+                    return "<div style='display:flex; gap:6px; align-items:center;'>".
+                        "<input type='datetime-local' class='form-control poll-closes-at-input' style='width:200px' value='{$value}' data-id='{$row->id}'>".
+                        "<button class='btn btn-primary btn-sm save-poll-closes-at-btn' data-id='{$row->id}'>Save</button>".
+                        ($closed ? "<span class='label label-danger'>closed</span>" : '').
+                        "</div>";
+                })
+
                 ->addColumn('questions', function($row){
                     return "<a href='".route('admin.national-council-poll.questions.index',$row)."' class='text-success'>Questions</a>";
                 })
@@ -74,7 +85,7 @@ class NationalCouncilPollController extends Controller
                     // wiped a poll's votes); the page itself is not linked from here any more
                 })
 
-                ->rawColumns(['is_published','action','questions','results'])
+                ->rawColumns(['is_published','closes','action','questions','results'])
 
                 ->make(true);
         }
@@ -86,12 +97,14 @@ class NationalCouncilPollController extends Controller
             'table_title' => '',
             'slug'		=> 'national-council-poll',
             'custom_btn' => "<a href='" . route('admin.national-council-poll.create') ."' class='btn btn-primary'>Add National Council Poll</a>",
-            'headers'	=> ['id', 'Title', 'Publish','Results','questions','Creation Date','Action'],
+            'headers'	=> ['id', 'Title', 'Publish','Closes at','Results','questions','Creation Date','Action'],
+            'scripts' => ['/js/council-poll-list.js'],
             'action' => route('admin.national-council-poll.index'),
             'columns' => json_encode([
                 ['data' => 'id', 'name' => 'id'],
                 ['data' => 'title', 'name' => 'title'],
                 ['data' => 'is_published', 'name' => 'is_published'],
+                ['data' => 'closes', 'name' => 'closes', 'searchable' => false, 'sortable' => false],
                 ['data' => 'results', 'name' => 'results'],
                 ['data' => 'questions', 'name' => 'questions'],
                 ['data' => 'created_at', 'name' => 'created_at'],
@@ -126,6 +139,7 @@ class NationalCouncilPollController extends Controller
                         // (0 when unpublished), so ticking Publish sent "0" and the poll stayed unpublished
                         $this->drawHtml('checkbox', 'Publish', 'is_published', $poll->is_published, '1', '', 'col-md-6'),
                         $this->drawHtml('select-box', 'Council meeting (optional)', 'meeting_id', (string) $poll->meeting_id, $this->meetingOptions(), null, 'col-md-6'),
+                        $this->drawHtml('date-time-picker', 'Closes at (optional; after this time the poll shows as closed in the app and nobody can vote)', 'closes_at', $poll->closes_at ? \Carbon\Carbon::parse($poll->closes_at)->format('Y-m-d\TH:i') : '', null, '', 'col-md-6'),
                            ],
                 ],
                 [
@@ -173,6 +187,7 @@ class NationalCouncilPollController extends Controller
                             $this->drawHtml('small_text', 'Title', 'title', '', null, '', 'col-md-6 required'),
                             $this->drawHtml('checkbox', 'Publish', 'is_published', null, '1', '', 'col-md-6'),
                             $this->drawHtml('select-box', 'Council meeting (optional)', 'meeting_id', '', $this->meetingOptions(), null, 'col-md-6'),
+                            $this->drawHtml('date-time-picker', 'Closes at (optional; after this time the poll shows as closed in the app and nobody can vote)', 'closes_at', '', null, '', 'col-md-6'),
                             $this->drawHtml('checkbox', 'Load the voter list from the council roster', 'from_roster', null, '1', '', 'col-md-6'),
                         ],
                     ],  [
@@ -318,6 +333,22 @@ HTML;
         return $html;
     }
 
+    // Save the closing time of one poll from the polls list (empty = no closing time).
+    public function updateClosesAt(Request $request, $id)
+    {
+        $request->validate(['closes_at' => 'nullable|date']);
+
+        $poll = CouncilNationalPoll::find($id);
+        if (!$poll) {
+            return response()->json(['message' => 'Poll not found'], 404);
+        }
+
+        $poll->closes_at = $request->closes_at ? \Carbon\Carbon::parse($request->closes_at)->toDateTimeString() : null;
+        $poll->save();
+
+        return response()->json(['message' => 'Closing time updated']);
+    }
+
     // One click Publish / Unpublish from the polls list. A poll with no question cannot be published (members
     // would see an empty poll); unpublishing is always allowed.
     public function togglePublish($id)
@@ -352,6 +383,7 @@ HTML;
         $poll->is_published = (request('is_published'))?true:false;
         $poll->title  = $request->title;
         $poll->meeting_id = $request->meeting_id ?: null;
+        $poll->closes_at = $request->closes_at ? \Carbon\Carbon::parse($request->closes_at)->toDateTimeString() : null;
         $poll->save();
 
         if ($request->excel) {
@@ -388,6 +420,7 @@ HTML;
                 $poll->is_published = (request('is_published'))?true:false;
                 $poll->title  = $request->title;
                 $poll->meeting_id = $request->meeting_id ?: null;
+                $poll->closes_at = $request->closes_at ? \Carbon\Carbon::parse($request->closes_at)->toDateTimeString() : null;
                 $poll->save();
 
                 if ($request->from_roster) {

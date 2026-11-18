@@ -10,10 +10,22 @@ class CouncilNationalPoll extends Model
     // "Delete" only marks the poll as deleted (deleted_at); the poll and all its votes stay in the database.
     use SoftDeletes;
 
+    // The moment voting ends (null = no closing time). After it the poll is shown as closed and cannot be voted in.
+    public function isClosed(): bool
+    {
+        return $this->closes_at && \Carbon\Carbon::parse($this->closes_at)->isPast();
+    }
+
+    public function closesAtIso(): ?string
+    {
+        return $this->closes_at ? \Carbon\Carbon::parse($this->closes_at)->toIso8601String() : null;
+    }
+
     public function format(){
         return [
             'id' => $this->id,
             'title'=> $this->title,
+            'closes_at' => $this->closesAtIso(),
             'questions' => $this->questions
             ];
     }

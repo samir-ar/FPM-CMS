@@ -121,6 +121,8 @@ class ApiRepository
     {
         $pollIds = $user->nationalCouncilPollPermitted()->pluck('poll_id')->unique()->values();
 
+        // A poll whose closing time has passed is still listed (marked closed) until it is unpublished: the app
+        // shows it as closed, and opening / voting in it is refused (see CouncilNationalPoll::isClosed()).
         return CouncilNationalPoll::whereIn('id', $pollIds)->where('is_published', true)->orderByDesc('id')->get();
     }
 

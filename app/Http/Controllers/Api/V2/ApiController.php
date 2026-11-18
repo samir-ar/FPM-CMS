@@ -938,6 +938,9 @@ class ApiController extends Controller
         $poll = $apiRepository->getNationalCouncil($user);
         if (!$poll) return 404;
 
+        // older app builds only know "a poll to vote in or not": a closed poll is simply not available to them
+        if ($poll->isClosed()) return 404;
+
         //Check if the member has voted or not
         $voted = $this->nationalCouncilVoteExists($poll->id, $user);
 
@@ -960,13 +963,17 @@ class ApiController extends Controller
 
         $polls = $apiRepository->getNationalCouncilPolls($user)->map(function ($poll) use ($user) {
             $voted = $this->nationalCouncilVoteExists($poll->id, $user);
+            $closed = $poll->isClosed();
 
             return [
                 'id' => $poll->id,
                 'title' => $poll->title,
-                'can_i_vote' => !$voted,
+                'closes_at' => $poll->closesAtIso(),
+                'closed' => $closed,
+                // a closed poll stays in the list (marked closed) until it is unpublished, but cannot be opened
+                'can_i_vote' => !$voted && !$closed,
                 'voted' => $voted,
-                'message' => $voted ? 'لقد قمت بالتصويت' : 'يمكنك التصويت',
+                'message' => $voted ? 'لقد قمت بالتصويت' : ($closed ? 'انتهى وقت التصويت' : 'يمكنك التصويت'),
             ];
         })->values();
 
@@ -986,6 +993,9 @@ class ApiController extends Controller
             $poll = $apiRepository->getNationalCouncilPolls($request->user)->firstWhere('id', (int) $request->input('poll_id'));
             if (!$poll || $this->nationalCouncilVoteExists($poll->id, $request->user)) {
                 return $this->api_error_response('missing_parameters', 101, implode(', ', ['message' => 'لا يمكنك التصويت']));
+            }
+            if ($poll->isClosed()) {
+                return $this->api_error_response('poll_closed', 101, 'انتهى وقت التصويت');
             }
 
             return response()->json($poll->format());
@@ -1033,6 +1043,11 @@ class ApiController extends Controller
         $poll = $apiRepository->getNationalCouncilPolls($user)->firstWhere('id', (int) $request->poll_id);
         if (!$poll) {
             return $this->api_error_response('can_vote', 101, 'لا يمكنك التصويت');
+        }
+
+        // The closing time is enforced here, by the server, not by the app's countdown: after it nobody can vote.
+        if ($poll->isClosed()) {
+            return $this->api_error_response('poll_closed', 101, 'انتهى وقت التصويت');
         }
 
         if ($this->nationalCouncilVoteExists($poll->id, $user)) {

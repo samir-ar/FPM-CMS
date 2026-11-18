@@ -618,6 +618,7 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     /*Route::resource('national-council-poll.questions.answers','NationalCouncilPollQuestionAnswersController');*/
 
     //National Council Poll — page 58, covers its Questions sub-feature too
+    Route::post('national-council-poll/{id}/closes-at', 'NationalCouncilPollController@updateClosesAt')->name('national-council-poll.closes-at')->middleware('page-perm:58,full');
     // who voted + from which device (never WHAT they voted)
     Route::get('national-council-poll/{id}/voters', 'NationalCouncilPollVotersController@progress')->name('national-council-poll.progress')->middleware('page-perm:58,view');
     Route::get('national-council-poll/{id}/voters/export', 'NationalCouncilPollVotersController@progressExport')->name('national-council-poll.progress.export')->middleware('page-perm:58,view');

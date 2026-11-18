@@ -280,4 +280,39 @@ class CouncilPollAdminTest extends CouncilTestCase
         ])->assertRedirect();
         $this->assertSame((string) $pick, DB::table('answer_council_national_polls')->where('id', $answers[0]->id)->value('member_id'));
     }
+
+    public function test_the_closing_time_is_set_on_the_forms_and_inline_from_the_polls_list()
+    {
+        $poll = $this->pollFromRoster();
+        $this->actingAs($this->adminUser(), 'admin');
+
+        // the forms carry the field
+        $this->get(route('admin.national-council-poll.create', [], false))->assertOk()->assertSee('name="closes_at"', false);
+        $this->get(route('admin.national-council-poll.edit', $poll->id, false))->assertOk()->assertSee('name="closes_at"', false);
+
+        // the edit form saves it, and clearing it removes it
+        $this->put(route('admin.national-council-poll.update', $poll->id, false), ['title' => 'T election', 'closes_at' => '2030-01-02 15:30:00'])->assertRedirect();
+        $this->assertSame('2030-01-02 15:30:00', (string) DB::table('council_national_polls')->where('id', $poll->id)->value('closes_at'));
+        $this->put(route('admin.national-council-poll.update', $poll->id, false), ['title' => 'T election'])->assertRedirect();
+        $this->assertNull(DB::table('council_national_polls')->where('id', $poll->id)->value('closes_at'));
+
+        // the create form saves it
+        $this->post(route('admin.national-council-poll.store', [], false), ['title' => 'T with closing', 'closes_at' => '2030-03-04 10:00:00'])->assertRedirect();
+        $this->assertSame('2030-03-04 10:00:00', (string) DB::table('council_national_polls')->where('title', 'T with closing')->value('closes_at'));
+
+        // inline save from the list, then cleared again
+        $url = route('admin.national-council-poll.closes-at', $poll->id, false);
+        $this->postJson($url, ['closes_at' => '2030-05-06T08:45'])->assertOk();
+        $this->assertSame('2030-05-06 08:45:00', (string) DB::table('council_national_polls')->where('id', $poll->id)->value('closes_at'));
+        $this->postJson($url, ['closes_at' => ''])->assertOk();
+        $this->assertNull(DB::table('council_national_polls')->where('id', $poll->id)->value('closes_at'));
+        $this->postJson($url, ['closes_at' => 'not a date'])->assertStatus(422);
+
+        // the list shows the editor, and a past time is flagged closed
+        DB::table('council_national_polls')->where('id', $poll->id)->update(['closes_at' => now()->subHour()]);
+        $row = collect($this->getJson(route('admin.national-council-poll.index', [], false), ['X-Requested-With' => 'XMLHttpRequest'])->assertOk()->json('data'))->firstWhere('id', $poll->id);
+        $this->assertStringContainsString('poll-closes-at-input', $row['closes']);
+        $this->assertStringContainsString('save-poll-closes-at-btn', $row['closes']);
+        $this->assertStringContainsStringIgnoringCase('closed', $row['closes']);
+    }
 }

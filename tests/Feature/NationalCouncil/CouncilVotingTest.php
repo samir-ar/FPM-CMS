@@ -327,4 +327,80 @@ class CouncilVotingTest extends CouncilTestCase
         $this->get('/api/v2/member-photo/' . $pick)->assertOk();
         $this->get('/api/v2/member-photo/' . $stranger)->assertNotFound();
     }
+
+    // ---- closing time (closes_at) ----
+
+    private function closePoll(int $pollId, $when): void
+    {
+        DB::table('council_national_polls')->where('id', $pollId)->update(['closes_at' => $when]);
+    }
+
+    private function fullVote(int $userId, int $pollId = null): array
+    {
+        return $this->vote($userId, ['poll_id' => $pollId ?? $this->poll, 'answers' => [['question_id' => $this->q1, 'answer_id' => $this->a1]]]);
+    }
+
+    public function test_a_poll_with_a_future_closing_time_is_open_and_tells_the_app_when_it_closes()
+    {
+        $this->closePoll($this->poll, now()->addHour());
+
+        [, $list] = $this->api('listNationalCouncilPolls', $this->user);
+        $row = collect($list['polls'])->firstWhere('id', $this->poll);
+        $this->assertTrue($row['can_i_vote']);
+        $this->assertFalse($row['closed']);
+        $this->assertNotNull($row['closes_at'], 'the app needs it for the countdown');
+        $this->assertTrue($this->ok($this->fullVote($this->user)[1]));
+    }
+
+    public function test_a_closed_poll_stays_listed_marked_closed_and_cannot_be_opened_or_voted()
+    {
+        $this->closePoll($this->poll, now()->subMinute());
+
+        [, $list] = $this->api('listNationalCouncilPolls', $this->user);
+        $row = collect($list['polls'])->firstWhere('id', $this->poll);
+        $this->assertNotNull($row, 'it stays visible until the admin unpublishes it');
+        $this->assertTrue($row['closed']);
+        $this->assertFalse($row['can_i_vote']);
+        $this->assertSame('انتهى وقت التصويت', $row['message']);
+
+        [, $opened] = $this->api('getLatestNationalCouncilPoll', $this->user, ['poll_id' => $this->poll]);
+        $this->assertArrayNotHasKey('questions', $opened);
+
+        $this->fullVote($this->user);
+        $this->assertSame(0, $this->votes($this->poll), 'no vote is stored after the closing time');
+    }
+
+    public function test_the_old_single_poll_check_also_refuses_a_closed_poll()
+    {
+        $this->closePoll($this->poll, now()->subMinute());
+        $req = Request::create('/api/v2/x', 'POST');
+        $req->merge(['user' => AppUser::find($this->user)]);
+        $this->assertSame(404, app(ApiController::class)->canIVoteToNationalCouncilPoll($req, app(ApiRepository::class)));
+    }
+
+    public function test_a_member_who_voted_before_closing_is_shown_as_voted_not_closed()
+    {
+        $this->assertTrue($this->ok($this->fullVote($this->user)[1]));
+        $this->closePoll($this->poll, now()->subMinute());
+
+        [, $list] = $this->api('listNationalCouncilPolls', $this->user);
+        $row = collect($list['polls'])->firstWhere('id', $this->poll);
+        $this->assertTrue($row['voted']);
+        $this->assertFalse($row['can_i_vote']);
+        $this->assertSame(1, $this->votes($this->poll), 'closing never removes the votes that were cast');
+    }
+
+    public function test_unpublishing_a_closed_poll_makes_it_disappear_and_a_poll_without_a_closing_time_never_closes()
+    {
+        $this->closePoll($this->poll, now()->subMinute());
+        DB::table('council_national_polls')->where('id', $this->poll)->update(['is_published' => 0]);
+        [, $list] = $this->api('listNationalCouncilPolls', $this->user);
+        $this->assertNotContains($this->poll, array_column($list['polls'] ?? [], 'id'));
+
+        DB::table('council_national_polls')->where('id', $this->poll)->update(['is_published' => 1, 'closes_at' => null]);
+        [, $list] = $this->api('listNationalCouncilPolls', $this->user);
+        $row = collect($list['polls'])->firstWhere('id', $this->poll);
+        $this->assertTrue($row['can_i_vote']);
+        $this->assertNull($row['closes_at']);
+    }
 }
