@@ -664,7 +664,7 @@
         spotBox.appendChild(el('div', 'n', d.r.name));
         spotBox.appendChild(el('div', 'qq', d.q));
         spotBox.appendChild(el('div', 'big', fmt(d.r.weight)));
-        spotBox.appendChild(el('div', 'meta', 'weight · ' + votes(d.r.votes) + ' · ' + d.r.pct + '% of the weight'));
+        spotBox.appendChild(el('div', 'meta', votes(d.r.votes) + ' · ' + d.r.pct + '%'));
         spot.classList.add('on');
     }
     spot.addEventListener('click', function () { spot.classList.remove('on'); });
