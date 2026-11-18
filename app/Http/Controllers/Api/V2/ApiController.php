@@ -1945,7 +1945,7 @@ class ApiController extends Controller
 
         if (RateLimiter::tooManyAttempts($key, 300)) {
             Log::warning('directory_pull_rate_limited', ['member_id' => $memberId, 'endpoint' => $endpoint, 'ip' => $request->ip()]);
-            return $this->api_error_response('too_many_requests', 429, 'لقد تجاوزت الحد المسموح من الطلبات، يرجى المحاولة لاحقاً', 429);
+            return $this->api_error_response('too_many_requests', 429, 'لقد تصفّحت عدداً كبيراً من الصفحات خلال الساعة الأخيرة، يرجى المحاولة مجدداً بعد قليل.', 429);
         }
         RateLimiter::hit($key, 3600);
 
