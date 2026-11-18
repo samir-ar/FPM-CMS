@@ -203,7 +203,7 @@
     .row.pop, .pod.pop { animation: pop .9s cubic-bezier(.2,1.2,.3,1); }
     @keyframes pop { 0% { box-shadow: 0 0 0 0 rgba(244,141,36,.8); } 100% { box-shadow: 0 0 0 26px rgba(244,141,36,0); } }
     .ctl { position: fixed; z-index: 30; left: 50%; bottom: 22px; transform: translateX(-50%); display: none; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 999px; background: rgba(0,24,42,.72); border: 1px solid var(--line); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); box-shadow: 0 18px 50px rgba(0,0,0,.45); }
-    body.reveal .ctl { display: flex; }
+    body.reveal .ctl { display: none !important; }
     .ctl .btn { padding: 10px 20px; border-radius: 999px; }
     .ctl .count { min-width: 64px; text-align: center; font-weight: 700; color: var(--muted); font-size: 13px; }
     .ctl .hint { color: var(--faint); font-size: 12px; padding: 0 8px; }
