@@ -1153,7 +1153,7 @@ class ApiController extends Controller
             $resolved = \App\V2\AppUser::where('token', $request->header('token'))->first();
             if ($resolved) $request->merge(['user' => $resolved, 'groups' => $resolved->groups->pluck('GroupId')->toArray()]);
         }
-        $polls = $repo->getPollsByGroups(request('user'), request('groups'), request('device_id'));
+        $polls = $repo->getPollsByGroups(request('user'), request('groups'), request('device_id'), request('hardware_id'));
         return response()->json($polls);
     }
 
@@ -1162,7 +1162,7 @@ class ApiController extends Controller
     public function getPreviousPolls(Request $request, ApiRepository $repo)
     {
         //previous polls
-        $polls = $repo->getPreviousPolls(request('user'), request('groups'), request('device_id'));
+        $polls = $repo->getPreviousPolls(request('user'), request('groups'), request('device_id'), request('hardware_id'));
 
         return response()->json($polls);
     }

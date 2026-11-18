@@ -85,6 +85,12 @@ class PollMemberAnswerTest extends CouncilTestCase
         $this->assertSame(1, DB::table('guest_poll_votes')->where('poll_id', $pollId)->count());
         // a different phone is a different guest
         $this->assertSame(200, $this->guestAnswer($o, 'T-dev-3', 'T-phone-2'));
+        // after reinstalling, the guest still sees this poll as answered (found by the phone, not the install)
+        $repo = app(ApiRepository::class);
+        $groupId = DB::table('groups')->value('id');
+        DB::table('groups_polls')->insert(['poll_id' => $pollId, 'group_group_id' => 81, 'created_at' => now(), 'updated_at' => now()]);
+        $this->assertCount(1, $repo->getPreviousPolls(null, [$groupId], 'T-dev-2', 'T-phone-1'), 'found by hardware id');
+        $this->assertCount(0, $repo->getPreviousPolls(null, [$groupId], 'T-dev-unknown', null), 'a phone we have never seen has none');
         // an old app build with no hardware id still works, keyed by device_id
         $this->assertSame(200, $this->guestAnswer($o, 'T-dev-4', null));
         $this->assertSame(400, $this->guestAnswer($o, 'T-dev-4', null));

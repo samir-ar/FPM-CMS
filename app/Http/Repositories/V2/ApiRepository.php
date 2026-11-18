@@ -204,7 +204,19 @@ class ApiRepository
         return $_options;
     }
 
-    public function getPollsByGroups($user, $groups_ids, $deviceId = null)
+    // A guest's earlier answers: by the app's device_id OR the phone's hardware_id, so after the app is deleted and
+    // reinstalled (new device_id, same phone) the guest still sees what they already answered.
+    private function guestVotesFor($deviceId, $hardwareId = null)
+    {
+        return GuestPollVote::where(function ($q) use ($deviceId, $hardwareId) {
+            $q->where('device_id', $deviceId);
+            if ($hardwareId) {
+                $q->orWhere('hardware_id', $hardwareId);
+            }
+        });
+    }
+
+    public function getPollsByGroups($user, $groups_ids, $deviceId = null, $hardwareId = null)
     {
         // A poll stays in this "current" list (and keeps voting/results visible)
         // for as long as it hasn't expired, whether or not the user already voted —
@@ -214,7 +226,7 @@ class ApiRepository
         // explicitly disables it (show=false) in the CMS, which hides it immediately.
         $isGuest = !$user;
         $answered_polls = $isGuest
-            ? GuestPollVote::where('device_id', $deviceId)->pluck('poll_id')->toArray()
+            ? $this->guestVotesFor($deviceId, $hardwareId)->pluck('poll_id')->toArray()
             : $user->polls->pluck('id')->toArray();
 
         $query = Poll::with('options')
@@ -247,7 +259,7 @@ class ApiRepository
                     'language' => $locale,
                     'already_voted' => $alreadyVoted,
                     'options' => $alreadyVoted
-                        ? $this->getPollOptionsWithRatings($user?->id, $r->id, $locale, $deviceId)
+                        ? $this->getPollOptionsWithRatings($user?->id, $r->id, $locale, $deviceId, $hardwareId)
                         : (($r->options) ? $this->getMappedOption($r, $locale) : []),
                 ];
             });
@@ -382,7 +394,7 @@ class ApiRepository
         );
     }
 
-    public function getPreviousPolls($user, $groups_ids, $deviceId = null)
+    public function getPreviousPolls($user, $groups_ids, $deviceId = null, $hardwareId = null)
     {
         //return polls answerd with the answered option flagged
         if (!$user) {
@@ -390,16 +402,16 @@ class ApiRepository
                 return collect();
             }
 
-            $pollIds = GuestPollVote::where('device_id', $deviceId)->pluck('poll_id')->unique();
+            $pollIds = $this->guestVotesFor($deviceId, $hardwareId)->pluck('poll_id')->unique();
 
             return Poll::whereIn('id', $pollIds)->whereHas('groups', function ($q) use ($groups_ids) {
                 return $q->whereIn('group_id', $groups_ids ?? [])->orWhere('group_id', 81)->orWhere('group_id', 82);
-            })->get()->map(function ($p) use ($deviceId) {
+            })->get()->map(function ($p) use ($deviceId, $hardwareId) {
                 return [
                     'question' => $p->question,
                     'date' => $p->created_at->toDateString(),
                     'strict_lang' => $p->strict_lang,
-                    'answer' => $this->getPollOptionsWithRatings(null, $p->id, 'ar', $deviceId),
+                    'answer' => $this->getPollOptionsWithRatings(null, $p->id, 'ar', $deviceId, $hardwareId),
                 ];
             });
         }
@@ -455,17 +467,17 @@ class ApiRepository
         return true;
     }
 
-    public function getPollOptionsWithRatings($user_id, $poll_id, $locale = 'ar', $deviceId = null)
+    public function getPollOptionsWithRatings($user_id, $poll_id, $locale = 'ar', $deviceId = null, $hardwareId = null)
     {
         $total_count = AppUserPoll::where('poll_id', $poll_id)->count()
             + GuestPollVote::where('poll_id', $poll_id)->count();
 
-        return Poll::find($poll_id)->options()->get()->map(function ($o) use ($total_count, $user_id, $locale, $deviceId) {
+        return Poll::find($poll_id)->options()->get()->map(function ($o) use ($total_count, $user_id, $locale, $deviceId, $hardwareId) {
             $optionCount = $o->answers->count() + GuestPollVote::where('option_id', $o->id)->count();
 
             $answered = $user_id
                 ? ($o->answers->where('app_user_id', $user_id)->first() ? true : false)
-                : ($deviceId ? GuestPollVote::where('device_id', $deviceId)->where('option_id', $o->id)->exists() : false);
+                : ($deviceId ? $this->guestVotesFor($deviceId, $hardwareId)->where('option_id', $o->id)->exists() : false);
 
             return [
                 'id' => $o->id,
