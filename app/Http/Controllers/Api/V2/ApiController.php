@@ -2441,15 +2441,33 @@ class ApiController extends Controller
             return 500;
         }
 
-        $vote = $user->votes()->where('internal_election_id', $election->id)->first();
-
-        if (!$vote) {
-            //the user have not voted yet
+        if (!$this->memberHasVotedInElection($user, $election->id)) {
+            //this member has not voted yet
             return 200;
         } else {
-            //the user has already voted
+            //this member has already voted
             return 401;
         }
+    }
+
+    // True when this member already has a vote in the election - through ANY app account that carries their member
+    // id (with or without a leading zero), not only the account that is logged in now. A vote is saved against an
+    // app account, so two accounts of one member could otherwise each vote once.
+    private function memberHasVotedInElection($user, $electionId): bool
+    {
+        $stripped = ltrim((string) $user->member_id, '0');
+        $ids = array_values(array_unique(array_filter([(string) $user->member_id, $stripped, '0' . $stripped], fn ($v) => $v !== '' && $v !== '0')));
+
+        return \DB::table('internal_election_votes')
+            ->join('app_users', 'app_users.id', '=', 'internal_election_votes.user_id')
+            ->where('internal_election_votes.internal_election_id', $electionId)
+            ->where(function ($q) use ($user, $ids) {
+                $q->where('internal_election_votes.user_id', $user->id);
+                if ($ids) {
+                    $q->orWhereIn('app_users.member_id', $ids);
+                }
+            })
+            ->exists();
     }
 
 
@@ -2616,6 +2634,11 @@ class ApiController extends Controller
         // constraint on (user_id, internal_election_id) is the actual
         // guarantee; this just turns that into the same friendly message
         // instead of a raw 500 if it's ever hit.
+        // last look right before saving, so a second account of the same member that is voting at this very moment is caught too
+        if ($this->memberHasVotedInElection($user, $election->id)) {
+            return $this->api_error_response('missing_parameterss', 101, "لا يمكنك التصويت");
+        }
+
         try {
             $user->votes()->attach(request('candidate_id'), [
                 'rank' => 1,
