@@ -1933,9 +1933,41 @@ class ApiController extends Controller
         ]);
     }
 
+    // بلديات / مخاتير lists hand back real names and phone numbers in bulk: like the district voters list, every pull
+    // is counted per MEMBER (a flat cap that only a script could hit - a person browsing the screens makes a handful
+    // of calls) and written to the log (who, what, which قضاء / village / municipality, from which IP), so a slow
+    // scraper pacing itself under the cap still leaves a trail. Returns a 429 response when the cap is reached.
+    private function guardDirectoryPull(Request $request, string $endpoint)
+    {
+        $user = request('user');
+        $memberId = $user->member_id ?? 'unknown';
+        $key = 'directory-pulls:' . $memberId;
+
+        if (RateLimiter::tooManyAttempts($key, 120)) {
+            Log::warning('directory_pull_rate_limited', ['member_id' => $memberId, 'endpoint' => $endpoint, 'ip' => $request->ip()]);
+            return $this->api_error_response('too_many_requests', 429, 'لقد تجاوزت الحد المسموح من الطلبات، يرجى المحاولة لاحقاً', 429);
+        }
+        RateLimiter::hit($key, 3600);
+
+        Log::info('directory_pull', [
+            'member_id' => $memberId,
+            'endpoint' => $endpoint,
+            'qada' => $request->input('qada'),
+            'village' => $request->input('village'),
+            'municipality' => $request->input('municipality'),
+            'ip' => $request->ip(),
+        ]);
+
+        return null;
+    }
+
     // Returns mukhtars for a given قضاء + village
     public function getMukhtars(Request $request)
     {
+        if ($limited = $this->guardDirectoryPull($request, 'getMukhtars')) {
+            return $limited;
+        }
+
         $validator = Validator::make($request->all(), [
             'qada'    => 'required|string',
             'village' => 'required|string',
@@ -1965,6 +1997,10 @@ class ApiController extends Controller
     // Returns distinct villages for قضاء (mukhtars)
     public function getMukhtarVillages(Request $request)
     {
+        if ($limited = $this->guardDirectoryPull($request, 'getMukhtarVillages')) {
+            return $limited;
+        }
+
         $validator = Validator::make($request->all(), [
             'qada' => 'required|string',
         ]);
@@ -1985,6 +2021,10 @@ class ApiController extends Controller
     // Returns distinct municipality names for a given قضاء
     public function getMunicipalities(Request $request)
     {
+        if ($limited = $this->guardDirectoryPull($request, 'getMunicipalities')) {
+            return $limited;
+        }
+
         $validator = Validator::make($request->all(), [
             'qada' => 'required|string',
         ]);
@@ -2005,6 +2045,10 @@ class ApiController extends Controller
     // Returns all members for a given قضاء + municipality
     public function getMunicipalityMembers(Request $request)
     {
+        if ($limited = $this->guardDirectoryPull($request, 'getMunicipalityMembers')) {
+            return $limited;
+        }
+
         $validator = Validator::make($request->all(), [
             'qada'     => 'required|string',
             'municipality' => 'required|string',

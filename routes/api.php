@@ -74,6 +74,20 @@ Route::group(['namespace' => 'Api\V2', 'prefix' => 'v2/', 'middleware' => ['lang
         });
         //////////////𝔼𝕟𝕕 𝕀𝕟𝕥𝕖𝕣𝕟𝕒𝕝 𝔼𝕝𝕖𝕔𝕥𝕚𝕠𝕟///////////////////
 
+        // بلديات و مخاتير (names + phone numbers of every municipality member / mukhtar) and التنظيم الداخلي
+        // (the party's internal rules). Both screens exist only for LOGGED-IN members in the app, yet these
+        // endpoints used to answer anyone (بلديات/مخاتير needed only the request signature, التنظيم الداخلي
+        // nothing at all). Now, like the voters list: a valid member login AND the signed-request check, plus a
+        // per-member limit and an audit log of every pull (see guardDirectoryPull in ApiController). The app
+        // already signs every request and sends the member's token, so no app change is needed.
+        Route::group(['middleware' => ['app-signature']], function () {
+            Route::post('internal-org', 'ApiController@getInternalOrg');
+            Route::post('municipalities', 'ApiController@getMunicipalities');
+            Route::post('municipality-members', 'ApiController@getMunicipalityMembers');
+            Route::post('mukhtar-villages', 'ApiController@getMukhtarVillages');
+            Route::post('mukhtars', 'ApiController@getMukhtars');
+        });
+
 
         //New Endpoints
 
@@ -173,21 +187,10 @@ Route::group(['namespace' => 'Api\V2', 'prefix' => 'v2/', 'middleware' => ['lang
     Route::post('faq-categories', 'ApiController@faqCategories');
     Route::post('faqs', 'ApiController@faqsByCategory');
     Route::post('political-work', 'ApiController@getPoliticalWork');
-    Route::post('internal-org', 'ApiController@getInternalOrg');
     Route::post('legislative-docs', 'ApiController@getLegislativeDocs');
     Route::post('legislative-categories', 'ApiController@getLegislativeCategories');
     Route::post('legislative-subcategories', 'ApiController@getLegislativeSubcategories');
     Route::post('national-plans', 'ApiController@getNationalPlans');
-    // بلديات و مخاتير — these had no auth at all (fully public), so this is
-    // the only thing standing between them and unrestricted anonymous bulk
-    // scraping of every member's name + phone number across every قضاء.
-    Route::group(['middleware' => ['app-signature']], function () {
-        Route::post('municipalities', 'ApiController@getMunicipalities');
-        Route::post('municipality-members', 'ApiController@getMunicipalityMembers');
-        Route::post('mukhtar-villages', 'ApiController@getMukhtarVillages');
-        Route::post('mukhtars', 'ApiController@getMukhtars');
-    });
-
     Route::post('electoral-districts', 'ApiController@getElectoralDistricts');
     Route::post('towns', 'ApiController@getTowns');
     Route::post('competency-static-page', 'ApiController@getCompetencyStaticPage');
