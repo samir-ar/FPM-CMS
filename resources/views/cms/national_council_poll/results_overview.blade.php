@@ -180,7 +180,9 @@
     .qnav { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; }
     .qnav button { cursor: pointer; padding: 8px 16px; border-radius: 999px; background: var(--card-strong); border: 1px solid var(--line); color: var(--muted); font: 700 13px 'Inter', 'Tajawal', sans-serif; max-width: 360px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; transition: all .2s; unicode-bidi: plaintext; }
     .qnav button:hover { background: var(--orange); border-color: var(--orange); color: #2b1500; }
-    body.reveal .qtools, body.reveal .qnav { display: none; }
+    /* before the reveal only the summary (turnout, counters) is on screen; the candidates appear when it starts */
+    body:not(.reveal) .qs, body:not(.reveal) .qnav { display: none !important; }
+    body.reveal:not(.finished) .qtools, body.reveal:not(.finished) .qnav { display: none; }
     body.reveal .q:not(.done) .elected { display: none !important; }
 
     /* ---------- reveal mode (the presenter uncovers the results step by step) ---------- */
@@ -236,7 +238,6 @@
     <div class="tools">
         <div class="live paused" id="live"><i></i><span id="liveText">RESULTS</span></div>
         <div id="clock">--:--:--</div>
-        <button class="btn" id="replayBtn" type="button" style="display:none" title="Play the entrance animation again">Replay</button>
         <button class="btn" id="refreshBtn" type="button" style="display:none">Refresh</button>
         <button class="btn" id="changeBtn" type="button" style="display:none">Change poll</button>
         <button class="btn go" id="revealBtn" type="button">Start reveal</button>
@@ -516,7 +517,6 @@
         document.getElementById('revealBtn').style.display = (open && !revealing) ? '' : 'none';
         document.getElementById('changeBtn').style.display = (open && !revealing) ? '' : 'none';
         document.getElementById('refreshBtn').style.display = (open && !revealing) ? '' : 'none';
-        document.getElementById('replayBtn').style.display = (open && !revealing) ? '' : 'none';
         titleEl.textContent = data.polls.length === 1 ? data.polls[0].title : (data.polls.length ? data.polls.length + ' polls' : 'Results');
         subEl.textContent = data.polls.length === 1 ? ((data.polls[0].published ? 'Published' : 'Not published') + (data.polls[0].closes_at ? ' · ' + (data.polls[0].closed ? 'closed ' : 'closes ') + data.polls[0].closes_at : '') + (data.polls[0].top ? ' · ' + data.polls[0].top + (data.polls[0].top === 1 ? ' winner' : ' winners') : '')) : (data.polls.length ? 'Results side by side' : '');
     }
@@ -545,7 +545,6 @@
     var tt; topInput.addEventListener('input', function () { clearTimeout(tt); tt = setTimeout(function () { setUrl(); refresh(); }, 350); });
     document.getElementById('changeBtn').addEventListener('click', function () { location.href = location.pathname; });
     document.getElementById('refreshBtn').addEventListener('click', function () { refresh(); });
-    document.getElementById('replayBtn').addEventListener('click', function () { if (!lastData) return; stages.textContent = ''; render(lastData); window.scrollTo({ top: 0, behavior: 'smooth' }); });
     function toggleFull() { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); }
     document.getElementById('fs').addEventListener('click', toggleFull);
     document.addEventListener('keydown', function (e) { if ((e.key === 'f' || e.key === 'F') && !/INPUT|TEXTAREA/.test((e.target || {}).tagName || '')) toggleFull(); });
@@ -636,7 +635,7 @@
             if (s.last) { s.q.classList.add('done'); var b = s.pod.getBoundingClientRect(); confetti(b.left + b.width / 2, b.top + b.height / 3); }
         }
         paintCount();
-        if (at >= steps.length) stopAuto();
+        if (at >= steps.length) { stopAuto(); document.body.classList.add('finished'); }
     }
     function stopAuto() { clearInterval(autoTimer); autoTimer = null; ctl.auto.classList.remove('on'); ctl.auto.textContent = 'Auto'; }
     function toggleAuto() {
