@@ -543,9 +543,17 @@ HTML;
     // Same permission as the single-poll results (Council polls, view). Nothing here changes any data.
     public function resultsOverview(Request $request)
     {
-        $polls = CouncilNationalPoll::orderByDesc('id')->get(['id', 'title', 'is_published', 'closes_at', 'created_at']);
+        $polls = CouncilNationalPoll::orderByDesc('id')->get(['id', 'title', 'is_published', 'closes_at', 'winners', 'created_at'])->map(function ($p) {
+            // what the "choose a poll" cards show
+            $p->electors = CouncilNationalPollPermission::where('poll_id', $p->id)->count();
+            $p->voters = CouncilNationalPollVote::where('poll_id', $p->id)->distinct()->count(DB::raw("COALESCE(NULLIF(member_id,''), CONCAT('u', user_id))"));
+            $p->question_count = $p->questions()->count();
 
-        $chosen = collect((array) $request->get('polls', []))->map(fn($v) => (int) $v)->filter()->unique()->values();
+            return $p;
+        });
+
+        // the page works on ONE poll at a time; an old link with several ids opens the first
+        $chosen = collect((array) $request->get('polls', []))->map(fn($v) => (int) $v)->filter()->unique()->values()->take(1);
         $top = max(0, (int) $request->get('top', 0));
 
         return view('cms.national_council_poll.results_overview')->with([

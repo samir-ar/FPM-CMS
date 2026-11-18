@@ -19,7 +19,8 @@
         --green: #34e0a0; --red: #ff7a7a; --radius: 22px;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { min-height: 100%; }
+    html { min-height: 100%; background: #004a76; }
+    body { min-height: 100vh; }
     body {
         font-family: 'Inter', 'Tajawal', 'Segoe UI', system-ui, sans-serif; color: var(--text);
         background:
@@ -141,6 +142,23 @@
     .empty { text-align: center; color: var(--muted); padding: 90px 0; font-size: 16px; }
     .empty b { display: block; font-size: 24px; color: var(--text); margin-bottom: 8px; }
 
+    /* ---------- "choose a poll" cards ---------- */
+    .pcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: clamp(14px, 1.3vw, 22px); }
+    .pcard { text-align: start; cursor: pointer; color: var(--text); font-family: inherit; padding: 22px 24px; border-radius: var(--radius); background: var(--card); border: 1px solid var(--line); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow: 0 24px 60px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.06); transition: transform .2s, border-color .2s, background .2s; display: flex; flex-direction: column; gap: 16px; }
+    .pcard:hover { transform: translateY(-4px); border-color: rgba(244,141,36,.7); background: rgba(0,24,42,.26); }
+    .pcard:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+    .pcard .t { font-size: 22px; font-weight: 800; line-height: 1.25; unicode-bidi: plaintext; }
+    .pcard .tags { display: flex; gap: 8px; flex-wrap: wrap; }
+    .pcard .tag { padding: 3px 11px; border-radius: 99px; font-size: 11.5px; font-weight: 700; letter-spacing: .04em; background: rgba(255,255,255,.08); border: 1px solid var(--line); color: var(--muted); }
+    .pcard .tag.ok { color: var(--green); background: rgba(52,224,160,.1); border-color: rgba(52,224,160,.35); }
+    .pcard .tag.or { color: #ffc88a; background: rgba(244,141,36,.14); border-color: rgba(244,141,36,.4); }
+    .pcard .st { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .pcard .st b { display: block; font-size: 26px; font-weight: 800; letter-spacing: -.02em; }
+    .pcard .st span { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+    .pcard .go { margin-top: auto; color: #ffc88a; font-weight: 700; font-size: 14px; }
+    .pick-title { font-size: clamp(22px, 2vw, 30px); font-weight: 800; margin: 6px 0 2px; }
+    .pick-sub { color: var(--muted); margin-bottom: 18px; }
+
     /* ---------- reveal mode (the presenter uncovers the results step by step) ---------- */
     .btn.go { background: var(--orange); border-color: var(--orange); color: #2b1500; font-weight: 800; box-shadow: 0 0 22px rgba(244,141,36,.45); }
     .btn.go:hover { background: #ffa443; }
@@ -201,23 +219,48 @@
 </header>
 
 <main>
-    <section class="card">
+    <section class="card" id="pickerCard" style="display:none;">
         <div class="picker" id="picker">
-            @forelse($polls as $p)
+            <span class="sub" style="margin:0 6px 0 0;">Poll</span>
+            @foreach($polls as $p)
                 <label class="chip">
-                    <input type="checkbox" value="{{ $p->id }}" @if(in_array($p->id, $chosen)) checked @endif>
-                    <span><bdi>{{ $p->title }}</bdi><small>{{ $p->is_published ? 'published' : 'unpublished' }}@if($p->closes_at && \Carbon\Carbon::parse($p->closes_at)->isPast()), closed @endif</small></span>
+                    <input type="radio" name="poll" value="{{ $p->id }}" @if(in_array($p->id, $chosen)) checked @endif>
+                    <span><bdi>{{ $p->title }}</bdi></span>
                 </label>
-            @empty
-                <span class="sub">There are no polls yet.</span>
-            @endforelse
+            @endforeach
             <span class="sp"></span>
-            <label class="topn" title="Leave empty to use the number of winners set on each poll">Winners shown <input type="number" id="top" min="0" value="{{ $top ?: '' }}" placeholder="per poll"></label>
+            <label class="topn" title="Leave empty to use the number of winners set on the poll">Winners shown <input type="number" id="top" min="0" value="{{ $top ?: '' }}" placeholder="auto"></label>
         </div>
     </section>
 
+    <div id="chooser">
+        <div class="pick-title">Choose a poll</div>
+        <div class="pick-sub">Select the poll whose results you want to open.</div>
+        @if($polls->isEmpty())
+            <div class="sub">There are no polls yet.</div>
+        @endif
+        <div class="pcards">
+            @foreach($polls as $p)
+                @php $closed = $p->closes_at && \Carbon\Carbon::parse($p->closes_at)->isPast(); @endphp
+                <button type="button" class="pcard" data-id="{{ $p->id }}">
+                    <div class="t">{{ $p->title }}</div>
+                    <div class="tags">
+                        <span class="tag {{ $p->is_published ? 'ok' : '' }}">{{ $p->is_published ? 'Published' : 'Not published' }}</span>
+                        @if($closed)<span class="tag">Closed</span>@endif
+                        @if($p->winners)<span class="tag or">{{ $p->winners }} {{ $p->winners == 1 ? 'winner' : 'winners' }}</span>@endif
+                    </div>
+                    <div class="st">
+                        <div><b>{{ $p->electors }}</b><span>Voters</span></div>
+                        <div><b>{{ $p->voters }}</b><span>Voted</span></div>
+                        <div><b>{{ $p->question_count }}</b><span>Questions</span></div>
+                    </div>
+                    <div class="go">Open results &rarr;</div>
+                </button>
+            @endforeach
+        </div>
+    </div>
+
     <div id="stages"></div>
-    <div class="empty" id="empty" style="display:none;"><b>Pick a poll above</b>Choose one or several polls to see their live results here.</div>
 </main>
 </div>
 
@@ -239,7 +282,7 @@
         dataUrl: {!! json_encode($dataUrl) !!},
         every: 5000
     };
-    var stages = document.getElementById('stages'), emptyBox = document.getElementById('empty');
+    var stages = document.getElementById('stages'), chooser = document.getElementById('chooser'), pickerCard = document.getElementById('pickerCard');
     var liveBtn = document.getElementById('live'), liveText = document.getElementById('liveText');
     var topInput = document.getElementById('top'), titleEl = document.getElementById('title'), subEl = document.getElementById('subtitle');
     var live = true, timer = null, reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -399,12 +442,14 @@
         Array.prototype.forEach.call(stages.querySelectorAll('[data-poll]'), function (n) { if (ids.indexOf(n.getAttribute('data-poll')) < 0) n.remove(); });
         data.polls.forEach(function (p) { renderPoll(p, p.top, data.polls.length > 1); });
         data.polls.forEach(function (p) { stages.appendChild(stages.querySelector('[data-poll="' + p.id + '"]')); });
-        emptyBox.style.display = data.polls.length ? 'none' : 'block';
+        chooser.style.display = data.polls.length ? 'none' : '';
+        pickerCard.style.display = data.polls.length ? '' : 'none';
+        if (!revealing) document.getElementById('revealBtn').style.display = data.polls.length ? '' : 'none';
         titleEl.textContent = data.polls.length === 1 ? data.polls[0].title : (data.polls.length ? data.polls.length + ' polls' : 'Results');
         subEl.textContent = data.polls.length === 1 ? ((data.polls[0].published ? 'Published' : 'Not published') + (data.polls[0].closes_at ? ' · ' + (data.polls[0].closed ? 'closed ' : 'closes ') + data.polls[0].closes_at : '') + (data.polls[0].top ? ' · ' + data.polls[0].top + (data.polls[0].top === 1 ? ' winner' : ' winners') : '')) : (data.polls.length ? 'Results side by side' : '');
     }
 
-    function chosen() { return Array.prototype.map.call(document.querySelectorAll('#picker input[type=checkbox]:checked'), function (c) { return c.value; }); }
+    function chosen() { return Array.prototype.map.call(document.querySelectorAll('#picker input[name=poll]:checked'), function (c) { return c.value; }); }
     function query() { var q = chosen().map(function (v) { return 'polls[]=' + encodeURIComponent(v); }); var t = parseInt(topInput.value, 10); if (t > 0) q.push('top=' + t); return q.join('&'); }
     function setUrl() { history.replaceState(null, '', location.pathname + (query() ? '?' + query() : '')); }
 
@@ -418,6 +463,12 @@
     function schedule() { clearInterval(timer); if (live) timer = setInterval(function () { if (!document.hidden) refresh(); }, cfg.every); }
 
     document.getElementById('picker').addEventListener('change', function (e) { if (e.target === topInput) return; setUrl(); refresh(); });
+    // a card in the "choose a poll" step opens that poll
+    document.getElementById('chooser').addEventListener('click', function (e) {
+        var c = e.target.closest('.pcard'); if (!c) return;
+        var r = document.querySelector('#picker input[name=poll][value="' + c.getAttribute('data-id') + '"]');
+        if (r) { r.checked = true; setUrl(); refresh(); }
+    });
     var tt; topInput.addEventListener('input', function () { clearTimeout(tt); tt = setTimeout(function () { setUrl(); refresh(); }, 350); });
     liveBtn.addEventListener('click', function () { live = !live; liveBtn.classList.toggle('paused', !live); liveBtn.classList.remove('lost'); liveText.textContent = live ? 'LIVE' : 'PAUSED'; schedule(); if (live) refresh(); });
     function toggleFull() { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); }
