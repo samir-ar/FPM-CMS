@@ -549,6 +549,8 @@
 
             answer.find('.option_name').attr('name', 'options['+ index +'][name]');
             answer.find('.option_name_ar').attr('name', 'options['+ index +'][name_ar]');
+            // poll options only: the "member writes his own text" tick box
+            answer.find('.option_allows_text').attr('name', 'options['+ index +'][allows_text]');
 
             answer.show();
 

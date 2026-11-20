@@ -14,6 +14,9 @@ class PollOption extends Model
 
     public $translatable = ['option'];
 
+    // a member's written answer on an option that takes text: at most this many characters (app and server)
+    const TEXT_MAX = 300;
+
 
     protected $table='polls_options';
 

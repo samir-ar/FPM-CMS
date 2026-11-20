@@ -92,6 +92,11 @@
     .timeline { width: 100%; height: auto; display: block; }
     .timeline text { font-family: 'Inter', sans-serif; fill: var(--ink-3); font-size: 11px; }
     .empty { color: var(--ink-3); font-size: 14px; padding: 18px 0; }
+    .written { display: grid; gap: 12px; margin-top: 6px; }
+    .w-item { border: 1px solid var(--grid); border-radius: 12px; padding: 12px 16px; background: #fff; }
+    .w-meta { font-size: 12px; color: var(--ink-3); margin-bottom: 6px; display: flex; flex-wrap: wrap; gap: 6px 14px; }
+    .w-meta b { color: var(--ink-2); font-weight: 600; }
+    .w-text { font-size: 15px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; unicode-bidi: plaintext; }
     footer { color: var(--muted); font-size: 12.5px; text-align: center; padding: 4px 10px 0; line-height: 1.7; }
 
     @media (max-width: 900px) { .kpis { grid-template-columns: repeat(2, 1fr); } .grid2 { grid-template-columns: 1fr; } }
@@ -229,6 +234,33 @@
             <div class="empty">No answers yet.</div>
         @endif
     </section>
+
+    {{-- the texts members wrote (options that let the member write his own text): CMS only --}}
+    @if (count($textOptions) || $writtenTotal)
+    <section class="paper">
+        <h2>Written answers</h2>
+        <div class="hint">
+            What members wrote on <bdi>{{ implode(' / ', $textOptions) ?: 'the text options' }}</bdi>. Only admins see this page: the texts are never shown in the app.
+            @if ($writtenTotal) {{ number_format($writtenTotal) }} {{ $writtenTotal === 1 ? 'answer' : 'answers' }}@if ($writtenTotal > count($written)), newest {{ count($written) }} shown (all of them are in the Answers list)@endif. @endif
+        </div>
+        @if ($writtenTotal)
+            <div class="written">
+                @foreach ($written as $w)
+                    <div class="w-item">
+                        <div class="w-meta">
+                            <span><b>{{ $w['kind'] === 'Guest' ? 'Guest' : 'Member #' . $w['member_id'] }}</b>@if ($w['name']) &middot; <bdi>{{ $w['name'] }}</bdi>@endif</span>
+                            <span>{{ \Carbon\Carbon::parse($w['at'])->format('d M Y, H:i') }}</span>
+                            @if ($w['option'])<span><bdi>{{ $w['option'] }}</bdi></span>@endif
+                        </div>
+                        <div class="w-text">{{ $w['text'] }}</div>
+                    </div>
+                @endforeach
+            </div>
+        @else
+            <div class="empty">Nobody has written an answer yet.</div>
+        @endif
+    </section>
+    @endif
 
     {{-- when the answers came in --}}
     <section class="paper">

@@ -649,6 +649,13 @@ trait FormTrait
                 ->render();
         }
 
+        // poll options: the same rows as multi_option plus a tick box "the member writes his own text"
+        else if($type == 'poll_options'){
+            $text = View::make('form_layouts.options_cloneable_poll')
+                ->with(compact('label', 'name', 'default', 'options', 'placeholder', 'class'))
+                ->render();
+        }
+
         else if($type == 'multi_option'){
 
             $view = ($arabicOnly)?'form_layouts.options_cloneable_arabic_only':'form_layouts.options_cloneable';

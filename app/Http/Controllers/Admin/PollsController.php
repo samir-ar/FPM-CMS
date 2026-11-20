@@ -177,7 +177,7 @@ class PollsController extends Controller
                         'class' => 'box-default',
                         'box-header' => 'Options',
                         'form_fields' => [
-                            $this->drawHtml('multi_option', 'Options', 'option',  null, null,'Option', 'col-md-12 required'),
+                            $this->drawHtml('poll_options', 'Options', 'option',  null, null,'Option', 'col-md-12 required'),
 
                         ],
                     ]
@@ -242,6 +242,7 @@ class PollsController extends Controller
                 ]);
 
                 $option->poll_id = $poll->id;
+                $option->allows_text = !empty($o['allows_text']);
                 $option->save();
             }
 
@@ -295,6 +296,7 @@ class PollsController extends Controller
             $default_options[] = [
                 'name' => $option->getTranslation('option', 'en'),
                 'name_ar' => $option->getTranslation('option', 'ar'),
+                'allows_text' => (bool) $option->allows_text,
                 'id' => $option->id,
             ];
         }
@@ -341,7 +343,7 @@ class PollsController extends Controller
                     'class' => 'box-default',
                     'box-header' => 'Options',
                     'form_fields' => [
-                        $this->drawHtml('multi_option', 'Options', 'option',  $default_options, null,'Option', 'col-md-12'),
+                        $this->drawHtml('poll_options', 'Options', 'option',  $default_options, null,'Option', 'col-md-12'),
 
                     ]
                 ],
@@ -406,6 +408,7 @@ class PollsController extends Controller
                     'en' => $o['name'],
                     'ar' => isset($o['name_ar']) ? $o['name_ar'] : '',
                 ]);
+                $option->allows_text = !empty($o['allows_text']);
 
                 $option->save();
             }

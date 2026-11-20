@@ -1180,6 +1180,7 @@ class ApiController extends Controller
         }
         $validator = Validator::make($request->all(), [
             'option_id' => 'required|exists:polls_options,id',
+            'answer_text' => 'nullable|string|max:5000',
             'device_id' => 'nullable|string|max:191',
             'device_model' => 'nullable|string|max:191',
             'hardware_id' => 'nullable|string|max:191',
@@ -1231,9 +1232,23 @@ class ApiController extends Controller
             }
         }
 
+        // An option can let the member WRITE his own text: then the text is required, tags are stripped, and it is at
+        // most 300 characters (the app stops typing at 300; a longer text can only come from a modified client).
+        // An option that does not take text ignores any text that is sent. The text is never sent back to members.
+        $answerText = null;
+        if ($option->allows_text) {
+            $answerText = trim(strip_tags((string) $request->input('answer_text', '')));
+            if ($answerText === '') {
+                return $this->api_error_response('missing_parameters', 101, 'يرجى كتابة إجابتك');
+            }
+            if (mb_strlen($answerText) > \App\V2\PollOption::TEXT_MAX) {
+                return $this->api_error_response('invalid_parameters', 101, 'الإجابة طويلة جداً (' . \App\V2\PollOption::TEXT_MAX . ' حرفاً كحد أقصى)');
+            }
+        }
+
         if (request('user')) {
             try {
-                $repo->userAnswerPoll(request('user'), request('option_id'), $this->deviceMeta($request));
+                $repo->userAnswerPoll(request('user'), request('option_id'), $this->deviceMeta($request) + ['answer_text' => $answerText]);
             } catch (\Illuminate\Database\QueryException $e) {
                 // two accounts of one member answering at the same instant: the database rule lets only one through
                 if ($e->getCode() === '23000') {
@@ -1242,7 +1257,7 @@ class ApiController extends Controller
                 throw $e;
             }
         } else {
-            $repo->guestAnswerPoll(request('device_id'), request('option_id'), $this->deviceMeta($request));
+            $repo->guestAnswerPoll(request('device_id'), request('option_id'), $this->deviceMeta($request) + ['answer_text' => $answerText]);
         }
 
         return response()->json(['message' => 'Thank you for participating.']);

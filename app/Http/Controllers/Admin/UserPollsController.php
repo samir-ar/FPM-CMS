@@ -95,12 +95,14 @@ class UserPollsController extends Controller
                 ->leftJoin('app_users as u', 'u.id', '=', 'up.app_user_id')
                 ->where('up.poll_id', $pollId)
                 ->selectRaw("up.id AS id, 'Member' AS kind, u.member_id AS member_id, u.name AS name, u.phone_number AS phone, up.option_id AS option_id, "
-                    . $col('users_polls', 'up', 'device_model') . " AS device_model, " . $col('users_polls', 'up', 'hardware_id') . " AS hardware_id, up.created_at AS created_at");
+                    . $col('users_polls', 'up', 'device_model') . " AS device_model, " . $col('users_polls', 'up', 'hardware_id') . " AS hardware_id, "
+                    . $col('users_polls', 'up', 'answer_text') . " AS answer_text, up.created_at AS created_at");
 
             $guests = DB::table('guest_poll_votes as g')
                 ->where('g.poll_id', $pollId)
                 ->selectRaw("g.id AS id, 'Guest' AS kind, NULL AS member_id, NULL AS name, NULL AS phone, g.option_id AS option_id, "
-                    . $col('guest_poll_votes', 'g', 'device_model') . " AS device_model, " . $col('guest_poll_votes', 'g', 'hardware_id') . " AS hardware_id, g.created_at AS created_at");
+                    . $col('guest_poll_votes', 'g', 'device_model') . " AS device_model, " . $col('guest_poll_votes', 'g', 'hardware_id') . " AS hardware_id, "
+                    . $col('guest_poll_votes', 'g', 'answer_text') . " AS answer_text, g.created_at AS created_at");
 
             $data = DB::query()->fromSub($members->unionAll($guests), 'answers');
 
@@ -123,7 +125,7 @@ class UserPollsController extends Controller
             'slug'		=> 'Poll',
             //'custom_btn' => "<a href='" . route('admin.userPolls.create') ."' class='btn btn-primary'></a>",
             'custom_btn1' => $summary,
-            'headers'	=> ['id', 'Type', 'Member ID', 'User', 'Option', 'Poll', 'Device', 'Hardware ID', 'Created At'],
+            'headers'	=> ['id', 'Type', 'Member ID', 'User', 'Option', 'Written answer', 'Poll', 'Device', 'Hardware ID', 'Created At'],
             'action' => route('admin.userPolls.index').'?poll_id='.request('poll_id'),
             'columns' => json_encode([
                 ['data' => 'id', 'name' => 'id'],
@@ -131,6 +133,7 @@ class UserPollsController extends Controller
                 ['data' => 'member_id', 'name' => 'member_id'],
                 ['data' =>  'user', 'name'=> 'user', 'orderable' => false, 'searchable' => false],
                 ['data' =>  'option', 'name'=> 'option', 'orderable' => false, 'searchable' => false],
+                ['data' => 'answer_text', 'name' => 'answer_text', 'orderable' => false],
                 ['data' =>  'poll', 'name'=> 'poll', 'orderable' => false, 'searchable' => false],
                 ['data' => 'device_model', 'name' => 'device_model'],
                 ['data' => 'hardware_id', 'name' => 'hardware_id'],
