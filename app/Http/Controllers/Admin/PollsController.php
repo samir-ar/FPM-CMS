@@ -234,6 +234,7 @@ class PollsController extends Controller
 
 
             foreach(request('options') as $o) {
+                if(empty($o['name']) && !empty($o['name_ar'])) $o['name'] = $o['name_ar'];
                 $option = new PollOption;
 
                 $option->setTranslations('option', [
@@ -394,6 +395,8 @@ class PollsController extends Controller
 
             foreach(request('options', []) as $o) {
 
+                // an option written in one language only is kept (the other language shows the same text)
+                if(empty($o['name']) && !empty($o['name_ar'])) $o['name'] = $o['name_ar'];
                 if(!$o['name'])
                     continue;
 
