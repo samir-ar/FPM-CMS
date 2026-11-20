@@ -363,7 +363,7 @@ class PollsController extends Controller
         ]);
 
         foreach (array_values((array) request('options', [])) as $i => $opt) {
-            if (empty($opt['name']) && empty($opt['name_ar'])) {
+            if (empty($opt['name']) && empty($opt['name_ar']) && empty($opt['allows_text'])) {
                 return back()->withInput()->withErrors(['Option number ' . ($i + 1) . ' (counting from the top) has no text: fill its box, or remove it with the red minus']);
             }
         }
@@ -405,7 +405,7 @@ class PollsController extends Controller
                 // an option written in one language only is kept (the other language shows the same text)
                 if(empty($o['name']) && !empty($o['name_ar'])) $o['name'] = $o['name_ar'];
                 if(empty($o['name_ar']) && !empty($o['name'])) $o['name_ar'] = $o['name'];
-                if(!$o['name'])
+                if(!$o['name'] && empty($o['allows_text']))
                     continue;
 
                 if(isset($o['id']))

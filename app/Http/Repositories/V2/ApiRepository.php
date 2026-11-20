@@ -197,7 +197,7 @@ class ApiRepository
         $_options = $poll->options()->get()->map(function ($option) use ($locale) {
             return (object)[
                 'id' => $option->id,
-                'option' => $option->getTranslation('option', $locale),
+                'option' => $option->displayLabel($locale),
                 'allows_text' => (bool) $option->allows_text,
             ];
         });
@@ -501,7 +501,7 @@ class ApiRepository
             return [
                 'id' => $o->id,
                 'percentage' => $total_count > 0 ? number_format(round(($optionCount * 100) / $total_count, 0)) : '0',
-                'option' => $o->getTranslation('option', $locale),
+                'option' => $o->displayLabel($locale),
                 'allows_text' => (bool) $o->allows_text,
                 'answered' => $answered,
             ];
@@ -874,7 +874,7 @@ class ApiRepository
             'options' => ($g->options) ? $g->options->map(function ($r) {
                 return [
                     'id' => $r->id,
-                    'option' =>  $r->getTranslation('option', 'ar'),
+                    'option' =>  $r->displayLabel('ar'),
                     'allows_text' => (bool) $r->allows_text,
                 ];
             }) : [],

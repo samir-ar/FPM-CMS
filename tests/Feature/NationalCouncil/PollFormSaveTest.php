@@ -34,7 +34,7 @@ class PollFormSaveTest extends CouncilTestCase
 
         $res = $this->actingAs($this->adminUser(), 'admin')->put(route('admin.polls.update', $poll, false), [
             'question' => 'T e', 'question_ar' => 'T e', 'expiry_date' => $now->copy()->addDay()->toDateTimeString(), 'groups' => [81], 'show' => 1,
-            'options' => [['name' => 'A', 'name_ar' => 'ا'], ['name' => '', 'name_ar' => '', 'allows_text' => '1']],
+            'options' => [['name' => 'A', 'name_ar' => 'ا'], ['name' => '', 'name_ar' => '']],
         ]);
 
         $res->assertSessionHasErrors();
@@ -55,5 +55,25 @@ class PollFormSaveTest extends CouncilTestCase
         $o = DB::table('polls_options')->where('poll_id', $poll)->orderByDesc('id')->first();
         $this->assertSame(['en' => 'Other', 'ar' => 'Other'], json_decode($o->option, true));
         $this->assertEquals(1, $o->allows_text);
+    }
+
+    public function test_a_text_option_may_have_no_label_and_the_app_shows_other(): void
+    {
+        $now = now();
+        $poll = DB::table('polls')->insertGetId(['question' => json_encode(['ar' => 'T h', 'en' => 'T h']), 'show' => 1, 'expiry_date' => $now->copy()->addDay(), 'created_at' => $now, 'updated_at' => $now]);
+        DB::table('groups_polls')->insert(['poll_id' => $poll, 'group_group_id' => 81, 'created_at' => $now, 'updated_at' => $now]);
+
+        $this->actingAs($this->adminUser(), 'admin')->put(route('admin.polls.update', $poll, false), [
+            'question' => 'T h', 'question_ar' => 'T h', 'expiry_date' => $now->copy()->addDay()->toDateTimeString(), 'groups' => [81], 'show' => 1,
+            'options' => [['name' => 'Yes', 'name_ar' => 'نعم'], ['name' => '', 'name_ar' => '', 'allows_text' => '1']],
+        ])->assertSessionHasNoErrors();
+
+        $o = \App\V2\PollOption::where('poll_id', $poll)->orderByDesc('id')->first();
+        $this->assertEquals(1, $o->allows_text);
+        $this->assertSame('', (string) $o->getTranslation('option', 'ar'), 'stored without a label');
+        $this->assertSame('أخرى', $o->displayLabel('ar'));
+        $this->assertSame('Other', $o->displayLabel('en'));
+        $mapped = app(\App\Http\Repositories\V2\ApiRepository::class)->getMappedOption(\App\V2\Poll::find($poll), 'ar');
+        $this->assertSame('أخرى', $mapped->firstWhere('id', $o->id)->option);
     }
 }
