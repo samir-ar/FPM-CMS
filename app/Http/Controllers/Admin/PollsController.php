@@ -234,6 +234,7 @@ class PollsController extends Controller
 
 
             foreach(request('options') as $o) {
+                if(empty($o['name']) && empty($o['name_ar']) && !empty($o['allows_text'])) { $o['name'] = 'Other'; $o['name_ar'] = 'غير ذلك'; }
                 if(empty($o['name']) && !empty($o['name_ar'])) $o['name'] = $o['name_ar'];
                 if(empty($o['name_ar']) && !empty($o['name'])) $o['name_ar'] = $o['name'];
                 $option = new PollOption;
@@ -363,7 +364,7 @@ class PollsController extends Controller
         ]);
 
         foreach (array_values((array) request('options', [])) as $i => $opt) {
-            if (empty($opt['name']) && empty($opt['name_ar'])) {
+            if (empty($opt['name']) && empty($opt['name_ar']) && empty($opt['allows_text'])) {
                 return back()->withInput()->withErrors(['Option number ' . ($i + 1) . ' (counting from the top) has no text: fill its box, or remove it with the red minus']);
             }
         }
@@ -402,6 +403,8 @@ class PollsController extends Controller
 
             foreach(request('options', []) as $o) {
 
+                // a text option left without a label gets a default one
+                if(empty($o['name']) && empty($o['name_ar']) && !empty($o['allows_text'])) { $o['name'] = 'Other'; $o['name_ar'] = 'غير ذلك'; }
                 // an option written in one language only is kept (the other language shows the same text)
                 if(empty($o['name']) && !empty($o['name_ar'])) $o['name'] = $o['name_ar'];
                 if(empty($o['name_ar']) && !empty($o['name'])) $o['name_ar'] = $o['name'];

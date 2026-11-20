@@ -271,3 +271,5 @@ In the CMS poll form every option has a tick box **"The member writes his own te
 
 ### Poll form: text option needs one label (2026-11-21)
 - Ticking "The member writes his own text" hides the Arabic box: one label is enough and is saved for both languages. An option written in only one language is kept (the other language copies it). An option with no text at all is refused with a message on edit (before, edit skipped it silently while create saved an empty label).
+
+- A ticked text option left with no label is saved as "Other" / "غير ذلك" (2026-11-21).
