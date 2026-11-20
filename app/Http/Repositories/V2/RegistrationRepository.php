@@ -11,6 +11,7 @@ use App\PinVerification;
 use App\Http\Traits\TokenTrait;
 use App\Http\Repositories\V2\FpmApisRepository;
 use Illuminate\Support\Facades\RateLimiter;
+use App\Support\LoginLimits;
 
 
 class RegistrationRepository
@@ -66,10 +67,10 @@ class RegistrationRepository
     // the real login token. Returns ['user' => ...] or ['error' => message, 'status' => http status].
     public function completeVerification(array $data, ?string $ip = null): array
     {
-        $ipKey = 'otp-ip:' . $ip;
+        $ipKey = LoginLimits::ipKey($ip);
         $tooMany = ['error' => 'تم تجاوز عدد المحاولات، يرجى المحاولة لاحقاً', 'status' => 429];
 
-        if ($ip && RateLimiter::tooManyAttempts($ipKey, 40)) {
+        if ($ip && RateLimiter::tooManyAttempts($ipKey, LoginLimits::IP_MAX)) {
             return $tooMany;
         }
 
@@ -79,8 +80,8 @@ class RegistrationRepository
             return ['error' => 'Invalid Pin Code', 'status' => 400];
         }
 
-        $key = 'otp-guess:' . ltrim((string) $user->member_id, '0');
-        if (RateLimiter::tooManyAttempts($key, 10)) {
+        $key = LoginLimits::guessKey($user->member_id);
+        if (RateLimiter::tooManyAttempts($key, LoginLimits::GUESS_MAX)) {
             return $tooMany;
         }
 

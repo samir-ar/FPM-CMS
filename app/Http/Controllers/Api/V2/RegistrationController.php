@@ -97,11 +97,11 @@ class RegistrationController extends Controller
         }
 
         // Too many code requests for one member in a short time (SMS cost, and a stranger repeatedly asking for codes).
-        $sendKey = 'otp-send:' . ltrim((string) $request->input('member_id'), '0');
-        if (\Illuminate\Support\Facades\RateLimiter::tooManyAttempts($sendKey, 5)) {
+        $sendKey = \App\Support\LoginLimits::sendKey($request->input('member_id'));
+        if (\Illuminate\Support\Facades\RateLimiter::tooManyAttempts($sendKey, \App\Support\LoginLimits::SEND_MAX)) {
             return $this->api_error_response('too_many_requests', 101, 'تم تجاوز عدد المحاولات، يرجى المحاولة لاحقاً', 429);
         }
-        \Illuminate\Support\Facades\RateLimiter::hit($sendKey, 900);
+        \Illuminate\Support\Facades\RateLimiter::hit($sendKey, \App\Support\LoginLimits::SEND_WINDOW);
 
         // $token is only the PENDING login token: it replaces the member's real one after the code is entered.
         $request->request->add(['image' => $fpmResponse->PersonImage, 'name' => $fpmResponse->UserFullName, 'token' => $token, 'email'=> $fpmResponse->Email]);

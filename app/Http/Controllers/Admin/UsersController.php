@@ -106,7 +106,7 @@ class UsersController extends Controller
             'slug'		=> 'Project',
             'headers'	=> ['id', 'Member ID', 'Name', 'Phone Number', 'Verified', 'Registration Date', 'District', 'Town', 'Sect', 'Sect Number', 'Position', 'Activity Unit', 'Civil Registry Unit', 'Scan Check-In', 'Action'],
             'action' => route('admin.users.index'),
-            'custom_btn' => "<a href='" . route('admin.users.export') ."' class='btn btn-success'>Export Users</a> &nbsp <a href='" . route('admin.users.import.create') ."' class='btn btn-primary'>Import Users</a> &nbsp <a href='" . route('admin.users.installation-report') ."' class='btn btn-warning'>Installation Report</a>",
+            'custom_btn' => "<a href='" . route('admin.users.export') ."' class='btn btn-success'>Export Users</a> &nbsp <a href='" . route('admin.users.import.create') ."' class='btn btn-primary'>Import Users</a> &nbsp <a href='" . route('admin.users.installation-report') ."' class='btn btn-warning'>Installation Report</a> &nbsp <a href='" . route('admin.users.login-limits') ."' class='btn btn-default'>Login Limits</a>",
             'custom_btn1' => $filterBtn(null, 'All')
                 . $filterBtn('granted', 'Has Scan Access')
                 . $filterBtn('none', 'No Scan Access'),
