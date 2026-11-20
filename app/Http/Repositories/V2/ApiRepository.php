@@ -827,6 +827,12 @@ class ApiRepository
             $details = ($g->strict_lang == 'en') ? $g->getTranslation('details', 'en') : $g->getTranslation('details', 'ar');
         }
 
+        // A poll has no title or name: its text is the QUESTION. The Home card draws only `title`, so without this
+        // every poll card showed its options with no question above them.
+        if ($type === 'POLL' && !$name && $g->question) {
+            $name = ($g->strict_lang == 'en') ? $g->getTranslation('question', 'en') : $g->getTranslation('question', 'ar');
+        }
+
         return collect([
             'id' => $g->id,
             'title' => ($g->title) ? $g->title : $name,
