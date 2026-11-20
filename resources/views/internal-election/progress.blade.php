@@ -16,9 +16,13 @@
 <div class="box box-default">
     <div class="box-header with-border">
         <h3 class="box-title">{{ $election->title }} — Election Progress</h3>
+        <div class="box-tools pull-right" style="padding-top:4px;">
+            <span id="livePill" class="label label-success">Live</span>
+            <label style="margin:0 0 0 8px;font-weight:normal;"><input type="checkbox" id="liveToggle" checked> Update by itself every 10 seconds</label>
+        </div>
     </div>
     <div class="box-body">
-        <div class="row">
+        <div class="row" id="liveTiles">
             <div class="col-md-3 col-sm-6">
                 <div class="small-box bg-aqua">
                     <div class="inner">
@@ -57,7 +61,7 @@
             </div>
         </div>
 
-        <div style="display:flex; align-items:center; gap:10px;">
+        <div id="liveBar" style="display:flex; align-items:center; gap:10px;">
             <div class="progress election-progress-track" style="height: 25px; margin-bottom: 0; flex: 1;">
                 <div class="progress-bar progress-bar-success" role="progressbar" style="width: {{ $overallTurnout }}%;">
                 </div>
@@ -72,11 +76,9 @@
                         <h3 class="box-title">عدد الأصوات لكل ساعة</h3>
                     </div>
                     <div class="box-body">
-                        @if($hourly->isEmpty())
-                            <div class="alert alert-warning" style="margin:0;">No votes recorded yet for this election.</div>
-                        @else
-                            <div id="hourly-votes-chart" style="height: 250px;"></div>
-                        @endif
+                        <div id="liveHourlyEmpty" class="alert alert-warning" style="margin:0;@if($hourly->isNotEmpty()) display:none; @endif">No votes recorded yet for this election.</div>
+                        <div id="hourly-votes-chart" style="height: 250px;@if($hourly->isEmpty()) display:none; @endif"
+                             data-hourly="{{ json_encode($hourly->map(fn($count, $hour) => ['hour' => $hour, 'votes' => $count])->values(), JSON_UNESCAPED_UNICODE) }}"></div>
                     </div>
                 </div>
             </div>
@@ -97,7 +99,7 @@
                         </div>
                         <p class="text-muted" style="margin: 5px 0 0;">مرتبة من الأعلى إلى الأدنى حسب نسبة الاقتراع.</p>
                     </div>
-                    <div class="box-body">
+                    <div class="box-body" id="liveDistricts">
                         @if($districtRows->isEmpty())
                             <div class="alert alert-warning" style="margin:0;">No permitted voters uploaded for this election yet.</div>
                         @else
@@ -140,7 +142,9 @@
             </div>
         </div>
 
-        @include('internal-election._app_registered_progress')
+        <div id="liveApp">
+            @include('internal-election._app_registered_progress')
+        </div>
     </div>
 </div>
 
@@ -173,22 +177,64 @@
 @endsection
 
 @section('footer_resources')
-@if($hourly->isNotEmpty())
 <script>
     $(function () {
-        Morris.Bar({
-            element: 'hourly-votes-chart',
-            data: @json($hourly->map(fn($count, $hour) => ['hour' => $hour, 'votes' => $count])->values()),
-            xkey: 'hour',
-            ykeys: ['votes'],
-            labels: ['Votes'],
-            barColors: ['#00a65a'],
-            resize: true,
-            parseTime: false,
+        // The hourly chart is drawn from the data-hourly attribute of its element, so the live update can redraw it
+        // (and show it for the first time when the first vote arrives).
+        var chart = null;
+        function hourlyData() {
+            try { return JSON.parse(document.getElementById('hourly-votes-chart').getAttribute('data-hourly') || '[]'); } catch (e) { return []; }
+        }
+        function drawChart() {
+            var el = document.getElementById('hourly-votes-chart'), empty = document.getElementById('liveHourlyEmpty'), data = hourlyData();
+            if (!data.length) { el.style.display = 'none'; empty.style.display = ''; return; }
+            empty.style.display = 'none';
+            el.style.display = '';
+            if (!chart) {
+                chart = Morris.Bar({ element: 'hourly-votes-chart', data: data, xkey: 'hour', ykeys: ['votes'], labels: ['Votes'], barColors: ['#00a65a'], resize: true, parseTime: false });
+            } else {
+                chart.setData(data);
+            }
+        }
+        drawChart();
+
+        // Live page: every 10 seconds the page reads ITSELF again and swaps in only what changed (the four totals, the
+        // overall bar, the hourly chart, the per-district table and the registered-in-the-app block). The district
+        // drill-down links keep working (the click is bound on the body), and an open drill-down window is not touched.
+        var PARTS = ['liveTiles', 'liveBar', 'liveDistricts', 'liveApp'];
+        var pill = document.getElementById('livePill'), toggle = document.getElementById('liveToggle'), timer = null;
+
+        function say(text, cls) { pill.className = 'label ' + cls; pill.textContent = text; }
+        function clock() { var d = new Date(); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) + ':' + ('0' + d.getSeconds()).slice(-2); }
+        function schedule() { clearTimeout(timer); timer = setTimeout(tick, 10000); }
+        function tick() {
+            if (!toggle.checked || document.hidden) { schedule(); return; }
+            fetch(location.href, { credentials: 'same-origin', cache: 'no-store', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(function (r) { if (!r.ok) { throw new Error('http ' + r.status); } return r.text(); })
+                .then(function (html) {
+                    var doc = new DOMParser().parseFromString(html, 'text/html');
+                    if (!doc.getElementById('liveTiles')) { say('Session ended: reload the page', 'label-danger'); return; }
+                    PARTS.forEach(function (id) {
+                        var now = document.getElementById(id), fresh = doc.getElementById(id);
+                        if (now && fresh && now.innerHTML !== fresh.innerHTML) { now.innerHTML = fresh.innerHTML; }
+                    });
+                    var hNow = document.getElementById('hourly-votes-chart'), hFresh = doc.getElementById('hourly-votes-chart');
+                    if (hNow && hFresh && hNow.getAttribute('data-hourly') !== hFresh.getAttribute('data-hourly')) {
+                        hNow.setAttribute('data-hourly', hFresh.getAttribute('data-hourly'));
+                        drawChart();
+                    }
+                    say('Live · updated ' + clock(), 'label-success');
+                })
+                .catch(function () { say('Connection lost, trying again', 'label-warning'); })
+                .then(schedule);
+        }
+        toggle.addEventListener('change', function () {
+            if (toggle.checked) { say('Live', 'label-success'); tick(); } else { say('Paused', 'label-default'); }
         });
+        document.addEventListener('visibilitychange', function () { if (!document.hidden && toggle.checked) { tick(); } });
+        schedule();
     });
 </script>
-@endif
 
 <script>
     $(function () {

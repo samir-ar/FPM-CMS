@@ -260,3 +260,7 @@ National Council Poll list -> red undo icon on each row -> `/admin/national-coun
 ## Live "who voted" page (2026-11-20)
 
 Council poll "who voted" (`/admin/national-council-poll/{id}/voters`) re-reads ITSELF every 5 seconds (same address, so the filters stay) and swaps in only four parts: the totals (`liveTiles`), the shared-device warning (`liveShared`), the count line (`liveCount`) and the table rows (`liveRows`); the filter form is outside them. A "Live" pill shows the last update time; a tick box pauses it; it also pauses while the tab is hidden and says "Session ended: reload the page" if the login expired. No new endpoint: it reuses the page itself. Other pages are not live: the council results board is a one-time reveal on purpose and the votes report is behind the code page.
+
+## Live internal election progress page (2026-11-20)
+
+Admin `internal-election/{id}/progress` re-reads itself every **10 seconds** and swaps only: the four totals (`liveTiles`), the overall bar (`liveBar`), the per-district table (`liveDistricts`) and the registered-in-the-app block (`liveApp`); the hourly chart is redrawn from its `data-hourly` attribute (and appears when the first vote arrives). The district drill-down links keep working and an open drill-down window is not touched. Same pill / tick box / hidden-tab pause as the council who-voted page. The PUBLIC page `election-progress/{id}` (separate login, `election-progress-public.blade.php`) is NOT live yet. Test: `tests/Feature/NationalCouncil/InternalElectionProgressLiveTest.php`.
