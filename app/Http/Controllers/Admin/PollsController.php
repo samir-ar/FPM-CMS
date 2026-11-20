@@ -92,6 +92,7 @@ class PollsController extends Controller
                 ->addColumn('action', function($row){
                     return "<a class='edit-link' href='" . route('admin.polls.edit', $row->id) . "'>".
                         '<i class="fa fa-edit" aria-hidden="true"></i></a>'.
+                        "<a title='Results page' style='margin:0 10px;' href='" . route('admin.polls.results', $row->id) . "'><i class='fa fa-bar-chart' aria-hidden='true'></i></a>".
                         "<a data-toggle='modal' class='delete-link' href='#deleteModal' id='" .route('admin.polls.destroy', $row->id) . "'>".
                         "<i class='fa fa-trash' style='color: red;' aria-hidden='true'></i>";
                 })

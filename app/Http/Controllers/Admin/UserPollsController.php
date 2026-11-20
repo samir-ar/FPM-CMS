@@ -72,6 +72,7 @@ class UserPollsController extends Controller
                 $summary .= "<span class='label' style='font-size:13px;margin-right:8px;background-color:{$bgColor};color:{$textColor};'>{$stat['text']}: {$stat['count']} ({$stat['percentage']}%)</span>";
             }
 
+            $summary .= "<a class='btn btn-xs btn-primary' style='margin-left:6px;' href='" . route('admin.polls.results', $pollId) . "'><i class='fa fa-bar-chart'></i> Results page</a>";
             $summary .= "</div>";
 
             // The shared table_ajax layout wraps custom_btn1 in a `float:left`

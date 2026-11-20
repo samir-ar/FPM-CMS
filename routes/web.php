@@ -345,6 +345,7 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     //polls — page 16
     Route::resource('polls', 'PollsController')->except(['index', 'show'])->middleware('page-perm:16,full');
     Route::resource('polls', 'PollsController')->only(['index', 'show'])->middleware('page-perm:16,view');
+    Route::get('polls/{id}/results', 'PollResultsController@show')->name('polls.results')->middleware('page-perm:16,view');
     Route::get('polls/{id}/toggle-active', 'PollsController@toggleActive')->name('polls.toggle-active')->middleware('page-perm:16,full');
     Route::get('polls/{id}/toggle-guest-access', 'PollsController@toggleGuestAccess')->name('polls.toggle-guest-access')->middleware('page-perm:16,full');
 
