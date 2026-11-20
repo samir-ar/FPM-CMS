@@ -27,7 +27,7 @@
                 </p>
                 <table class="table table-bordered" style="max-width:520px">
                     <tr>
-                        <td>Codes requested (last 15 min)</td>
+                        <td>Codes requested (today, 3 per day)</td>
                         <td>{{ $status['sent'] }} of {{ $status['sent_max'] }}</td>
                         <td>@if ($status['sent_blocked'])<span class="label label-danger">blocked</span>@else<span class="label label-success">ok</span>@endif</td>
                     </tr>

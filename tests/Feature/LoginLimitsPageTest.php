@@ -50,7 +50,7 @@ class LoginLimitsPageTest extends CouncilTestCase
         $this->fillCounters(self::MEMBER);
         $html = $this->actingAs($this->adminUser(), 'admin')->get(route('admin.users.login-limits', ['member_id' => '0' . self::MEMBER], false))->assertOk()->getContent();
 
-        $this->assertStringContainsString('5 of 5', $html);
+        $this->assertStringContainsString(LoginLimits::SEND_MAX . ' of ' . LoginLimits::SEND_MAX, $html);
         $this->assertStringContainsString('10 of 10', $html);
         $this->assertStringContainsString('blocked', $html);
         $this->assertStringContainsString('locked', $html);

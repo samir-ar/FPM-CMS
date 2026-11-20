@@ -133,10 +133,21 @@ class LoginOtpTest extends CouncilTestCase
 
     public function test_too_many_code_requests_for_one_member_are_refused(): void
     {
-        for ($i = 0; $i < 5; $i++) {
+        for ($i = 0; $i < \App\Support\LoginLimits::SEND_MAX; $i++) {
             $this->requestCode()->assertOk();
         }
         $this->requestCode()->assertStatus(429);
+    }
+
+    public function test_apples_review_number_is_never_limited(): void
+    {
+        $key = \App\Support\LoginLimits::sendKey($this->member);
+        for ($i = 0; $i < \App\Support\LoginLimits::SEND_MAX + 2; $i++) {
+            RateLimiter::hit($key, 900);
+        }
+        // the member is over the limit, but a request with Apple's phone is not refused for that reason
+        $res = $this->postJson('/api/v2/send-verification', ['member_id' => $this->member, 'phone_number' => '96176979532', 'platform' => 'android', 'build_number' => 999999999]);
+        $this->assertNotSame(429, $res->getStatusCode());
     }
 
     public function test_an_empty_pin_can_never_delete_an_account(): void

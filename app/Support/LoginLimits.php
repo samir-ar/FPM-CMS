@@ -15,8 +15,8 @@ use Illuminate\Support\Facades\RateLimiter;
 // older code that clear 'otp-send:<member>' keep working.
 class LoginLimits
 {
-    public const SEND_MAX = 5;      // code requests per member per window
-    public const SEND_WINDOW = 900; // seconds (15 minutes)
+    public const SEND_MAX = 3;        // code requests per member per window
+    public const SEND_WINDOW = 86400; // seconds (one day, counted from the member's first request)
     public const GUESS_MAX = 10;    // wrong codes per member per window
     public const GUESS_WINDOW = 900;
     public const IP_MAX = 40;       // wrong codes from one IP per window
