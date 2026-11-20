@@ -676,6 +676,11 @@ class ApiController extends Controller
             foreach ($apiRepository->getPollsByGroupsRaw($user, request('groups')) as $poll) {
                 $merged->push(['type' => 'POLL', 'created_at' => $poll->created_at, 'model' => $poll]);
             }
+        } else {
+            // a guest sees the polls an admin allowed for guests (members-only polls stay hidden)
+            foreach ($apiRepository->getGuestPollsRaw(request('groups')) as $poll) {
+                $merged->push(['type' => 'POLL', 'created_at' => $poll->created_at, 'model' => $poll]);
+            }
         }
 
         // A guest (no login) only gets the events ticked "Public" in the event form, same as the

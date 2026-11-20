@@ -283,6 +283,23 @@ class ApiRepository
             ->get();
     }
 
+    // The polls a GUEST (no login) sees on the Home feed: only the ones an admin ticked "Allow Guests to See & Vote",
+    // still open. The Home request carries no device id, so a poll the guest already answered cannot be hidden here:
+    // it stays until it expires (tapping it opens the polls screen, which shows the results).
+    public function getGuestPollsRaw($groups_ids)
+    {
+        $groups_ids = $groups_ids ?? [];
+        return Poll::with('options')
+            ->where('expiry_date', '>', Carbon::today())
+            ->where('show', true)
+            ->where('show_for_guest', true)
+            ->whereHas('groups', function ($q) use ($groups_ids) {
+                return $q->whereIn('group_id', $groups_ids)->orWhere('group_id', 81)->orWhere('group_id', 82);
+            })
+            ->limit(20)
+            ->get();
+    }
+
     public function getMessages($user)
     {
         return $user->notifications()->orderBy('created_at', 'desc')->get();

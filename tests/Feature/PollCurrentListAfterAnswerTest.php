@@ -37,6 +37,38 @@ class PollCurrentListAfterAnswerTest extends CouncilTestCase
         $this->assertCount(2, $mine['options']);   // the options come back with their results
     }
 
+    public function test_a_guest_sees_only_guest_allowed_polls_on_the_home_feed(): void
+    {
+        [$open] = $this->poll();                                   // allowed for guests
+        [$membersOnly] = $this->poll();
+        DB::table('polls')->where('id', $membersOnly)->update(['show_for_guest' => 0]);
+        [$hidden] = $this->poll();
+        DB::table('polls')->where('id', $hidden)->update(['show' => 0]);   // switched off in the CMS
+        [$expired] = $this->poll();
+        DB::table('polls')->where('id', $expired)->update(['expiry_date' => now()->subDays(3)]);
+
+        $ids = app(ApiRepository::class)->getGuestPollsRaw([])->pluck('id')->all();
+
+        $this->assertContains($open, $ids);
+        $this->assertNotContains($membersOnly, $ids, 'a members-only poll stays hidden from guests');
+        $this->assertNotContains($hidden, $ids, 'a poll switched off in the CMS stays hidden');
+        $this->assertNotContains($expired, $ids, 'an expired poll stays hidden');
+    }
+
+    public function test_the_guest_home_feed_carries_the_poll_card_with_its_question(): void
+    {
+        [$open] = $this->poll();
+
+        $req = \Illuminate\Http\Request::create('/api/v2/get-wall-feed', 'POST');
+        $res = app(\App\Http\Controllers\Api\V2\ApiController::class)->getWallFeed($req, app(ApiRepository::class));
+        $items = collect($res->getData(true)['data'] ?? []);
+        $card = $items->firstWhere(fn ($i) => ($i['item_type'] ?? null) === 'POLL' && $i['id'] === $open);
+
+        $this->assertNotNull($card, 'the guest-allowed poll is in the guest Home feed');
+        $this->assertSame('T poll', $card['title']);
+        $this->assertCount(2, $card['options']);
+    }
+
     public function test_the_list_loads_for_a_guest_who_already_answered(): void
     {
         [$pollId, $optionId] = $this->poll();
