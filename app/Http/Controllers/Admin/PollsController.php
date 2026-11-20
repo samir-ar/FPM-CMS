@@ -235,6 +235,7 @@ class PollsController extends Controller
 
             foreach(request('options') as $o) {
                 if(empty($o['name']) && !empty($o['name_ar'])) $o['name'] = $o['name_ar'];
+                if(empty($o['name_ar']) && !empty($o['name'])) $o['name_ar'] = $o['name'];
                 $option = new PollOption;
 
                 $option->setTranslations('option', [
@@ -361,6 +362,12 @@ class PollsController extends Controller
             'groups' => 'required_without:all_groups',
         ]);
 
+        foreach ((array) request('options', []) as $opt) {
+            if (empty($opt['name']) && empty($opt['name_ar'])) {
+                return back()->withInput()->withErrors(['Every option needs a text: fill the box, or remove the empty option']);
+            }
+        }
+
         DB::transaction(function () use ($id, $request){
             $poll = Poll::find($id);
 
@@ -397,6 +404,7 @@ class PollsController extends Controller
 
                 // an option written in one language only is kept (the other language shows the same text)
                 if(empty($o['name']) && !empty($o['name_ar'])) $o['name'] = $o['name_ar'];
+                if(empty($o['name_ar']) && !empty($o['name'])) $o['name_ar'] = $o['name'];
                 if(!$o['name'])
                     continue;
 

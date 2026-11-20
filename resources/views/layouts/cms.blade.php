@@ -557,6 +557,17 @@
             wrapper.find('.options_wrapper').append(answer);
         });
 
+        // poll option that takes the member's own text: ONE label box is enough (it is used for both languages)
+        function syncTextOption(box) {
+            var row = $(box).closest('.option-element');
+            var ar = row.find('.option_name_ar, input[name$="[name_ar]"]').closest('.form-group');
+            var en = row.find('.option_name, input[name$="[name]"]');
+            if ($(box).is(':checked')) { ar.hide(); en.attr('placeholder', 'Label shown above the text box (both languages)'); }
+            else { ar.show(); en.attr('placeholder', 'English Options'); }
+        }
+        $(document).on('change', '.option-text-flag input[type=checkbox]', function() { syncTextOption(this); });
+        $(function() { $('.options_wrapper .option-text-flag input[type=checkbox]:checked').each(function() { syncTextOption(this); }); });
+
         $(document).on('click', '.delete-option', function() {
             $(this).closest('.option-element').remove();
         });
