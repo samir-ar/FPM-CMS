@@ -622,6 +622,10 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     /*Route::resource('national-council-poll.questions.answers','NationalCouncilPollQuestionAnswersController');*/
 
     //National Council Poll — page 58, covers its Questions sub-feature too
+    // Reset votes (clears every vote of one poll; locked with an SMS code sent to the fixed system phone)
+    Route::get('national-council-poll/{id}/reset-votes', 'NationalCouncilPollResetController@form')->name('national-council-poll.reset-votes')->middleware('page-perm:58,full');
+    Route::post('national-council-poll/{id}/reset-votes/send-code', 'NationalCouncilPollResetController@sendCode')->name('national-council-poll.reset-votes.send')->middleware('page-perm:58,full');
+    Route::post('national-council-poll/{id}/reset-votes', 'NationalCouncilPollResetController@confirm')->name('national-council-poll.reset-votes.confirm')->middleware('page-perm:58,full');
     Route::post('national-council-poll/{id}/closes-at', 'NationalCouncilPollController@updateClosesAt')->name('national-council-poll.closes-at')->middleware('page-perm:58,full');
     // who voted + from which device (never WHAT they voted)
     Route::get('national-council-poll/{id}/voters', 'NationalCouncilPollVotersController@progress')->name('national-council-poll.progress')->middleware('page-perm:58,view');
