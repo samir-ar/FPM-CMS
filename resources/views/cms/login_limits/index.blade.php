@@ -60,6 +60,49 @@
         </div>
     </div>
 
+    <div class="box box-default">
+        <div class="box-header with-border"><h3 class="box-title">Who tried to log in (last 24 hours)</h3></div>
+        <div class="box-body table-responsive">
+            @if (count($recent))
+                <table class="table table-bordered table-striped">
+                    <thead>
+                        <tr>
+                            <th>Member ID</th><th>Name</th><th>Codes requested</th><th>Wrong codes</th><th>Last try</th><th>Now</th><th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach ($recent as $r)
+                        <tr>
+                            <td><a href="{{ route('admin.users.login-limits', ['member_id' => $r['member_id']]) }}">{{ $r['member_id'] }}</a></td>
+                            <td>{{ $r['name'] }}</td>
+                            <td>{{ $r['codes'] }}</td>
+                            <td>{{ $r['wrong'] }}</td>
+                            <td>{{ $r['last_try'] }}</td>
+                            <td>
+                                @if ($r['blocked'])
+                                    <span class="label label-danger">Blocked</span> <small>{{ $r['why'] }}</small>
+                                @else
+                                    <span class="label label-success">OK</span>
+                                @endif
+                            </td>
+                            <td>
+                                <form method="post" action="{{ route('admin.users.login-limits.reset-member') }}" style="margin:0">
+                                    @csrf
+                                    <input type="hidden" name="member_id" value="{{ $r['member_id'] }}">
+                                    <button type="submit" class="btn btn-xs btn-primary">Reset</button>
+                                </form>
+                            </td>
+                        </tr>
+                    @endforeach
+                    </tbody>
+                </table>
+                <p class="text-muted" style="margin-bottom:0">Wrong codes are listed only when the member's login request was recognised. "Now" shows whether they are blocked at this moment (the block ends by itself 15 minutes after their last try, or when you reset).</p>
+            @else
+                <p class="text-muted" style="margin-bottom:0">Nobody has asked for a code in the last 24 hours (the list starts filling from the moment this update went live).</p>
+            @endif
+        </div>
+    </div>
+
     <p class="text-muted">A reset only lets people ask for codes and type codes again. It does not touch accounts, votes or logins. Every reset is written to the server log.</p>
 </section>
 @endsection

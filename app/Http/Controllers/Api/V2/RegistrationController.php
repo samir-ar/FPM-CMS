@@ -98,6 +98,7 @@ class RegistrationController extends Controller
 
         // Too many code requests for one member in a short time (SMS cost, and a stranger repeatedly asking for codes).
         $sendKey = \App\Support\LoginLimits::sendKey($request->input('member_id'));
+        \App\Support\LoginLimits::record($request->input('member_id'), 'code', $request->ip());
         if (\Illuminate\Support\Facades\RateLimiter::tooManyAttempts($sendKey, \App\Support\LoginLimits::SEND_MAX)) {
             return $this->api_error_response('too_many_requests', 101, 'تم تجاوز عدد المحاولات، يرجى المحاولة لاحقاً', 429);
         }

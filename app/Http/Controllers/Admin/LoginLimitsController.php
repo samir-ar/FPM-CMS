@@ -27,6 +27,7 @@ class LoginLimitsController extends Controller
             'member' => $member,
             'status' => $status,
             'name' => $name,
+            'recent' => LoginLimits::recentMembers(),
         ]);
     }
 

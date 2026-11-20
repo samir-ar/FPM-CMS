@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Support\LoginLimits;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Tests\Feature\NationalCouncil\CouncilTestCase;
 
@@ -84,6 +85,40 @@ class LoginLimitsPageTest extends CouncilTestCase
         // and the counters really count again afterwards
         RateLimiter::hit(LoginLimits::sendKey(self::MEMBER), 900);
         $this->assertSame(1, LoginLimits::status(self::MEMBER)['sent']);
+    }
+
+    public function test_the_page_lists_who_tried_with_tries_and_blocked_status(): void
+    {
+        DB::table('login_attempts')->where('member_id', self::MEMBER)->delete();
+        for ($i = 0; $i < 3; $i++) {
+            LoginLimits::record('0' . self::MEMBER, 'code', '1.2.3.4');
+        }
+        for ($i = 0; $i < 2; $i++) {
+            LoginLimits::record(self::MEMBER, 'wrong', '1.2.3.4');
+        }
+        $this->fillCounters(self::MEMBER);
+
+        $rows = collect(LoginLimits::recentMembers())->firstWhere('member_id', self::MEMBER);
+        $this->assertSame(3, $rows['codes']);
+        $this->assertSame(2, $rows['wrong']);
+        $this->assertTrue($rows['blocked']);
+
+        $html = $this->actingAs($this->adminUser(), 'admin')->get(route('admin.users.login-limits', [], false))->assertOk()->getContent();
+        $this->assertStringContainsString(self::MEMBER, $html);
+        $this->assertStringContainsString('Blocked', $html);
+
+        // after a reset the same member is listed as OK again, with the tries still counted
+        LoginLimits::resetMember(self::MEMBER);
+        $rows = collect(LoginLimits::recentMembers())->firstWhere('member_id', self::MEMBER);
+        $this->assertFalse($rows['blocked']);
+        $this->assertSame(3, $rows['codes']);
+    }
+
+    public function test_real_login_tries_are_recorded(): void
+    {
+        DB::table('login_attempts')->where('member_id', self::MEMBER)->delete();
+        LoginLimits::record(self::MEMBER, 'code', '1.2.3.4');
+        $this->assertSame(1, DB::table('login_attempts')->where('member_id', self::MEMBER)->where('kind', 'code')->count());
     }
 
     public function test_a_bad_member_id_is_refused(): void

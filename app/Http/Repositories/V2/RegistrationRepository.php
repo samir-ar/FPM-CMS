@@ -90,6 +90,7 @@ class RegistrationRepository
         }
 
         if (!hash_equals((string) $user->verification_nb, (string) ($data['pin'] ?? ''))) {
+            LoginLimits::record($user->member_id, 'wrong', $ip);
             RateLimiter::hit($key, 900);
             if ($ip) RateLimiter::hit($ipKey, 900);
             return ['error' => 'Invalid Pin Code', 'status' => 400];
