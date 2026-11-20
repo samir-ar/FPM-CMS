@@ -243,7 +243,7 @@ class ApiRepository
         }
 
         return $query->get()
-            ->map(function ($r) use ($answered_polls, $user, $deviceId) {
+            ->map(function ($r) use ($answered_polls, $user, $deviceId, $hardwareId) {
                 $alreadyVoted = in_array($r->id, $answered_polls);
                 // 'strict_lang' forces a single language for every viewer regardless
                 // of their app's language setting; default to Arabic (historically the
