@@ -52,7 +52,8 @@ class RegistrationRepository
         try {
             $this->deliverSms($data);
         } catch (\Exception $e) {
-            \Log::info('sms failed to send',[$e->getMessage()]);
+            // the provider's address inside the error carries its login (username=...&password=...): mask it
+            \Log::info('sms failed to send', [substr(preg_replace('/(password|username)=[^&\s]*/i', '$1=***', $e->getMessage()), 0, 200)]);
         }
 
         return $user->verification_nb;

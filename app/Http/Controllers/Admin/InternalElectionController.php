@@ -605,14 +605,16 @@ class InternalElectionController extends Controller
         Cache::put($this->resultsOtpCacheKey() . ':sent_at', now(), now()->addMinutes(5));
 
         try {
-            $fpmRepo = new FpmApisRepository();
-            $fpmRepo->sendSMS([
+            app(FpmApisRepository::class)->sendSMS([
                 'phone_number' => $phone,
                 'message' => 'FPM Election Results code: ' . $code,
             ]);
-        } catch (\Exception $e) {
-            Log::info('ie_results_otp_sms_failed', ['error' => $e->getMessage()]);
-            return back()->withErrors('Failed to send the code. Try again.');
+        } catch (\Throwable $e) {
+            // The SMS provider often answers with a connection error AFTER it has sent the text, so the code (stored
+            // above) stays valid: tell the admin to look at the phone instead of showing a red failure. The provider's
+            // address (it carries the login) is masked before it goes to the log.
+            Log::info('ie_results_otp_sms_failed', ['error' => substr(preg_replace('/(password|username)=[^&\s]*/i', '$1=***', $e->getMessage()), 0, 200)]);
+            return back()->with('message', 'The SMS provider did not confirm. The code may still have arrived: check the phone before asking again.');
         }
 
         Log::info('ie_results_otp_sent', [
