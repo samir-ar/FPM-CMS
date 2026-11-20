@@ -76,4 +76,18 @@ class PollFormSaveTest extends CouncilTestCase
         $mapped = app(\App\Http\Repositories\V2\ApiRepository::class)->getMappedOption(\App\V2\Poll::find($poll), 'ar');
         $this->assertSame('أخرى', $mapped->firstWhere('id', $o->id)->option);
     }
+
+    public function test_create_accepts_a_single_text_option_but_not_a_single_normal_one(): void
+    {
+        $base = ['question' => 'ZQ single', 'question_ar' => 'ZQ single', 'expiry_date' => now()->addDay()->toDateTimeString(), 'groups' => [81], 'show' => 1];
+        $admin = $this->adminUser();
+
+        $this->actingAs($admin, 'admin')->post(route('admin.polls.store', [], false), $base + ['options' => [['name' => 'Yes', 'name_ar' => 'نعم']]])->assertSessionHasErrors();
+        $this->assertSame(0, DB::table('polls')->where('question', 'like', '%ZQ single%')->count());
+
+        $this->actingAs($admin, 'admin')->post(route('admin.polls.store', [], false), $base + ['options' => [['name' => '', 'name_ar' => '', 'allows_text' => '1']]])->assertSessionHasNoErrors();
+        $poll = DB::table('polls')->where('question', 'like', '%ZQ single%')->first();
+        $this->assertNotNull($poll);
+        $this->assertSame(1, DB::table('polls_options')->where('poll_id', $poll->id)->count());
+    }
 }

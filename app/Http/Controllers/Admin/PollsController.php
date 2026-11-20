@@ -205,8 +205,10 @@ class PollsController extends Controller
             'details_notification' => 'required_with:name_notification'
         ]);
 
-        if(sizeof(request('options')) < 2){
-            return back()->withErrors(['You must enter at least two options']);
+        // two options are needed, except when one of them lets the member write his own text (one is enough then)
+        $hasTextOption = collect(request('options'))->contains(fn ($x) => !empty($x['allows_text']));
+        if(sizeof(request('options')) < 2 && !$hasTextOption){
+            return back()->withInput()->withErrors(['You must enter at least two options (one is enough only when it lets the member write his own text)']);
         }
 
 
