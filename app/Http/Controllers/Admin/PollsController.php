@@ -362,9 +362,9 @@ class PollsController extends Controller
             'groups' => 'required_without:all_groups',
         ]);
 
-        foreach ((array) request('options', []) as $opt) {
+        foreach (array_values((array) request('options', [])) as $i => $opt) {
             if (empty($opt['name']) && empty($opt['name_ar'])) {
-                return back()->withInput()->withErrors(['Every option needs a text: fill the box, or remove the empty option']);
+                return back()->withInput()->withErrors(['Option number ' . ($i + 1) . ' (counting from the top) has no text: fill its box, or remove it with the red minus']);
             }
         }
 
