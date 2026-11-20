@@ -17,15 +17,20 @@
         <a href="{{ route('admin.national-council-poll.progress.export', $poll->id) }}" class="btn btn-success pull-right" style="margin-left:4px;">Export to Excel</a>
     </div>
     <div class="box-body">
+        <div style="margin-bottom:8px;">
+            <span id="livePill" class="label label-success">Live</span>
+            <label style="margin:0 0 0 8px;font-weight:normal;"><input type="checkbox" id="liveToggle" checked> Update by itself every 5 seconds</label>
+        </div>
         <p class="text-muted">This page shows <strong>who has voted and from which device</strong>. It never shows <em>what</em> anybody voted.</p>
 
-        <div class="row">
+        <div class="row" id="liveTiles">
             <div class="col-md-3"><div class="tile"><div class="l">Voters allowed</div><div class="n">{{ $summary['voters'] }}</div><div class="text-muted">weight {{ $summary['voters_weight'] }}</div></div></div>
             <div class="col-md-3"><div class="tile"><div class="l">Voted</div><div class="n text-success">{{ $summary['voted'] }}</div><div class="text-muted">weight {{ $summary['voted_weight'] }}</div></div></div>
             <div class="col-md-3"><div class="tile"><div class="l">Still to vote</div><div class="n text-danger">{{ $summary['remaining'] }}</div></div></div>
             <div class="col-md-3"><div class="tile"><div class="l">Turnout</div><div class="n">{{ $summary['turnout'] }}%</div><div class="text-muted">{{ $summary['turnout_weight'] }}% of the weight</div></div></div>
         </div>
 
+        <div id="liveShared">
         @if($sharedDevices->count())
             <div class="callout callout-warning">
                 <h4><i class="fa fa-warning"></i> A device was used to vote for more than one member</h4>
@@ -39,6 +44,8 @@
             </div>
         @endif
 
+        </div>
+
         <form method="GET" class="form-inline" style="margin-bottom:12px;">
             <select name="status" class="form-control">
                 <option value="all" @if($status === 'all') selected @endif>Everyone</option>
@@ -51,12 +58,12 @@
             <a href="{{ route('admin.national-council-poll.progress', $poll->id) }}" class="btn btn-default">Clear</a>
         </form>
 
-        <p class="text-muted">Showing {{ $rows->count() }} {{ $rows->count() === 1 ? 'person' : 'people' }}.</p>
+        <p class="text-muted" id="liveCount">Showing {{ $rows->count() }} {{ $rows->count() === 1 ? 'person' : 'people' }}.</p>
         <table class="table table-bordered table-striped">
             <thead>
                 <tr><th>Photo</th><th>Member ID</th><th>Name</th><th>Role</th><th>Weight</th><th>Voted</th><th>Phone used</th><th>Phone of the app account</th></tr>
             </thead>
-            <tbody>
+            <tbody id="liveRows">
             @forelse($rows as $r)
                 <tr class="{{ $r['voted'] ? '' : 'not-voted' }}">
                     <td><img class="mphoto" loading="lazy" alt="" src="{{ route('admin.council-roster.photo', $r['member_id']) }}" onerror="this.onerror=null;this.src=window.MPH"></td>
@@ -83,4 +90,52 @@
         </table>
     </div>
 </div>
+@endsection
+
+@section('footer_resources')
+<script>
+(function () {
+    // Live page: every 5 seconds the page reads ITSELF again (same address, so the filters stay) and swaps in only the
+    // parts that changed: the four totals, the shared-device warning, the "showing N people" line and the table rows.
+    // The filter form is never touched, so what you typed stays. Paused while the tab is hidden or the box is unticked.
+    var PARTS = ['liveTiles', 'liveShared', 'liveCount', 'liveRows'];
+    var pill = document.getElementById('livePill');
+    var toggle = document.getElementById('liveToggle');
+    var timer = null;
+
+    function say(text, cls) {
+        pill.className = 'label ' + cls;
+        pill.textContent = text;
+    }
+    function clock() {
+        var d = new Date();
+        return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) + ':' + ('0' + d.getSeconds()).slice(-2);
+    }
+    function schedule() {
+        clearTimeout(timer);
+        timer = setTimeout(tick, 5000);
+    }
+    function tick() {
+        if (!toggle.checked || document.hidden) { schedule(); return; }
+        fetch(location.href, { credentials: 'same-origin', cache: 'no-store', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(function (r) { if (!r.ok) { throw new Error('http ' + r.status); } return r.text(); })
+            .then(function (html) {
+                var doc = new DOMParser().parseFromString(html, 'text/html');
+                if (!doc.getElementById('liveTiles')) { say('Session ended: reload the page', 'label-danger'); return; }
+                PARTS.forEach(function (id) {
+                    var now = document.getElementById(id), fresh = doc.getElementById(id);
+                    if (now && fresh && now.innerHTML !== fresh.innerHTML) { now.innerHTML = fresh.innerHTML; }
+                });
+                say('Live · updated ' + clock(), 'label-success');
+            })
+            .catch(function () { say('Connection lost, trying again', 'label-warning'); })
+            .then(schedule);
+    }
+    toggle.addEventListener('change', function () {
+        if (toggle.checked) { say('Live', 'label-success'); tick(); } else { say('Paused', 'label-default'); }
+    });
+    document.addEventListener('visibilitychange', function () { if (!document.hidden && toggle.checked) { tick(); } });
+    schedule();
+})();
+</script>
 @endsection

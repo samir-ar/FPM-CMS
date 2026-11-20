@@ -66,6 +66,24 @@ class CouncilPollVotersTest extends CouncilTestCase
         $this->assertStringNotContainsString('مرشحة باء', $html);
     }
 
+    public function test_the_voters_page_updates_itself_without_a_reload()
+    {
+        $html = $this->actingAs($this->adminUser(), 'admin')->get(route('admin.national-council-poll.progress', $this->poll, false))->assertOk()->getContent();
+
+        // the four parts that are swapped, in page order: totals, shared-device warning, the count line, the table rows;
+        // the filter form sits OUTSIDE them, so what the admin typed is never overwritten
+        $pos = array_map(fn ($needle) => strpos($html, $needle), ['id="liveTiles"', 'Voters allowed', 'id="liveShared"', '<form method="GET"', 'id="liveCount"', 'id="liveRows"']);
+        $this->assertNotContains(false, $pos, 'every live part is on the page');
+        $sorted = $pos;
+        sort($sorted);
+        $this->assertSame($sorted, $pos, 'the parts appear in the expected order');
+
+        // the loop, its 5-second beat and the pause switch
+        $this->assertStringContainsString("setTimeout(tick, 5000)", $html);
+        $this->assertStringContainsString('id="liveToggle"', $html);
+        $this->assertStringContainsString('id="livePill"', $html);
+    }
+
     public function test_the_voters_page_filters_voted_and_not_voted_and_exports()
     {
         $this->actingAs($this->adminUser(), 'admin');
