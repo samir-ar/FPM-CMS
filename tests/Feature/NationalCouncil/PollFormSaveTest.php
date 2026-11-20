@@ -34,7 +34,7 @@ class PollFormSaveTest extends CouncilTestCase
 
         $res = $this->actingAs($this->adminUser(), 'admin')->put(route('admin.polls.update', $poll, false), [
             'question' => 'T e', 'question_ar' => 'T e', 'expiry_date' => $now->copy()->addDay()->toDateTimeString(), 'groups' => [81], 'show' => 1,
-            'options' => [['name' => 'A', 'name_ar' => 'ا'], ['name' => '', 'name_ar' => '']],
+            'options' => [['name' => 'A', 'name_ar' => 'ا'], ['name' => '', 'name_ar' => '', 'allows_text' => '1']],
         ]);
 
         $res->assertSessionHasErrors();
@@ -54,22 +54,6 @@ class PollFormSaveTest extends CouncilTestCase
 
         $o = DB::table('polls_options')->where('poll_id', $poll)->orderByDesc('id')->first();
         $this->assertSame(['en' => 'Other', 'ar' => 'Other'], json_decode($o->option, true));
-        $this->assertEquals(1, $o->allows_text);
-    }
-
-    public function test_a_text_option_left_without_a_label_gets_other(): void
-    {
-        $now = now();
-        $poll = DB::table('polls')->insertGetId(['question' => json_encode(['ar' => 'T g', 'en' => 'T g']), 'show' => 1, 'expiry_date' => $now->copy()->addDay(), 'created_at' => $now, 'updated_at' => $now]);
-        DB::table('groups_polls')->insert(['poll_id' => $poll, 'group_group_id' => 81, 'created_at' => $now, 'updated_at' => $now]);
-
-        $this->actingAs($this->adminUser(), 'admin')->put(route('admin.polls.update', $poll, false), [
-            'question' => 'T g', 'question_ar' => 'T g', 'expiry_date' => $now->copy()->addDay()->toDateTimeString(), 'groups' => [81], 'show' => 1,
-            'options' => [['name' => 'Yes', 'name_ar' => 'نعم'], ['name' => '', 'name_ar' => '', 'allows_text' => '1']],
-        ])->assertSessionHasNoErrors();
-
-        $o = DB::table('polls_options')->where('poll_id', $poll)->orderByDesc('id')->first();
-        $this->assertSame(['en' => 'Other', 'ar' => 'غير ذلك'], json_decode($o->option, true));
         $this->assertEquals(1, $o->allows_text);
     }
 }

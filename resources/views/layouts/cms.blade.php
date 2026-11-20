@@ -562,7 +562,7 @@
             var row = $(box).closest('.option-element');
             var ar = row.find('.option_name_ar, input[name$="[name_ar]"]').closest('.form-group');
             var en = row.find('.option_name, input[name$="[name]"]');
-            if ($(box).is(':checked')) { ar.hide(); en.attr('placeholder', 'Label (optional, both languages). Empty = Other'); }
+            if ($(box).is(':checked')) { ar.hide(); en.attr('placeholder', 'Label shown above the text box (both languages)'); }
             else { ar.show(); en.attr('placeholder', 'English Options'); }
         }
         $(document).on('change', '.option-text-flag input[type=checkbox]', function() { syncTextOption(this); });
