@@ -12,6 +12,11 @@ All notable changes to the FPM-CMS (Laravel backend) are documented in this file
 
 ### Added — National Council session (29 Nov 2026)
 
+- **FPM Talent (منصة الكفاءات) redesigned (2026-11-21):** two tracks (naming others / showing interest) with their own open window, audience (members / public) and cycles; CMS pages Talent Tracks, Roles, FAQ (per language), Choices (drop-down lists), Submissions (review status, private notes, Excel export, people named by several members, CV/document preview) and CV Files (own permission); guests send the self-interest form after a phone code; e-mail to the addresses set on a track when a form is sent (with a test button). Migrations `2026_11_21_150000` to `190000`.
+- **Every page has its own permission line on the Profile form (2026-11-21):** Login Limits, Home Card Icons, Poll Results, Council Poll Results / Who Voted / Votes Report / Reset Votes, Internal Election Progress / Votes Report and the Talent pages (migrations `2026_11_21_130000`, `140000`, `160000`, `180000`; new `pages.hide` column for pages that need an id).
+- **Home card icons page (2026-11-21):** the round icon of the Home cards per type (news / events / polls) is chosen in the CMS (`2026_11_21_120000`).
+- **Mail:** the SMTP connection is forced to IPv4 (the staging server has no IPv6 route).
+
 - **Poll options that take the member's own text (2026-11-20/21):** a tick on an option opens a box in the app (max 300 characters); only the CMS sees the answers (poll results page 'Written answers' + User Polls 'Written answer' column). One label box is enough on a ticked option (used for both languages), the label may be left empty (the app then shows 'اكتب إجابتك' / 'Write your answer'), and a poll may have a single option when it is a text option. Empty normal options are refused with a message naming the row. Migration `2026_11_20_140000`.
 - **Representatives:** the photo link is now built with the file name fully encoded (a '+' or '%28' in the name made the picture return 403, e.g. 8 people in المجلس السياسي); new 'All categories' filter drop-down on the CMS Representatives list (`?category=ID`).
 - **Login limits page, per-poll Reset votes (SMS-locked), poll results page, live who-voted and live internal-election progress pages, 3 code requests per day:** see docs/OPERATIONAL_NOTES.md (sections of 2026-11-20).
