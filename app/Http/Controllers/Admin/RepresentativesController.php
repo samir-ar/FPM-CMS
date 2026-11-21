@@ -41,7 +41,9 @@ class RepresentativesController extends Controller
                 })
 
                 ->addColumn('image', function($row){
-                    return $this->drawImage('images/representatives/' . $row->image, '100');
+                    // nobody without a photo gets a broken-picture icon; the file name is encoded as a whole (a + or % in it)
+                    if (empty($row->image)) return '';
+                    return $this->drawImage('images/representatives/' . rawurlencode($row->image), '100');
                 })
 
                 ->addColumn('position', function($row){

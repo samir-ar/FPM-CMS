@@ -34,4 +34,23 @@ class RepresentativesCategoryFilterTest extends CouncilTestCase
         $all = $this->actingAs($admin, 'admin')->getJson(route('admin.representatives.index', ['draw' => 1, 'start' => 0, 'length' => 5], false), $ajax)->assertOk();
         $this->assertGreaterThanOrEqual(3, $all->json('recordsTotal'));
     }
+
+    public function test_the_list_shows_no_broken_picture_for_a_person_without_a_photo_and_encodes_the_name(): void
+    {
+        // same as staging/production: the disk has a CDN url and the file name is appended as it is
+        config(['filesystems.disks.s3.url' => 'https://cdn.example.com']);
+        \Storage::forgetDisk('s3');
+        $now = now();
+        $c = DB::table('dynamic_representatives')->insertGetId(['title' => json_encode(['ar' => 'ZQ فئة ي', 'en' => 'ZQ cat Y']), 'text' => '{}', 'order' => 920, 'created_at' => $now, 'updated_at' => $now]);
+        DB::table('persons')->insert([
+            ['name' => json_encode(['ar' => 'ZQ بلا صورة', 'en' => 'ZQ none']), 'dynamic_representative_id' => $c, 'order' => 1, 'image' => '', 'created_at' => $now, 'updated_at' => $now],
+            ['name' => json_encode(['ar' => 'ZQ مع صورة', 'en' => 'ZQ with']), 'dynamic_representative_id' => $c, 'order' => 2, 'image' => 'Gebran+Bassil.jpg', 'created_at' => $now, 'updated_at' => $now],
+        ]);
+
+        $res = $this->actingAs($this->adminUser(), 'admin')->getJson(route('admin.representatives.index', ['category' => $c, 'draw' => 1, 'start' => 0, 'length' => 50], false), ['X-Requested-With' => 'XMLHttpRequest'])->assertOk();
+        $images = collect($res->json('data'))->sortBy('order')->pluck('image')->values();
+
+        $this->assertSame('', (string) $images[0], 'no <img> for a person without a photo');
+        $this->assertStringContainsString('Gebran%2BBassil.jpg', $images[1]);
+    }
 }
