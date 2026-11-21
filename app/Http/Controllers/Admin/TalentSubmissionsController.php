@@ -128,6 +128,36 @@ class TalentSubmissionsController extends Controller
         return Storage::disk('local')->download($file->path, $file->original_name);
     }
 
+    // What a browser can show inside the page. The type comes from the file extension WE stored, never from what the sender
+    // claimed; anything else (Word...) has no preview and is download-only.
+    const PREVIEW_TYPES = ['pdf' => 'application/pdf', 'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png'];
+
+    public static function previewTypeOf(string $path): ?string
+    {
+        return self::PREVIEW_TYPES[strtolower(pathinfo($path, PATHINFO_EXTENSION))] ?? null;
+    }
+
+    // Shows the private file INSIDE the page (inline) instead of downloading it. Own permission ("Talent CV Files"); logged.
+    public function preview(Request $request, $id)
+    {
+        $file = TalentAttachment::findOrFail($id);
+        $type = self::previewTypeOf($file->path);
+        if (!$type) {
+            abort(415, 'This file type has no preview: download it instead');
+        }
+        if (!Storage::disk('local')->exists($file->path)) {
+            abort(404, 'File not found on the server');
+        }
+        Log::info('talent_file_previewed', ['attachment_id' => $file->id, 'submission_id' => $file->submission_id, 'admin_id' => optional($request->user())->id]);
+
+        return response()->file(Storage::disk('local')->path($file->path), [
+            'Content-Type' => $type,
+            'Content-Disposition' => 'inline; filename="file.' . pathinfo($file->path, PATHINFO_EXTENSION) . '"',
+            'X-Content-Type-Options' => 'nosniff',
+            'Cache-Control' => 'private, no-store',
+        ]);
+    }
+
     private function canDownloadFiles(Request $request): bool
     {
         $pageId = DB::table('pages')->where('url', 'admin.talent-files.download')->value('id');

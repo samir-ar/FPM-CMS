@@ -66,18 +66,48 @@
                 <div class="box-header with-border"><h3 class="box-title">Files</h3></div>
                 <div class="box-body">
                     @forelse ($s->attachments as $a)
+                        @php $previewType = \App\Http\Controllers\Admin\TalentSubmissionsController::previewTypeOf($a->path); @endphp
                         <p>
                             <i class="fa fa-file-o"></i>
                             <b>{{ $a->kind === 'cv' ? 'CV' : 'Document' }}</b> &mdash; <bdi>{{ $a->original_name }}</bdi> ({{ number_format($a->size / 1024, 0) }} KB)
                             @if ($canSeeFiles)
+                                @if ($previewType)
+                                    &nbsp;<button type="button" class="btn btn-xs btn-primary js-preview" data-target="preview-{{ $a->id }}" data-src="{{ route('admin.talent-files.preview', $a->id) }}" data-type="{{ $previewType }}"><i class="fa fa-eye"></i> Preview</button>
+                                    &nbsp;<a class="btn btn-xs btn-default" target="_blank" href="{{ route('admin.talent-files.preview', $a->id) }}">Open in a new tab</a>
+                                @endif
                                 &nbsp;<a class="btn btn-xs btn-default" href="{{ route('admin.talent-files.download', $a->id) }}">Download</a>
+                                @unless ($previewType)
+                                    <small class="text-muted">(no preview for this file type, download it)</small>
+                                @endunless
                             @else
                                 &nbsp;<span class="text-muted">(no permission to download: ask for "Talent CV Files")</span>
                             @endif
                         </p>
+                        @if ($canSeeFiles && $previewType)
+                            {{-- loaded only when the Preview button is pressed, so the file is not fetched for nothing --}}
+                            <div id="preview-{{ $a->id }}" style="display:none;margin:0 0 18px"></div>
+                        @endif
                     @empty
                         <p class="text-muted">No files.</p>
                     @endforelse
+                    @if ($canSeeFiles)
+                    <script>
+                        (function () {
+                            document.querySelectorAll('.js-preview').forEach(function (btn) {
+                                btn.addEventListener('click', function () {
+                                    var box = document.getElementById(btn.getAttribute('data-target'));
+                                    if (box.style.display === 'block') { box.style.display = 'none'; box.innerHTML = ''; btn.innerHTML = '<i class="fa fa-eye"></i> Preview'; return; }
+                                    var src = btn.getAttribute('data-src');
+                                    box.innerHTML = btn.getAttribute('data-type') === 'application/pdf'
+                                        ? '<iframe src="' + src + '" style="width:100%;height:720px;border:1px solid #ddd"></iframe>'
+                                        : '<img src="' + src + '" style="max-width:100%;border:1px solid #ddd">';
+                                    box.style.display = 'block';
+                                    btn.innerHTML = '<i class="fa fa-eye-slash"></i> Hide preview';
+                                });
+                            });
+                        })();
+                    </script>
+                    @endif
                 </div>
             </div>
         </div>

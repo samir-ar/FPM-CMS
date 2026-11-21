@@ -232,6 +232,7 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::get('talent-submissions/export', 'TalentSubmissionsController@export')->name('talent-submissions.export')->middleware(pagePermByUrl('admin.talent-submissions.index', 'view'));
     Route::get('talent-submissions/{id}', 'TalentSubmissionsController@show')->name('talent-submissions.show')->middleware(pagePermByUrl('admin.talent-submissions.index', 'view'));
     Route::post('talent-submissions/{id}', 'TalentSubmissionsController@update')->name('talent-submissions.update')->middleware(pagePermByUrl('admin.talent-submissions.index', 'full'));
+    Route::get('talent-files/{id}/preview', 'TalentSubmissionsController@preview')->name('talent-files.preview')->middleware(pagePermByUrl('admin.talent-files.download', 'view'));
     Route::get('talent-files/{id}', 'TalentSubmissionsController@download')->name('talent-files.download')->middleware(pagePermByUrl('admin.talent-files.download', 'view'));
 
     //Competency Platform (منصة الكفاءات) — page 71

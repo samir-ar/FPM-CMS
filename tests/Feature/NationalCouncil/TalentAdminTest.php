@@ -178,4 +178,48 @@ class TalentAdminTest extends CouncilTestCase
         $profileId = DB::table('profiles')->where('name', 'Super Admin')->value('id');
         $this->assertStringContainsString('Talent Choices', $this->admin()->get(route('admin.profiles.edit', $profileId, false))->assertOk()->getContent());
     }
+
+    public function test_a_pdf_or_image_can_be_previewed_inside_the_page_and_a_word_file_cannot(): void
+    {
+        Storage::fake('local');
+        $s = $this->submission(['track' => 'self']);
+        Storage::disk('local')->put('talent/' . $s->id . '/cv_a.pdf', '%PDF-1.4 fake');
+        Storage::disk('local')->put('talent/' . $s->id . '/doc_b.png', 'PNGDATA');
+        Storage::disk('local')->put('talent/' . $s->id . '/cv_c.docx', 'WORDDATA');
+        $pdf = TalentAttachment::create(['submission_id' => $s->id, 'kind' => 'cv', 'original_name' => 'cv.pdf', 'path' => 'talent/' . $s->id . '/cv_a.pdf', 'mime' => 'text/html', 'size' => 13]);
+        $png = TalentAttachment::create(['submission_id' => $s->id, 'kind' => 'doc', 'original_name' => 'id.png', 'path' => 'talent/' . $s->id . '/doc_b.png', 'mime' => 'application/pdf', 'size' => 7]);
+        $word = TalentAttachment::create(['submission_id' => $s->id, 'kind' => 'cv', 'original_name' => 'cv.docx', 'path' => 'talent/' . $s->id . '/cv_c.docx', 'mime' => 'application/msword', 'size' => 8]);
+
+        // shown inline, with the type taken from OUR stored extension (the sender's claimed mime "text/html" is ignored)
+        $res = $this->admin()->get(route('admin.talent-files.preview', $pdf->id, false))->assertOk();
+        $this->assertSame('application/pdf', $res->headers->get('Content-Type'));
+        $this->assertStringStartsWith('inline', $res->headers->get('Content-Disposition'));
+        $this->assertSame('nosniff', $res->headers->get('X-Content-Type-Options'));
+        $this->assertSame('image/png', $this->admin()->get(route('admin.talent-files.preview', $png->id, false))->assertOk()->headers->get('Content-Type'));
+
+        // a Word file has no preview
+        $this->admin()->get(route('admin.talent-files.preview', $word->id, false))->assertStatus(415);
+
+        // the submission page: Preview for the pdf and the image, none for the Word file
+        $page = $this->admin()->get(route('admin.talent-submissions.show', $s->id, false))->assertOk()->getContent();
+        $this->assertSame(2, substr_count($page, 'js-preview" data-target'), 'a Preview button for the pdf and the image only');
+        $this->assertStringContainsString('no preview for this file type', $page);
+    }
+
+    public function test_the_preview_needs_the_cv_files_permission_like_the_download(): void
+    {
+        Storage::fake('local');
+        $s = $this->submission(['track' => 'self']);
+        Storage::disk('local')->put('talent/' . $s->id . '/cv_a.pdf', '%PDF-1.4 fake');
+        $pdf = TalentAttachment::create(['submission_id' => $s->id, 'kind' => 'cv', 'original_name' => 'cv.pdf', 'path' => 'talent/' . $s->id . '/cv_a.pdf', 'mime' => 'application/pdf', 'size' => 13]);
+
+        $profileId = DB::table('profiles')->insertGetId(['name' => 'T hr2 ' . uniqid(), 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('profile_permissions')->insert(['profile_id' => $profileId, 'page_id' => DB::table('pages')->where('url', 'admin.talent-submissions.index')->value('id'), 'level' => 'view', 'created_at' => now(), 'updated_at' => now()]);
+        $limited = $this->adminUser();
+        $limited->profile_id = $profileId;
+
+        $this->actingAs($limited, 'admin')->get(route('admin.talent-files.preview', $pdf->id, false))->assertStatus(403);
+        $page = $this->actingAs($limited, 'admin')->get(route('admin.talent-submissions.show', $s->id, false))->assertOk()->getContent();
+        $this->assertStringNotContainsString('js-preview', $page, 'no Preview button without the CV Files permission');
+    }
 }
