@@ -21,12 +21,12 @@ class PollOption extends Model
     protected $table='polls_options';
 
     // What the app shows on the option. A text option may be saved WITHOUT a label; the member then sees a plain
-    // "Other" so the row is never blank (the stored label stays empty).
+    // "Write your answer" so the row is never blank (the stored label stays empty).
     public function displayLabel($locale = 'ar')
     {
         $label = (string) $this->getTranslation('option', $locale);
         if ($label === '' && $this->allows_text) {
-            return $locale === 'en' ? 'Other' : 'أخرى';
+            return $locale === 'en' ? 'Write your answer' : 'اكتب إجابتك';
         }
 
         return $label;

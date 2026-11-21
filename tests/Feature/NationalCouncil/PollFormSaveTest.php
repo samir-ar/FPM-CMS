@@ -71,10 +71,10 @@ class PollFormSaveTest extends CouncilTestCase
         $o = \App\V2\PollOption::where('poll_id', $poll)->orderByDesc('id')->first();
         $this->assertEquals(1, $o->allows_text);
         $this->assertSame('', (string) $o->getTranslation('option', 'ar'), 'stored without a label');
-        $this->assertSame('أخرى', $o->displayLabel('ar'));
-        $this->assertSame('Other', $o->displayLabel('en'));
+        $this->assertSame('اكتب إجابتك', $o->displayLabel('ar'));
+        $this->assertSame('Write your answer', $o->displayLabel('en'));
         $mapped = app(\App\Http\Repositories\V2\ApiRepository::class)->getMappedOption(\App\V2\Poll::find($poll), 'ar');
-        $this->assertSame('أخرى', $mapped->firstWhere('id', $o->id)->option);
+        $this->assertSame('اكتب إجابتك', $mapped->firstWhere('id', $o->id)->option);
     }
 
     public function test_create_accepts_a_single_text_option_but_not_a_single_normal_one(): void
