@@ -35,12 +35,15 @@
                         {!! $field('Town', $s->submitter_town) !!}
                         {!! $field('Organizational role', $s->submitter_role) !!}
                         {!! $field('Nominee', $s->nominee_name) !!}
+                        {!! $field('Nominee district', $s->nominee_district) !!}
+                        {!! $field('Nominee town', $s->nominee_town) !!}
                         {!! $field('Profession / specialty', $s->profession) !!}
                         {!! $field('Nominee relation to FPM', $s->relation_to_fpm) !!}
                         {!! $field('Relation between the two', $s->relationship_between) !!}
                         {!! $field('Reasons', $s->reasons) !!}
                         {!! $field('Strengths and qualifications', $s->strengths) !!}
                         {!! $field('Personal information', $s->personal_info) !!}
+                        {!! $field('Education level', $s->education_level) !!}
                         {!! $field('Academic qualifications', $s->academic) !!}
                         {!! $field('Professional experience', $s->professional) !!}
                         {!! $field('Organizational / public experience', $s->organizational) !!}

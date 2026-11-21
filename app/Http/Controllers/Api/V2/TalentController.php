@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Repositories\V2\FpmApisRepository;
 use App\Http\Traits\ResponseTrait;
 use App\V2\TalentAttachment;
+use App\V2\TalentChoice;
 use App\V2\TalentFaq;
 use App\V2\TalentRole;
 use App\V2\TalentSubmission;
@@ -16,6 +17,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 // FPM Talent (منصة الكفاءات): what the app shows (tracks with their open / upcoming / closed state, the roles list, the FAQ)
 // and what it sends (a peer nomination or a self-interest form, from a member or - self track only, when the CMS made it
@@ -68,7 +70,13 @@ class TalentController extends Controller
         $roles = TalentRole::where('is_active', true)->orderBy('sort_order')->orderBy('id')->get()
             ->map(fn ($r) => ['id' => $r->id, 'name' => $r->name, 'allows_text' => (bool) $r->allows_text])->values();
 
-        return response()->json(['is_member' => $isMember, 'tracks' => $tracks, 'roles' => $roles]);
+        // the drop-down lists the CMS manages (Talent Choices)
+        $choices = [];
+        foreach (array_keys(TalentChoice::GROUPS) as $group) {
+            $choices[$group] = TalentChoice::names($group);
+        }
+
+        return response()->json(['is_member' => $isMember, 'tracks' => $tracks, 'roles' => $roles, 'choices' => $choices]);
     }
 
     public function faqs(Request $request)
@@ -245,6 +253,9 @@ class TalentController extends Controller
                 'submitter_town' => $member ? ($fpm->town ?? null) : $text('town'),
                 'submitter_role' => $member ? ($fpm->LastUnitPosition ?? $fpm->Role ?? null) : null,
                 'nominee_name' => $isPeer ? $text('nominee_name') : null,
+                'nominee_district' => $isPeer ? $text('nominee_district') : null,
+                'nominee_town' => $isPeer ? $text('nominee_town') : null,
+                'education_level' => $isPeer ? null : $text('education_level'),
                 'profession' => $isPeer ? $text('profession') : null,
                 'relation_to_fpm' => $isPeer ? $text('relation_to_fpm') : null,
                 'relationship_between' => $isPeer ? $text('relationship_between') : null,
@@ -288,21 +299,24 @@ class TalentController extends Controller
             'nominee_name' => 'اسم الشخص', 'profession' => 'المهنة', 'relation_to_fpm' => 'علاقته بالتيار', 'reasons' => 'أسباب الاقتراح',
             'strengths' => 'عناصر القوة والمؤهلات', 'relationship_between' => 'العلاقة بين الشخصين', 'academic' => 'المؤهلات العلمية',
             'professional' => 'الخبرات المهنية', 'interests' => 'مجالات الاهتمام', 'cover_letter' => 'الرسالة التعريفية',
-            'full_name' => 'الاسم', 'cv' => 'السيرة الذاتية', 'acknowledged' => 'الإقرار', 'roles' => 'الأدوار',
+            'full_name' => 'الاسم', 'nominee_district' => 'قضاء الشخص المسمّى', 'nominee_town' => 'بلدة الشخص المسمّى', 'education_level' => 'المستوى التعليمي', 'district' => 'القضاء', 'town' => 'البلدة', 'cv' => 'السيرة الذاتية', 'acknowledged' => 'الإقرار', 'roles' => 'الأدوار',
         ];
 
         if ($track->code === TalentTrack::PEER) {
             return ['names' => $names, 'rules' => $common + [
                 'nominee_name' => 'required|string|max:191',
+                'nominee_district' => 'required|string|max:191',
+                'nominee_town' => 'required|string|max:191',
                 'profession' => 'required|string|max:191',
-                'relation_to_fpm' => 'required|string|max:255',
+                'relation_to_fpm' => ['required', 'string', Rule::in(TalentChoice::names('fpm_relation'))],
                 'reasons' => $long,
                 'strengths' => $long,
-                'relationship_between' => $long,
+                'relationship_between' => ['required', 'string', Rule::in(TalentChoice::names('person_relation'))],
             ]];
         }
 
         $self = $common + [
+            'education_level' => ['required', 'string', Rule::in(TalentChoice::names('education'))],
             'academic' => $long,
             'professional' => $long,
             'organizational' => 'nullable|string|max:' . self::TEXT_MAX,
@@ -314,7 +328,7 @@ class TalentController extends Controller
             'docs.*' => 'file|mimes:pdf,jpg,jpeg,png|max:5120',
         ];
         if (!$isMember) {
-            $self += ['full_name' => 'required|string|max:191', 'email' => 'nullable|email|max:191', 'district' => 'nullable|string|max:191', 'town' => 'nullable|string|max:191'];
+            $self += ['full_name' => 'required|string|max:191', 'email' => 'nullable|email|max:191', 'district' => 'required|string|max:191', 'town' => 'required|string|max:191'];
         }
 
         return ['names' => $names, 'rules' => $self];

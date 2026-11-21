@@ -153,4 +153,29 @@ class TalentAdminTest extends CouncilTestCase
             $this->assertStringContainsString($label, $html);
         }
     }
+
+    public function test_the_choices_page_adds_renames_reorders_and_switches_off_values(): void
+    {
+        $this->admin()->get(route('admin.talent-choices.index', [], false))->assertOk()->assertSee('Education level');
+
+        $this->admin()->post(route('admin.talent-choices.store', [], false), ['group' => 'person_relation', 'name' => 'ZQ علاقة جديدة'])->assertRedirect();
+        $row = DB::table('talent_choices')->where('name', 'ZQ علاقة جديدة')->first();
+        $this->assertSame('person_relation', $row->group);
+
+        $this->admin()->post(route('admin.talent-choices.update', [], false), ['choices' => [$row->id => ['name' => 'ZQ علاقة معدلة', 'sort_order' => 50]]])->assertRedirect();
+        $row = DB::table('talent_choices')->where('id', $row->id)->first();
+        $this->assertSame('ZQ علاقة معدلة', $row->name);
+        $this->assertEquals(0, $row->is_active, 'an unticked box switches it off');
+
+        $this->admin()->post(route('admin.talent-choices.store', [], false), ['group' => 'nonsense', 'name' => 'x'])->assertSessionHasErrors();
+    }
+
+    public function test_the_choices_page_is_on_the_profile_form(): void
+    {
+        $page = DB::table('pages')->where('url', 'admin.talent-choices.index')->first();
+        $this->assertNotNull($page);
+        $this->assertEquals(1, $page->show_in_profile_form);
+        $profileId = DB::table('profiles')->where('name', 'Super Admin')->value('id');
+        $this->assertStringContainsString('Talent Choices', $this->admin()->get(route('admin.profiles.edit', $profileId, false))->assertOk()->getContent());
+    }
 }

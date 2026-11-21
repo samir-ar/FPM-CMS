@@ -222,6 +222,9 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::get('talent-roles', 'TalentRolesController@index')->name('talent-roles.index')->middleware(pagePermByUrl('admin.talent-roles.index', 'view'));
     Route::post('talent-roles', 'TalentRolesController@update')->name('talent-roles.update')->middleware(pagePermByUrl('admin.talent-roles.index', 'full'));
     Route::post('talent-roles/add', 'TalentRolesController@store')->name('talent-roles.store')->middleware(pagePermByUrl('admin.talent-roles.index', 'full'));
+    Route::get('talent-choices', 'TalentChoicesController@index')->name('talent-choices.index')->middleware(pagePermByUrl('admin.talent-choices.index', 'view'));
+    Route::post('talent-choices', 'TalentChoicesController@update')->name('talent-choices.update')->middleware(pagePermByUrl('admin.talent-choices.index', 'full'));
+    Route::post('talent-choices/add', 'TalentChoicesController@store')->name('talent-choices.store')->middleware(pagePermByUrl('admin.talent-choices.index', 'full'));
     Route::get('talent-faqs', 'TalentFaqController@index')->name('talent-faqs.index')->middleware(pagePermByUrl('admin.talent-faqs.index', 'view'));
     Route::post('talent-faqs', 'TalentFaqController@update')->name('talent-faqs.update')->middleware(pagePermByUrl('admin.talent-faqs.index', 'full'));
     Route::post('talent-faqs/add', 'TalentFaqController@store')->name('talent-faqs.store')->middleware(pagePermByUrl('admin.talent-faqs.index', 'full'));

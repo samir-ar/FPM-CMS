@@ -51,15 +51,15 @@ class TalentApiTest extends CouncilTestCase
     private function peerPayload(array $over = []): array
     {
         return $over + [
-            'track' => 'peer', 'nominee_name' => 'ZQ شخص', 'profession' => 'مهندس', 'relation_to_fpm' => 'مناصر',
-            'reasons' => 'سبب', 'strengths' => 'قوة', 'relationship_between' => 'زميل', 'roles' => $this->roleIds(2), 'acknowledged' => '1',
+            'track' => 'peer', 'nominee_name' => 'ZQ شخص', 'nominee_district' => 'المتن', 'nominee_town' => 'ضبية', 'profession' => 'مهندس', 'relation_to_fpm' => 'مؤيد/ة للتيار',
+            'reasons' => 'سبب', 'strengths' => 'قوة', 'relationship_between' => 'علاقة صداقة', 'roles' => $this->roleIds(2), 'acknowledged' => '1',
         ];
     }
 
     private function selfPayload(array $over = []): array
     {
         return $over + [
-            'track' => 'self', 'academic' => 'ماجستير', 'professional' => 'خبرة', 'interests' => 'سياسات', 'cover_letter' => 'رسالة',
+            'track' => 'self', 'education_level' => 'ماجيستير', 'district' => 'المتن', 'town' => 'ضبية', 'academic' => 'ماجستير', 'professional' => 'خبرة', 'interests' => 'سياسات', 'cover_letter' => 'رسالة',
             'roles' => $this->roleIds(1), 'acknowledged' => '1',
         ];
     }
@@ -149,7 +149,7 @@ class TalentApiTest extends CouncilTestCase
         $u = $this->makeAppUser('T strict', '5900000004');
         $this->open('peer');
 
-        foreach (['nominee_name', 'profession', 'relation_to_fpm', 'reasons', 'strengths', 'relationship_between', 'acknowledged', 'roles'] as $field) {
+        foreach (['nominee_name', 'nominee_district', 'nominee_town', 'profession', 'relation_to_fpm', 'reasons', 'strengths', 'relationship_between', 'acknowledged', 'roles'] as $field) {
             $payload = $this->peerPayload();
             unset($payload[$field]);
             $this->callTalent('submit', $payload, $u);
@@ -279,5 +279,58 @@ class TalentApiTest extends CouncilTestCase
         $this->assertSame(['ZQ سؤال ١', 'ZQ سؤال ٢'], $ar);
         $en = collect($this->callTalent('faqs', ['language' => 'en']))->pluck('question')->filter(fn ($q) => str_starts_with($q, 'ZQ'))->values()->all();
         $this->assertSame(['ZQ question'], $en);
+    }
+
+    public function test_config_carries_the_cms_lists_and_only_their_active_values(): void
+    {
+        $u = $this->makeAppUser('T lists', '5900000010');
+        $cfg = $this->callTalent('config', [], $u);
+
+        $this->assertSame(['ملتزم/ة في التيار', 'مؤيد/ة للتيار', 'مستقل/ة'], $cfg['choices']['fpm_relation']);
+        $this->assertSame(['علاقة قربة', 'علاقة صداقة', 'علاقة مهنية', 'علاقة حزبية'], $cfg['choices']['person_relation']);
+        $this->assertCount(5, $cfg['choices']['education']);
+
+        // the CMS adds one and switches one off
+        DB::table('talent_choices')->insert(['group' => 'education', 'name' => 'ZQ شهادة جديدة', 'is_active' => 1, 'sort_order' => 99, 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('talent_choices')->where('group', 'education')->where('name', 'ثانوي')->update(['is_active' => 0]);
+        $education = $this->callTalent('config', [], $u)['choices']['education'];
+        $this->assertContains('ZQ شهادة جديدة', $education);
+        $this->assertNotContains('ثانوي', $education);
+    }
+
+    public function test_a_value_that_is_not_in_the_list_is_refused_and_a_new_cms_value_is_accepted(): void
+    {
+        $u = $this->makeAppUser('T lists 2', '5900000011');
+        $this->open('peer');
+        $this->open('self');
+
+        $this->callTalent('submit', $this->peerPayload(['relation_to_fpm' => 'قيمة من خارج القائمة']), $u);
+        $this->assertSame(400, $this->status);
+        $this->callTalent('submit', $this->peerPayload(['relationship_between' => 'قيمة من خارج القائمة']), $u);
+        $this->assertSame(400, $this->status);
+
+        $this->callTalent('submit', $this->selfPayload(['education_level' => 'ZQ شهادة جديدة']), $u, $this->cv());
+        $this->assertSame(400, $this->status, 'not in the list yet');
+        DB::table('talent_choices')->insert(['group' => 'education', 'name' => 'ZQ شهادة جديدة', 'is_active' => 1, 'sort_order' => 99, 'created_at' => now(), 'updated_at' => now()]);
+        $this->callTalent('submit', $this->selfPayload(['education_level' => 'ZQ شهادة جديدة']), $u, $this->cv());
+        $this->assertTrue($this->ok(), $this->body);
+        $this->assertSame('ZQ شهادة جديدة', TalentSubmission::where('user_id', $u)->where('track', 'self')->value('education_level'));
+    }
+
+    public function test_the_naming_form_keeps_the_nominee_district_and_town_and_a_guest_must_give_his_own(): void
+    {
+        $u = $this->makeAppUser('T district', '5900000012');
+        $this->open('peer');
+        $this->callTalent('submit', $this->peerPayload(['nominee_name' => 'ZQ بلدة']), $u);
+        $row = TalentSubmission::where('nominee_name', 'ZQ بلدة')->first();
+        $this->assertSame('المتن', $row->nominee_district);
+        $this->assertSame('ضبية', $row->nominee_town);
+
+        $this->open('self', ['audience' => 'public']);
+        Cache::put('talent-guest-token:g1', '96170111222', 600);
+        $payload = $this->selfPayload(['full_name' => 'ZQ ضيف بلا قضاء', 'guest_token' => 'g1']);
+        unset($payload['district'], $payload['town']);
+        $this->callTalent('submit', $payload, null, $this->cv());
+        $this->assertSame(400, $this->status, 'a guest has no profile: district and town are required');
     }
 }
