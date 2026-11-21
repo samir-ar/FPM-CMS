@@ -42,7 +42,12 @@ class RepresentativesController extends Controller
 
                 ->addColumn('image', function($row){
                     // nobody without a photo gets a broken-picture icon; the file name is encoded as a whole (a + or % in it)
-                    if (empty($row->image)) return '';
+                    // no uploaded photo: show the member-list photo (fpm_users, the same one the app shows) when the person has a Member ID
+                    if (empty($row->image)) {
+                        if (empty($row->member_id)) return '';
+                        $src = url('/api/v2/member-photo/' . rawurlencode($row->member_id));
+                        return "<div><a target='_blank' href='$src'><img width=100 src='$src'></a></div>";
+                    }
                     return $this->drawImage('images/representatives/' . rawurlencode($row->image), '100');
                 })
 

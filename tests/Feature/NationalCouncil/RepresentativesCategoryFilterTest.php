@@ -45,6 +45,7 @@ class RepresentativesCategoryFilterTest extends CouncilTestCase
         DB::table('persons')->insert([
             ['name' => json_encode(['ar' => 'ZQ بلا صورة', 'en' => 'ZQ none']), 'dynamic_representative_id' => $c, 'order' => 1, 'image' => '', 'created_at' => $now, 'updated_at' => $now],
             ['name' => json_encode(['ar' => 'ZQ مع صورة', 'en' => 'ZQ with']), 'dynamic_representative_id' => $c, 'order' => 2, 'image' => 'Gebran+Bassil.jpg', 'created_at' => $now, 'updated_at' => $now],
+            ['name' => json_encode(['ar' => 'ZQ عضو', 'en' => 'ZQ member']), 'dynamic_representative_id' => $c, 'order' => 3, 'image' => '', 'member_id' => '777000111', 'created_at' => $now, 'updated_at' => $now],
         ]);
 
         $res = $this->actingAs($this->adminUser(), 'admin')->getJson(route('admin.representatives.index', ['category' => $c, 'draw' => 1, 'start' => 0, 'length' => 50], false), ['X-Requested-With' => 'XMLHttpRequest'])->assertOk();
@@ -52,5 +53,6 @@ class RepresentativesCategoryFilterTest extends CouncilTestCase
 
         $this->assertSame('', (string) $images[0], 'no <img> for a person without a photo');
         $this->assertStringContainsString('Gebran%2BBassil.jpg', $images[1]);
+        $this->assertStringContainsString('/api/v2/member-photo/777000111', $images[2], 'no uploaded photo + a Member ID: the member-list photo is shown');
     }
 }
