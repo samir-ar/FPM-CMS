@@ -133,9 +133,9 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::get('users/export', 'UsersController@export')->name('users.export')->middleware('page-perm:8,view');
     Route::get('users/installation-report', 'UsersController@installationReport')->name('users.installation-report')->middleware('page-perm:8,view');
     // Login limits: see / reset the app-login counters (code requests, wrong codes) for one member or for everybody
-    Route::get('users/login-limits', 'LoginLimitsController@index')->name('users.login-limits')->middleware('page-perm:8,full');
-    Route::post('users/login-limits/reset-member', 'LoginLimitsController@resetMember')->name('users.login-limits.reset-member')->middleware('page-perm:8,full');
-    Route::post('users/login-limits/reset-all', 'LoginLimitsController@resetAll')->name('users.login-limits.reset-all')->middleware('page-perm:8,full');
+    Route::get('users/login-limits', 'LoginLimitsController@index')->name('users.login-limits')->middleware(pagePermByUrl('admin.users.login-limits', 'full'));
+    Route::post('users/login-limits/reset-member', 'LoginLimitsController@resetMember')->name('users.login-limits.reset-member')->middleware(pagePermByUrl('admin.users.login-limits', 'full'));
+    Route::post('users/login-limits/reset-all', 'LoginLimitsController@resetAll')->name('users.login-limits.reset-all')->middleware(pagePermByUrl('admin.users.login-limits', 'full'));
     Route::get('users/{id}/toggle-scan-checkin', 'UsersController@toggleScanCheckin')->name('users.toggle-scan-checkin')->middleware('page-perm:8,full');
 
     Route::resource('users', 'UsersController')->only(['index'])->middleware('page-perm:8,view');
@@ -338,9 +338,9 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::resource('biography', 'BiographiesController')->except(['index', 'show'])->middleware('page-perm:62,full');
     Route::resource('biography', 'BiographiesController')->only(['index', 'show'])->middleware('page-perm:62,view');
 
-    // Home card icons: one icon per Home card type (News / Events / Polls); needs the same permission as the News page
-    Route::get('home-card-icons', 'HomeCardIconsController@index')->name('home-card-icons.index')->middleware(pagePermByUrl('admin.news.index', 'full'));
-    Route::post('home-card-icons', 'HomeCardIconsController@update')->name('home-card-icons.update')->middleware(pagePermByUrl('admin.news.index', 'full'));
+    // Home card icons: one icon per Home card type (News / Events / Polls); has its own line on the Profile form (Home Card Icons)
+    Route::get('home-card-icons', 'HomeCardIconsController@index')->name('home-card-icons.index')->middleware(pagePermByUrl('admin.home-card-icons.index', 'full'));
+    Route::post('home-card-icons', 'HomeCardIconsController@update')->name('home-card-icons.update')->middleware(pagePermByUrl('admin.home-card-icons.index', 'full'));
 
     //news — page 28
     Route::resource('news', 'NewsController')->except(['index', 'show'])->middleware('page-perm:28,full');
