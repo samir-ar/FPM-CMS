@@ -275,3 +275,7 @@ In the CMS poll form every option has a tick box **"The member writes his own te
 - A ticked text option may be saved with NO label (2026-11-21): stored empty, the app shows "اكتب إجابتك" / "Write your answer" (PollOption::displayLabel). Unticked options still need text.
 
 - A poll may have ONE option when that option is a text option (otherwise two are still required) (2026-11-21).
+
+### Representative photo links (2026-11-21)
+- The Representatives API now encodes the photo file name as a whole (`rawurlencode`). A name with a "+" or an already-encoded "%28" (8 people in المجلس السياسي) returned 403 from the CDN, so those faces never showed. All 58 photos of المجلس السياسي + الهيئة السياسية checked: 200 on staging. Needs to go to production with the code deploy.
+- الهيئة السياسية photos were filled on staging only, by copying the image name of the same person from المجلس السياسي (see memory).
