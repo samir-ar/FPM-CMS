@@ -43,8 +43,8 @@ class RepresentativesCategoryFilterTest extends CouncilTestCase
         $now = now();
         $c = DB::table('dynamic_representatives')->insertGetId(['title' => json_encode(['ar' => 'ZQ فئة ي', 'en' => 'ZQ cat Y']), 'text' => '{}', 'order' => 920, 'created_at' => $now, 'updated_at' => $now]);
         DB::table('persons')->insert([
-            ['name' => json_encode(['ar' => 'ZQ بلا صورة', 'en' => 'ZQ none']), 'dynamic_representative_id' => $c, 'order' => 1, 'image' => '', 'created_at' => $now, 'updated_at' => $now],
-            ['name' => json_encode(['ar' => 'ZQ مع صورة', 'en' => 'ZQ with']), 'dynamic_representative_id' => $c, 'order' => 2, 'image' => 'Gebran+Bassil.jpg', 'created_at' => $now, 'updated_at' => $now],
+            ['name' => json_encode(['ar' => 'ZQ بلا صورة', 'en' => 'ZQ none']), 'dynamic_representative_id' => $c, 'order' => 1, 'image' => '', 'member_id' => null, 'created_at' => $now, 'updated_at' => $now],
+            ['name' => json_encode(['ar' => 'ZQ مع صورة', 'en' => 'ZQ with']), 'dynamic_representative_id' => $c, 'order' => 2, 'image' => 'Gebran+Bassil.jpg', 'member_id' => null, 'created_at' => $now, 'updated_at' => $now],
             ['name' => json_encode(['ar' => 'ZQ عضو', 'en' => 'ZQ member']), 'dynamic_representative_id' => $c, 'order' => 3, 'image' => '', 'member_id' => '777000111', 'created_at' => $now, 'updated_at' => $now],
         ]);
 
