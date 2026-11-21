@@ -89,7 +89,7 @@ class TalentApiTest extends CouncilTestCase
         $this->assertTrue($member['is_member']);
         $this->assertSame(['peer', 'self'], collect($member['tracks'])->pluck('code')->all());
         $this->assertSame(['closed', 'closed'], collect($member['tracks'])->pluck('state')->all());
-        $this->assertCount(11, $member['roles']);
+        $this->assertCount(9, $member['roles']);
 
         $guest = $this->callTalent('config');
         $this->assertFalse($guest['is_member']);

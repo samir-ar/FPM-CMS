@@ -133,7 +133,8 @@ return new class extends Migration
             ],
         ]);
 
-        $roles = ['قيادات سياسية', 'قيادات تنظيمية', 'قيادات بلدية ومحلية', 'قيادات شبابية', 'قيادات نسائية', 'خبراء ومتخصصون', 'اعلام وتواصل', 'سياسات عامة', 'ادارة مشاريع ومبادرات', 'طاقات واعدة', 'اي مجالات اخرى'];
+        // the owner's list (last one lets the member write his own words); editable in the CMS (Talent Roles)
+        $roles = ['الشؤون البلدية والاجتماعية', 'التدريب والتثقيف', 'الشؤون الانتخابية', 'الإعلام والتواصل', 'التنظيم والتعبئة', 'الاقتصاد والمال', 'الشؤون القانونية', 'الانتشار والاغتراب', 'أخرى'];
         foreach ($roles as $i => $name) {
             DB::table('talent_roles')->insert([
                 'name' => $name, 'allows_text' => $i === count($roles) - 1, 'is_active' => true, 'sort_order' => $i + 1,
