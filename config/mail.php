@@ -14,6 +14,9 @@ return [
             'username' => env('MAIL_USERNAME'),
             'password' => env('MAIL_PASSWORD'),
             'timeout' => 10,
+            // 0.0.0.0 = connect over IPv4 only. The mail server name also has IPv6 addresses; a server without IPv6 routing
+            // (the staging box) tries IPv6 first and times out although IPv4 works.
+            'source_ip' => env('MAIL_SOURCE_IP', '0.0.0.0'),
             'local_domain' => env('MAIL_EHLO_DOMAIN'),
         ],
 
