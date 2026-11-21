@@ -21,7 +21,9 @@ class RepresentativesController extends Controller
     {
         if($request->ajax()) {
 
-            $data = Person::with(['dynamicRepresentative','position'])->get();
+            $data = Person::with(['dynamicRepresentative','position'])
+                ->when($request->filled('category'), fn ($q) => $q->where('dynamic_representative_id', (int) $request->category))
+                ->get();
 
             return DataTables::of($data)
 
@@ -59,16 +61,25 @@ class RepresentativesController extends Controller
         }
 
 
+        // category filter: a drop-down above the table; picking one reloads the page with ?category=ID
+        $selected = (int) $request->query('category');
+        $options = "<option value=''>All categories</option>";
+        foreach (DynamicRepresentative::orderBy('order')->get() as $cat) {
+            $options .= "<option value='" . (int) $cat->id . "'" . ($selected === (int) $cat->id ? ' selected' : '') . '>' . e($cat->title) . '</option>';
+        }
+        $filter = "<select id='categoryFilter' class='form-control' style='display:inline-block;width:auto;max-width:260px;margin-right:6px' onchange=\"var v=this.value;location.href='" . route('admin.representatives.index') . "'+(v?'?category='+v:'');\">" . $options . '</select>';
+
         return view('components.table_ajax')->with([
             'layout'    => 'layouts.cms',
             'pageTitle'	=> 'Representatives',
             'table_title' => '',
             'slug'		=> 'representative',
             'custom_btn' =>
+                $filter .
                 "<a href='" . route('admin.representatives.create') ."' class='btn btn-primary' style='margin-right:6px'>Add Representative</a>" .
                 "<a href='" . route('admin.representatives.normalize-order') ."' class='btn btn-default' title='يصلح أي فجوات أو تكرار في الترتيب داخل كل فئة'><i class='fa fa-sort-numeric-asc'></i> إعادة ترقيم الترتيب</a>",
             'headers'	=> ['id', 'Name', 'Category', 'Image', 'Order','Position','Action'],
-            'action' => route('admin.representatives.index'),
+            'action' => route('admin.representatives.index') . ($selected ? '?category=' . $selected : ''),
             'columns' => json_encode([
                 ['data' => 'id', 'name' => 'id'],
                 ['data' =>  'name', 'name'=> 'name'],

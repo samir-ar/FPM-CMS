@@ -279,3 +279,6 @@ In the CMS poll form every option has a tick box **"The member writes his own te
 ### Representative photo links (2026-11-21)
 - The Representatives API now encodes the photo file name as a whole (`rawurlencode`). A name with a "+" or an already-encoded "%28" (8 people in المجلس السياسي) returned 403 from the CDN, so those faces never showed. All 58 photos of المجلس السياسي + الهيئة السياسية checked: 200 on staging. Needs to go to production with the code deploy.
 - الهيئة السياسية photos were filled on staging only, by copying the image name of the same person from المجلس السياسي (see memory).
+
+### Representatives list: category filter (2026-11-21)
+- A "All categories" drop-down above the Representatives table; picking one reloads the list with ?category=ID (rows and the Add button stay). No delete-by-category button (asked for, then cancelled).
