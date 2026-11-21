@@ -283,3 +283,4 @@ In the CMS poll form every option has a tick box **"The member writes his own te
 ### Representatives list: category filter (2026-11-21)
 - A "All categories" drop-down above the Representatives table; picking one reloads the list with ?category=ID (rows and the Add button stay). No delete-by-category button (asked for, then cancelled).
 - The CMS Representatives list no longer shows a broken-picture icon for people without a photo, and encodes the photo name (2026-11-21).
+- When a person has no uploaded photo but has a Member ID, the Representatives list shows the member-list photo (the app already did). 16 people without either got their Member ID by exact name match on staging (2026-11-21).
