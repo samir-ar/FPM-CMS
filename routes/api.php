@@ -142,6 +142,12 @@ Route::group(['namespace' => 'Api\V2', 'prefix' => 'v2/', 'middleware' => ['lang
 
 
     Route::group(['middleware' => ['not-required-token', 'fpm-auth']], function(){
+        // FPM Talent: members AND guests (a guest only ever sees / sends what the CMS made public)
+        Route::post('talent-config', 'TalentController@config');
+        Route::post('talent-faqs', 'TalentController@faqs');
+        Route::post('talent-guest-send-code', 'TalentController@guestSendCode');
+        Route::post('talent-guest-verify', 'TalentController@guestVerify');
+        Route::post('talent-submit', 'TalentController@submit');
         Route::post('news', 'ApiController@getNews');
         Route::post('paginated-news', 'ApiController@getNewsWithPagination')->name('api.news.paginated');
         Route::post('important-links', 'ApiController@getLinks');
