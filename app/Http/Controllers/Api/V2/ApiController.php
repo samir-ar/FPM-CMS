@@ -1938,18 +1938,22 @@ class ApiController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'type' => 'required|in:terms,faq',
+            'language' => 'nullable|in:ar,en',
         ]);
 
         if ($validator->fails()) {
             return $this->api_error_response('missing_parameters', 101, implode(', ', $validator->messages()->all()));
         }
 
-        $category = $request->type === 'terms' ? 'competency-terms' : 'competency-faq';
+        // the terms exist in Arabic (default) and English; the member switches with one button in the app
+        $language = $request->input('language') === 'en' ? 'en' : 'ar';
+        $category = $request->type === 'terms' ? ($language === 'en' ? 'competency-terms-en' : 'competency-terms') : 'competency-faq';
         $content = Content::where('category', $category)->first();
 
         return response()->json([
-            'type'    => $request->type,
-            'content' => optional($content)->text,
+            'type'     => $request->type,
+            'language' => $language,
+            'content'  => optional($content)->text,
         ]);
     }
 

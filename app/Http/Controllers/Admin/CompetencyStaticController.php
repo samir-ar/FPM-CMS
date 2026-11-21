@@ -14,6 +14,7 @@ class CompetencyStaticController extends Controller
     public function index()
     {
         $terms = Content::where('category', 'competency-terms')->first();
+        $termsEn = Content::where('category', 'competency-terms-en')->first();
         $faq = Content::where('category', 'competency-faq')->first();
 
         return view('components.form')->with([
@@ -34,6 +35,14 @@ class CompetencyStaticController extends Controller
                 [
                     'wrapper-class' => 'col-md-12',
                     'class' => 'box-default',
+                    'box-header' => 'Terms and Conditions (English): shown when the member taps the English button',
+                    'form_fields' => [
+                        $this->drawHtml('text', 'Content', 'terms_en', optional($termsEn)->text, null, '', 'col-md-12'),
+                    ],
+                ],
+                [
+                    'wrapper-class' => 'col-md-12',
+                    'class' => 'box-default',
                     'box-header' => 'الأسئلة الشائعة',
                     'form_fields' => [
                         $this->drawHtml('text', 'المحتوى', 'faq', optional($faq)->text, null, '', 'col-md-12'),
@@ -45,7 +54,7 @@ class CompetencyStaticController extends Controller
 
     public function update(Request $request)
     {
-        foreach (['terms' => 'competency-terms', 'faq' => 'competency-faq'] as $field => $category) {
+        foreach (['terms' => 'competency-terms', 'terms_en' => 'competency-terms-en', 'faq' => 'competency-faq'] as $field => $category) {
             $r = Content::where('category', $category)->first();
 
             if (!$r) {
