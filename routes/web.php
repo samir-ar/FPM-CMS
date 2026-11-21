@@ -349,7 +349,7 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     //polls — page 16
     Route::resource('polls', 'PollsController')->except(['index', 'show'])->middleware('page-perm:16,full');
     Route::resource('polls', 'PollsController')->only(['index', 'show'])->middleware('page-perm:16,view');
-    Route::get('polls/{id}/results', 'PollResultsController@show')->name('polls.results')->middleware('page-perm:16,view');
+    Route::get('polls/{id}/results', 'PollResultsController@show')->name('polls.results')->middleware(pagePermByUrl('admin.polls.results', 'view'));
     Route::get('polls/{id}/toggle-active', 'PollsController@toggleActive')->name('polls.toggle-active')->middleware('page-perm:16,full');
     Route::get('polls/{id}/toggle-guest-access', 'PollsController@toggleGuestAccess')->name('polls.toggle-guest-access')->middleware('page-perm:16,full');
 
@@ -595,15 +595,15 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::delete('internal-election/{id}/permitted-voters/{permissionId}', 'InternalElectionController@removePermittedVoter')->name('internal-election.permitted-voters.remove')->middleware('page-perm:57,full');
     Route::get('internal-election/export/{id}', 'InternalElectionController@export')->name('internal-election.export')->middleware(['page-perm:57,view', 'ie-results-otp']);
     Route::get('internal-election/{id}/votes', 'InternalElectionController@votes')->name('internal-election.votes')->middleware(['page-perm:57,view', 'ie-results-otp']);
-    Route::get('internal-election/{id}/votes-report', 'InternalElectionController@votesReport')->name('internal-election.votes-report')->middleware(['page-perm:57,view', 'ie-results-otp']);
-    Route::get('internal-election/{id}/votes-report/export', 'InternalElectionController@exportVotesReport')->name('internal-election.votes-report.export')->middleware(['page-perm:57,view', 'ie-results-otp']);
+    Route::get('internal-election/{id}/votes-report', 'InternalElectionController@votesReport')->name('internal-election.votes-report')->middleware([pagePermByUrl('admin.internal-election.votes-report', 'view'), 'ie-results-otp']);
+    Route::get('internal-election/{id}/votes-report/export', 'InternalElectionController@exportVotesReport')->name('internal-election.votes-report.export')->middleware([pagePermByUrl('admin.internal-election.votes-report', 'view'), 'ie-results-otp']);
     Route::get('internal-election-results-otp', 'InternalElectionController@resultsOtpForm')->name('internal-election.results-otp')->middleware('page-perm:57,view');
     Route::post('internal-election-results-otp/send', 'InternalElectionController@sendResultsOtp')->name('internal-election.results-otp.send')->middleware('page-perm:57,view');
     Route::post('internal-election-results-otp/verify', 'InternalElectionController@verifyResultsOtp')->name('internal-election.results-otp.verify')->middleware('page-perm:57,view');
-    Route::get('internal-election/{id}/progress', 'InternalElectionController@progress')->name('internal-election.progress')->middleware('page-perm:57,view');
-    Route::get('internal-election/{id}/progress/towns', 'InternalElectionController@progressTowns')->name('internal-election.progress.towns')->middleware('page-perm:57,view');
-    Route::get('internal-election/{id}/progress/export-by-district', 'InternalElectionController@exportProgressByDistrict')->name('internal-election.progress.export-by-district')->middleware(['page-perm:57,view', 'ie-results-otp']);
-    Route::get('internal-election/{id}/progress/export-by-town', 'InternalElectionController@exportProgressByTown')->name('internal-election.progress.export-by-town')->middleware(['page-perm:57,view', 'ie-results-otp']);
+    Route::get('internal-election/{id}/progress', 'InternalElectionController@progress')->name('internal-election.progress')->middleware(pagePermByUrl('admin.internal-election.progress', 'view'));
+    Route::get('internal-election/{id}/progress/towns', 'InternalElectionController@progressTowns')->name('internal-election.progress.towns')->middleware(pagePermByUrl('admin.internal-election.progress', 'view'));
+    Route::get('internal-election/{id}/progress/export-by-district', 'InternalElectionController@exportProgressByDistrict')->name('internal-election.progress.export-by-district')->middleware([pagePermByUrl('admin.internal-election.progress', 'view'), 'ie-results-otp']);
+    Route::get('internal-election/{id}/progress/export-by-town', 'InternalElectionController@exportProgressByTown')->name('internal-election.progress.export-by-town')->middleware([pagePermByUrl('admin.internal-election.progress', 'view'), 'ie-results-otp']);
     Route::get('internal-election/{id}/candidate-activity', 'InternalElectionController@candidateActivity')->name('internal-election.candidate-activity')->middleware('page-perm:57,view');
     Route::get('internal-election/{id}/district-voting-settings', 'InternalElectionController@districtVotingSettings')->name('internal-election.district-voting-settings')->middleware('page-perm:57,full');
     Route::post('internal-election/{id}/district-voting-settings', 'InternalElectionController@updateDistrictVotingSettings')->name('internal-election.district-voting-settings.update')->middleware('page-perm:57,full');
@@ -628,20 +628,20 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
 
     //National Council Poll — page 58, covers its Questions sub-feature too
     // Reset votes (clears every vote of one poll; locked with an SMS code sent to the fixed system phone)
-    Route::get('national-council-poll/{id}/reset-votes', 'NationalCouncilPollResetController@form')->name('national-council-poll.reset-votes')->middleware('page-perm:58,full');
-    Route::post('national-council-poll/{id}/reset-votes/send-code', 'NationalCouncilPollResetController@sendCode')->name('national-council-poll.reset-votes.send')->middleware('page-perm:58,full');
-    Route::post('national-council-poll/{id}/reset-votes', 'NationalCouncilPollResetController@confirm')->name('national-council-poll.reset-votes.confirm')->middleware('page-perm:58,full');
+    Route::get('national-council-poll/{id}/reset-votes', 'NationalCouncilPollResetController@form')->name('national-council-poll.reset-votes')->middleware(pagePermByUrl('admin.national-council-poll.reset-votes', 'full'));
+    Route::post('national-council-poll/{id}/reset-votes/send-code', 'NationalCouncilPollResetController@sendCode')->name('national-council-poll.reset-votes.send')->middleware(pagePermByUrl('admin.national-council-poll.reset-votes', 'full'));
+    Route::post('national-council-poll/{id}/reset-votes', 'NationalCouncilPollResetController@confirm')->name('national-council-poll.reset-votes.confirm')->middleware(pagePermByUrl('admin.national-council-poll.reset-votes', 'full'));
     Route::post('national-council-poll/{id}/closes-at', 'NationalCouncilPollController@updateClosesAt')->name('national-council-poll.closes-at')->middleware('page-perm:58,full');
     // who voted + from which device (never WHAT they voted)
-    Route::get('national-council-poll/{id}/voters', 'NationalCouncilPollVotersController@progress')->name('national-council-poll.progress')->middleware('page-perm:58,view');
-    Route::get('national-council-poll/{id}/voters/export', 'NationalCouncilPollVotersController@progressExport')->name('national-council-poll.progress.export')->middleware('page-perm:58,view');
+    Route::get('national-council-poll/{id}/voters', 'NationalCouncilPollVotersController@progress')->name('national-council-poll.progress')->middleware(pagePermByUrl('admin.national-council-poll.progress', 'view'));
+    Route::get('national-council-poll/{id}/voters/export', 'NationalCouncilPollVotersController@progressExport')->name('national-council-poll.progress.export')->middleware(pagePermByUrl('admin.national-council-poll.progress', 'view'));
     // HIDDEN (no link anywhere): who voted for whom. Same one-time-code lock as the Internal Election's report.
-    Route::get('national-council-poll/{id}/votes-report', 'NationalCouncilPollVotersController@votesReport')->name('national-council-poll.votes-report')->middleware(['page-perm:58,view', 'ie-results-otp']);
-    Route::get('national-council-poll/{id}/votes-report/export', 'NationalCouncilPollVotersController@votesReportExport')->name('national-council-poll.votes-report.export')->middleware(['page-perm:58,view', 'ie-results-otp']);
+    Route::get('national-council-poll/{id}/votes-report', 'NationalCouncilPollVotersController@votesReport')->name('national-council-poll.votes-report')->middleware([pagePermByUrl('admin.national-council-poll.votes-report', 'view'), 'ie-results-otp']);
+    Route::get('national-council-poll/{id}/votes-report/export', 'NationalCouncilPollVotersController@votesReportExport')->name('national-council-poll.votes-report.export')->middleware([pagePermByUrl('admin.national-council-poll.votes-report', 'view'), 'ie-results-otp']);
     Route::get('national-council-poll/{id}/toggle-publish','NationalCouncilPollController@togglePublish')->name('national-council-poll.toggle-publish')->middleware('page-perm:58,full');
-    Route::get('national-council-poll-results/data','NationalCouncilPollController@resultsOverviewData')->name('national-council-poll.results-overview.data')->middleware('page-perm:58,view');
-    Route::get('national-council-poll-results','NationalCouncilPollController@resultsOverview')->name('national-council-poll.results-overview')->middleware('page-perm:58,view');
-    Route::get('national-council-poll/{id}/results','NationalCouncilPollController@results')->name('national-council-poll.results')->middleware('page-perm:58,view');
+    Route::get('national-council-poll-results/data','NationalCouncilPollController@resultsOverviewData')->name('national-council-poll.results-overview.data')->middleware(pagePermByUrl('admin.national-council-poll.results-overview', 'view'));
+    Route::get('national-council-poll-results','NationalCouncilPollController@resultsOverview')->name('national-council-poll.results-overview')->middleware(pagePermByUrl('admin.national-council-poll.results-overview', 'view'));
+    Route::get('national-council-poll/{id}/results','NationalCouncilPollController@results')->name('national-council-poll.results')->middleware(pagePermByUrl('admin.national-council-poll.results-overview', 'view'));
     Route::get('national-council-poll-voters-template', 'NationalCouncilPollController@downloadVotersTemplate')->name('national-council-poll.voters-template')->middleware('page-perm:58,view');
     Route::get('national-council-poll/{id}/candidates/search', 'NationalCouncilPollQuestionsController@searchCandidates')->name('national-council-poll.candidates.search')->middleware('page-perm:58,full');
     Route::get('national-council-poll/{id}/candidates/photo/{memberId}', 'NationalCouncilPollQuestionsController@candidatePhoto')->name('national-council-poll.candidates.photo')->middleware('page-perm:58,full');
