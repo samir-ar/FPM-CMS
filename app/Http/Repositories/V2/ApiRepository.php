@@ -822,6 +822,24 @@ class ApiRepository
         ];
     }
 
+    private function homeCardIcon($g, $type)
+    {
+        $own = null;
+        if ($g->source_image) {
+            if ($type === 'NEWS') {
+                $own = Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/news/' . $g->source_image);
+            } elseif ($type === 'EVENT') {
+                $own = Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/events/' . $g->source_image);
+            }
+        }
+
+        if ($own && !\App\V2\HomeCardIcon::forcedForType($type)) {
+            return $own;
+        }
+
+        return \App\V2\HomeCardIcon::urlFor($type) ?: $own;
+    }
+
     public function getGenericInstance($g, $type, $placeholder = null, $user = null, $likesCounts = null, $likedByMe = [], $eventLikesCounts = null, $eventLikedByMe = [])
     {
 
@@ -857,7 +875,8 @@ class ApiRepository
             'title' => ($g->title) ? $g->title : $name,
             'details' => $details,
             'source' => $g->source,
-            "post_image" => ($g->source_image) ? ($type === "NEWS" ? Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/news/' . $g->source_image) : ($type === "EVENT" ? Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/events/' . $g->source_image) : null)) : null,
+            // the round icon: the one set per type in the CMS ("Home card icons"); a news item's own logo is kept unless the CMS says to always use the type icon
+            "post_image" => $this->homeCardIcon($g, $type),
             'media' => $this->getMedia($type, $g, $placeholder),
             'type' => $g->type,
             "thumbnail" => ($thumbnail) ? ($type === "NEWS" ? Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'news/videos/thumbnails/' . $thumbnail) : ($type === "EVENT" ? Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/events/' . $thumbnail) : null)) : null,

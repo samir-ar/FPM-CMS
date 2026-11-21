@@ -56,7 +56,7 @@ class NewsController extends Controller
             'pageTitle'    => 'News',
             'table_title' => '',
             'slug'        => 'news',
-            'custom_btn' => "<a href='" . route('admin.news.create') . "' class='btn btn-primary'>Add News</a>",
+            'custom_btn' => "<a href='" . route('admin.news.create') . "' class='btn btn-primary'>Add News</a> <a href='" . route('admin.home-card-icons.index') . "' class='btn btn-default' title='The round icon on the Home cards (news, events, polls)'><i class='fa fa-circle-o'></i> Home card icons</a>",
             'headers'    => ['id', 'Title', 'Source',  'Images', 'Date', 'Action'],
             'action' => route('admin.news.index'),
             'columns' => json_encode([

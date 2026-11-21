@@ -338,6 +338,10 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::resource('biography', 'BiographiesController')->except(['index', 'show'])->middleware('page-perm:62,full');
     Route::resource('biography', 'BiographiesController')->only(['index', 'show'])->middleware('page-perm:62,view');
 
+    // Home card icons: one icon per Home card type (News / Events / Polls); needs the same permission as the News page
+    Route::get('home-card-icons', 'HomeCardIconsController@index')->name('home-card-icons.index')->middleware(pagePermByUrl('admin.news.index', 'full'));
+    Route::post('home-card-icons', 'HomeCardIconsController@update')->name('home-card-icons.update')->middleware(pagePermByUrl('admin.news.index', 'full'));
+
     //news — page 28
     Route::resource('news', 'NewsController')->except(['index', 'show'])->middleware('page-perm:28,full');
     Route::resource('news', 'NewsController')->only(['index', 'show'])->middleware('page-perm:28,view');

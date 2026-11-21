@@ -284,3 +284,8 @@ In the CMS poll form every option has a tick box **"The member writes his own te
 - A "All categories" drop-down above the Representatives table; picking one reloads the list with ?category=ID (rows and the Add button stay). No delete-by-category button (asked for, then cancelled).
 - The CMS Representatives list no longer shows a broken-picture icon for people without a photo, and encodes the photo name (2026-11-21).
 - When a person has no uploaded photo but has a Member ID, the Representatives list shows the member-list photo (the app already did). 16 people without either got their Member ID by exact name match on staging (2026-11-21).
+
+### Home card icons (2026-11-21)
+- New CMS page **Home card icons** (button on the News list page; same permission as News): upload one round icon per Home card type (News / Events / Polls), square e.g. 200x200. Table `home_card_icons` (migration `2026_11_21_120000`), files in `images/home_icons`.
+- The Home feed's `post_image` now comes from that icon: events and polls take the type icon; a news item keeps its own logo unless "Always use this icon for news" is ticked (news without a logo take the type icon). With nothing set the old behaviour stays (news logo, else the FPM logo in the app). **Server only - no app build needed.**
+- Local MySQL defaults to MyISAM, so new migrations must say `engine = InnoDB` or the DatabaseTransactions tests leave rows behind.
