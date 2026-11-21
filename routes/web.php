@@ -215,6 +215,22 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::post('municipality-members-import', 'MunicipalityMembersController@importStore')->name('municipality-members.import-store')->middleware('page-perm:66,full');
     Route::get('municipality-members-template', 'MunicipalityMembersController@downloadTemplate')->name('municipality-members.template')->middleware('page-perm:66,view');
 
+    // FPM Talent (the redesigned Competency Platform): each page has its own permission line on the Profile form
+    Route::get('talent-tracks', 'TalentTracksController@index')->name('talent-tracks.index')->middleware(pagePermByUrl('admin.talent-tracks.index', 'view'));
+    Route::post('talent-tracks', 'TalentTracksController@update')->name('talent-tracks.update')->middleware(pagePermByUrl('admin.talent-tracks.index', 'full'));
+    Route::post('talent-tracks/{code}/new-cycle', 'TalentTracksController@newCycle')->name('talent-tracks.new-cycle')->middleware(pagePermByUrl('admin.talent-tracks.index', 'full'));
+    Route::get('talent-roles', 'TalentRolesController@index')->name('talent-roles.index')->middleware(pagePermByUrl('admin.talent-roles.index', 'view'));
+    Route::post('talent-roles', 'TalentRolesController@update')->name('talent-roles.update')->middleware(pagePermByUrl('admin.talent-roles.index', 'full'));
+    Route::post('talent-roles/add', 'TalentRolesController@store')->name('talent-roles.store')->middleware(pagePermByUrl('admin.talent-roles.index', 'full'));
+    Route::get('talent-faqs', 'TalentFaqController@index')->name('talent-faqs.index')->middleware(pagePermByUrl('admin.talent-faqs.index', 'view'));
+    Route::post('talent-faqs', 'TalentFaqController@update')->name('talent-faqs.update')->middleware(pagePermByUrl('admin.talent-faqs.index', 'full'));
+    Route::post('talent-faqs/add', 'TalentFaqController@store')->name('talent-faqs.store')->middleware(pagePermByUrl('admin.talent-faqs.index', 'full'));
+    Route::get('talent-submissions', 'TalentSubmissionsController@index')->name('talent-submissions.index')->middleware(pagePermByUrl('admin.talent-submissions.index', 'view'));
+    Route::get('talent-submissions/export', 'TalentSubmissionsController@export')->name('talent-submissions.export')->middleware(pagePermByUrl('admin.talent-submissions.index', 'view'));
+    Route::get('talent-submissions/{id}', 'TalentSubmissionsController@show')->name('talent-submissions.show')->middleware(pagePermByUrl('admin.talent-submissions.index', 'view'));
+    Route::post('talent-submissions/{id}', 'TalentSubmissionsController@update')->name('talent-submissions.update')->middleware(pagePermByUrl('admin.talent-submissions.index', 'full'));
+    Route::get('talent-files/{id}', 'TalentSubmissionsController@download')->name('talent-files.download')->middleware(pagePermByUrl('admin.talent-files.download', 'view'));
+
     //Competency Platform (منصة الكفاءات) — page 71
     Route::get('competency-vacancies', 'CompetencyVacanciesController@index')->name('competency-vacancies.index')->middleware('page-perm:71,view');
     Route::get('competency-vacancies/create', 'CompetencyVacanciesController@create')->name('competency-vacancies.create')->middleware('page-perm:71,full');
