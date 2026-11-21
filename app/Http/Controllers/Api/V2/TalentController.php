@@ -288,6 +288,9 @@ class TalentController extends Controller
             Cache::forget('talent-guest-token:' . $request->input('guest_token'));
         }
 
+        // tell the people listed on the track (after the answer is sent; a mail problem never touches the submission)
+        \App\Support\TalentNotifier::afterSubmission($submission);
+
         return response()->json(['success' => true, 'id' => $submission->id]);
     }
 

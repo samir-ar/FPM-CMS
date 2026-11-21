@@ -81,6 +81,11 @@
                                 <p class="help-block">Before the start date the app shows "opens on &lt;date&gt;" by itself.</p>
                             </div>
                             <div class="form-group">
+                                <label>E-mail me when a form is sent (addresses)</label>
+                                <textarea class="form-control" rows="2" dir="ltr" name="tracks[{{ $t->code }}][notify_emails]" placeholder="name@fpmlb.org, other@fpmlb.org">{{ old('tracks.'.$t->code.'.notify_emails', $t->notify_emails) }}</textarea>
+                                <p class="help-block">One address per line, or separated by commas. Empty = no e-mail. The e-mail says who sent it and links here; the CV is never attached.</p>
+                            </div>
+                            <div class="form-group">
                                 <label>Welcome text above the form</label>
                                 <textarea class="form-control" rows="5" dir="rtl" name="tracks[{{ $t->code }}][intro]">{{ old('tracks.'.$t->code.'.intro', $t->intro) }}</textarea>
                             </div>
@@ -98,6 +103,15 @@
         </div>
         <button type="submit" class="btn btn-primary">Save</button>
     </form>
+
+    <h4 style="margin-top:30px">Test the e-mail</h4>
+    <p class="text-muted">Save the addresses first, then send a test: it goes to the addresses saved on that track and is clearly marked TEST.</p>
+    @foreach ($tracks as $t)
+        <form method="POST" action="{{ route('admin.talent-tracks.test-email', $t->code) }}" style="display:inline-block;margin-right:8px">
+            @csrf
+            <button type="submit" class="btn btn-default"><i class="fa fa-envelope-o"></i> Send a test e-mail ({{ $t->code === 'peer' ? 'naming others' : 'showing interest' }})</button>
+        </form>
+    @endforeach
 
     <h4 style="margin-top:30px">Start a new cycle</h4>
     <p class="text-muted">A new cycle gives every member a fresh allowance. Earlier submissions stay in the list under their old cycle number; nothing is deleted.</p>

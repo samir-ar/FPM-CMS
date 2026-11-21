@@ -218,6 +218,7 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     // FPM Talent (the redesigned Competency Platform): each page has its own permission line on the Profile form
     Route::get('talent-tracks', 'TalentTracksController@index')->name('talent-tracks.index')->middleware(pagePermByUrl('admin.talent-tracks.index', 'view'));
     Route::post('talent-tracks', 'TalentTracksController@update')->name('talent-tracks.update')->middleware(pagePermByUrl('admin.talent-tracks.index', 'full'));
+    Route::post('talent-tracks/{code}/test-email', 'TalentTracksController@testEmail')->name('talent-tracks.test-email')->middleware(pagePermByUrl('admin.talent-tracks.index', 'full'));
     Route::post('talent-tracks/{code}/new-cycle', 'TalentTracksController@newCycle')->name('talent-tracks.new-cycle')->middleware(pagePermByUrl('admin.talent-tracks.index', 'full'));
     Route::get('talent-roles', 'TalentRolesController@index')->name('talent-roles.index')->middleware(pagePermByUrl('admin.talent-roles.index', 'view'));
     Route::post('talent-roles', 'TalentRolesController@update')->name('talent-roles.update')->middleware(pagePermByUrl('admin.talent-roles.index', 'full'));
