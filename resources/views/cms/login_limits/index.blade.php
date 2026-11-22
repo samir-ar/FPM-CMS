@@ -67,7 +67,7 @@
                 <table class="table table-bordered table-striped">
                     <thead>
                         <tr>
-                            <th>Member ID</th><th>Name</th><th>Codes requested</th><th>Wrong codes</th><th>Last try</th><th>Now</th><th></th>
+                            <th>Member ID</th><th>Name</th><th>Codes requested<br><small class="text-muted">history, 24 h</small></th><th>Wrong codes<br><small class="text-muted">history, 24 h</small></th><th>Last try</th><th>Current<br><small class="text-muted">used now (reset clears)</small></th><th>Now</th><th></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -78,6 +78,10 @@
                             <td>{{ $r['codes'] }}</td>
                             <td>{{ $r['wrong'] }}</td>
                             <td>{{ $r['last_try'] }}</td>
+                            <td>
+                                Codes: <strong>{{ $r['cur_sent'] }}</strong> of {{ $r['cur_sent_max'] }}<br>
+                                Wrong: <strong>{{ $r['cur_wrong'] }}</strong> of {{ $r['cur_wrong_max'] }}
+                            </td>
                             <td>
                                 @if ($r['blocked'])
                                     <span class="label label-danger">Blocked</span> <small>{{ $r['why'] }}</small>

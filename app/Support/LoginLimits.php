@@ -94,6 +94,10 @@ class LoginLimits
                 'codes' => (int) $r->codes,
                 'wrong' => (int) $r->wrong,
                 'last_try' => $r->last_try,
+                'cur_sent' => $s['sent'],
+                'cur_sent_max' => $s['sent_max'],
+                'cur_wrong' => $s['wrong'],
+                'cur_wrong_max' => $s['wrong_max'],
                 'blocked' => $s['sent_blocked'] || $s['wrong_blocked'],
                 'why' => trim(($s['sent_blocked'] ? 'too many codes requested' : '') . ($s['sent_blocked'] && $s['wrong_blocked'] ? ', ' : '') . ($s['wrong_blocked'] ? 'too many wrong codes' : '')),
             ];
@@ -122,7 +126,8 @@ class LoginLimits
         RateLimiter::clear(self::guessKey($memberId));
     }
 
-    // Everybody, including the per-IP counters.
+    // Everybody, including the per-IP counters. The "who tried" history is kept; the screen's "Current" column
+    // shows the live counters, which a reset sets back to zero.
     public static function resetAll(): void
     {
         Cache::forever(self::VERSION_KEY, self::version() + 1);

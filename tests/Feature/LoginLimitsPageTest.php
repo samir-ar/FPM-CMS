@@ -107,11 +107,29 @@ class LoginLimitsPageTest extends CouncilTestCase
         $this->assertStringContainsString(self::MEMBER, $html);
         $this->assertStringContainsString('Blocked', $html);
 
-        // after a reset the same member is listed as OK again, with the tries still counted
+        // before the reset the "Current" numbers are full
+        $this->assertSame(LoginLimits::SEND_MAX, $rows['cur_sent']);
+        $this->assertSame(LoginLimits::GUESS_MAX, $rows['cur_wrong']);
+
+        // after a reset the history is KEPT but the current counters are zero and the member is OK again
         LoginLimits::resetMember(self::MEMBER);
         $rows = collect(LoginLimits::recentMembers())->firstWhere('member_id', self::MEMBER);
         $this->assertFalse($rows['blocked']);
         $this->assertSame(3, $rows['codes']);
+        $this->assertSame(2, $rows['wrong']);
+        $this->assertSame(0, $rows['cur_sent']);
+        $this->assertSame(0, $rows['cur_wrong']);
+    }
+
+    public function test_reset_everybody_keeps_the_history_but_zeroes_the_current_column(): void
+    {
+        DB::table('login_attempts')->where('member_id', self::MEMBER)->delete();
+        LoginLimits::record(self::MEMBER, 'code', '1.2.3.4');
+        $this->fillCounters(self::MEMBER);
+        $this->actingAs($this->adminUser(), 'admin')->post(route('admin.users.login-limits.reset-all', [], false))->assertRedirect();
+        $rows = collect(LoginLimits::recentMembers())->firstWhere('member_id', self::MEMBER);
+        $this->assertSame(1, $rows['codes']);
+        $this->assertSame(0, $rows['cur_sent']);
     }
 
     public function test_real_login_tries_are_recorded(): void
