@@ -26,11 +26,20 @@ class NewsController extends Controller
     {
         if ($request->ajax()) {
 
-            $data = News::query();
+            $data = News::query()->with('images');
             return DataTables::of($data)
 
                 ->addColumn('my_image', function ($row) {
-                    return $this->drawImage('images/news/' . $row->source_image, '100');
+                    // the photo the admin UPLOADED (first of the gallery) comes first; the old "source image" is only
+                    // the fallback (for scraped news it is often empty or a dead link = broken picture icon)
+                    $first = $row->images->first();
+                    if ($first && $first->name) {
+                        $url = 'https://fpm-web-files.s3.eu-central-1.amazonaws.com/fpm/storage/images/news/' . $first->name;   // NewsImage::getNameAttribute already URL-encodes the name
+
+                        return "<div><a target='_blank' href='" . $url . "'><img width=100 src='" . $url . "'></a></div>";
+                    }
+
+                    return $row->source_image ? $this->drawImage('images/news/' . $row->source_image, '100') : null;
                 })
 
                 ->addColumn('action', function ($row) {
@@ -409,7 +418,8 @@ class NewsController extends Controller
                     'class' => 'box-primary',
                     'box-header' => 'Images',
                     'form_fields' => [
-                        $this->drawImage('images/news/' . $news->source_image, '100', "col-md-2"),
+                        // the source-image preview only when nothing was uploaded below (otherwise it is a broken picture)
+                        ($news->images->count() === 0 && $news->source_image) ? $this->drawImage('images/news/' . $news->source_image, '100', "col-md-2") : null,
                         $this->drawHtml('file', 'Upload Source Image (will override the existing one)', 'source_image', null, 'image/*', '', 'col-md-10'),
 
                         $this->drawDeletableImages($news->images, "img-fluid rounded", 200, ['delete' => route('admin.newsimage.delete')]),
