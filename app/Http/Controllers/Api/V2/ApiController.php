@@ -1621,7 +1621,7 @@ class ApiController extends Controller
         }
 
         return !empty($p->image)
-            ? Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/representatives/' . rawurlencode($p->image))
+            ? Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/representatives/' . \App\Support\StorageUrl::fileName($p->image))
             : null;
     }
 

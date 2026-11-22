@@ -48,7 +48,7 @@ class RepresentativesController extends Controller
                         $src = url('/api/v2/member-photo/' . rawurlencode($row->member_id));
                         return "<div><a target='_blank' href='$src'><img width=100 src='$src'></a></div>";
                     }
-                    return $this->drawImage('images/representatives/' . rawurlencode($row->image), '100');
+                    return $this->drawImage('images/representatives/' . \App\Support\StorageUrl::fileName($row->image), '100');
                 })
 
                 ->addColumn('position', function($row){

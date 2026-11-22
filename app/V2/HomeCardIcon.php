@@ -40,7 +40,7 @@ class HomeCardIcon extends Model
     public function url(): ?string
     {
         return $this->image
-            ? Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/storage/' . self::DIR . '/' . rawurlencode($this->image))
+            ? Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/storage/' . self::DIR . '/' . \App\Support\StorageUrl::fileName($this->image))
             : null;
     }
 
