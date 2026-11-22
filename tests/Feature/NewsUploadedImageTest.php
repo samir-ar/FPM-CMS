@@ -64,4 +64,9 @@ class NewsUploadedImageTest extends CouncilTestCase
         $html2 = $this->actingAs($this->adminUser(), 'admin')->get(route('admin.news.edit', $id2, false))->assertOk()->getContent();
         $this->assertStringContainsString('only-source.jpg', $html2);
     }
+    public function test_the_image_uploader_shows_a_thumbnail_of_the_uploaded_picture(): void
+    {
+        $html = $this->actingAs($this->adminUser(), "admin")->get(route("admin.news.create", [], false))->assertOk()->getContent();
+        $this->assertStringContainsString("showPreview: true", $html);
+    }
 }

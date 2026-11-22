@@ -365,6 +365,10 @@
                 fileName:"myfile",
                 showDelete: true,
                 acceptFiles:"image/*",
+                // show the picture itself (a thumbnail) under the file name, not only "name.webp (24 KB)"
+                showPreview: true,
+                previewHeight: "140px",
+                previewWidth: "auto",
                 onSuccess: function(files, data){
                     console.log(data);
                     var val = ele.find('.myFiles').val();
