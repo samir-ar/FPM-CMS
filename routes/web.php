@@ -29,6 +29,16 @@ if (!function_exists('pagePermByUrl')) {
     }
 }
 
+// ANY of several pages (a helper route shared by sibling pages): 'page-perm:51|52|53,view' passes when one of them does.
+if (!function_exists('pagePermByUrls')) {
+    function pagePermByUrls(array $urls, string $level): string
+    {
+        $ids = array_map(fn ($u) => (int) explode(',', explode(':', pagePermByUrl($u, $level))[1])[0], $urls);
+
+        return 'page-perm:' . implode('|', $ids) . ',' . $level;
+    }
+}
+
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -121,8 +131,8 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     // (no page-perm at all) while auditing the rest of the permission
     // system - any logged-in admin could reach this regardless of their
     // Profile. Gated under the same permission as managing administrators.
-    Route::get('add-user', 'ProfileController@addUserForm')->name('add_user_form')->middleware(pagePermByUrl('admin.admins.index', 'full'));
-    Route::post('add-user', 'ProfileController@addUser')->name('add_user')->middleware(pagePermByUrl('admin.admins.index', 'full'));
+    Route::get('add-user', 'ProfileController@addUserForm')->name('add_user_form')->middleware(pagePermByUrl('admin.add_user_form', 'full'));
+    Route::post('add-user', 'ProfileController@addUser')->name('add_user')->middleware(pagePermByUrl('admin.add_user_form', 'full'));
 
     //App users
     // page 8 (APP USERS). Pilot for the new Profile permission system.
@@ -455,12 +465,12 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
 
 
     //Transactions — page 1
-    Route::resource('transactions', 'TransactionController')->except(['index', 'show'])->middleware('page-perm:1,full');
-    Route::resource('transactions', 'TransactionController')->only(['index', 'show'])->middleware('page-perm:1,view');
+    Route::resource('transactions', 'TransactionController')->except(['index', 'show'])->middleware(pagePermByUrl('admin.transactions.index', 'full'));
+    Route::resource('transactions', 'TransactionController')->only(['index', 'show'])->middleware(pagePermByUrl('admin.transactions.index', 'view'));
 
     //Bills Transaction — page 1 (child "Monthly Bills")
-    Route::resource('bills', 'BillsTransactionsController')->except(['index', 'show'])->middleware('page-perm:1,full');
-    Route::resource('bills', 'BillsTransactionsController')->only(['index', 'show'])->middleware('page-perm:1,view');
+    Route::resource('bills', 'BillsTransactionsController')->except(['index', 'show'])->middleware(pagePermByUrl('admin.bills.index', 'full'));
+    Route::resource('bills', 'BillsTransactionsController')->only(['index', 'show'])->middleware(pagePermByUrl('admin.bills.index', 'view'));
 
     /////Jihad Noureddine////////
 
@@ -531,74 +541,74 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     //Traking Module — page 50 covers ALL 6 sub-controllers below (its
     // children 51-56 don't get their own Profile row, same as every other
     // parent/children page in this app — one grant covers the whole group).
-    Route::get('district-coordinator', 'DistrictCoordinatorController@index')->name('district-coordinator.index')->middleware('page-perm:50,view');
-    Route::get('district-coordinator-create', 'DistrictCoordinatorController@create')->name('district-coordinator.create')->middleware('page-perm:50,full');
-    Route::post('district-coordinator-store', 'DistrictCoordinatorController@store')->name('district-coordinator.store')->middleware('page-perm:50,full');
-    Route::get('district-coordinator-edit', 'DistrictCoordinatorController@edit')->name('district-coordinator.edit')->middleware('page-perm:50,full');
-    Route::delete('district-coordinator-destroy/{id}', 'DistrictCoordinatorController@destroy')->name('district-coordinator.destroy')->middleware('page-perm:50,full');
-    Route::delete('district-coordinator-update/{id}', 'DistrictCoordinatorController@destroy')->name('district-coordinator.destroy')->middleware('page-perm:50,full');
-    Route::post('district-coordinator-edit-date/{id}/{phaseNumber}', 'DistrictCoordinatorController@editDate')->middleware('page-perm:50,full');
-    Route::delete('district-coordinator-delete-date/{id}/{phaseNumber}', 'DistrictCoordinatorController@deleteDate')->middleware('page-perm:50,full');
+    Route::get('district-coordinator', 'DistrictCoordinatorController@index')->name('district-coordinator.index')->middleware(pagePermByUrl('admin.district-coordinator.index', 'view'));
+    Route::get('district-coordinator-create', 'DistrictCoordinatorController@create')->name('district-coordinator.create')->middleware(pagePermByUrl('admin.district-coordinator.index', 'full'));
+    Route::post('district-coordinator-store', 'DistrictCoordinatorController@store')->name('district-coordinator.store')->middleware(pagePermByUrl('admin.district-coordinator.index', 'full'));
+    Route::get('district-coordinator-edit', 'DistrictCoordinatorController@edit')->name('district-coordinator.edit')->middleware(pagePermByUrl('admin.district-coordinator.index', 'full'));
+    Route::delete('district-coordinator-destroy/{id}', 'DistrictCoordinatorController@destroy')->name('district-coordinator.destroy')->middleware(pagePermByUrl('admin.district-coordinator.index', 'full'));
+    Route::delete('district-coordinator-update/{id}', 'DistrictCoordinatorController@destroy')->name('district-coordinator.destroy')->middleware(pagePermByUrl('admin.district-coordinator.index', 'full'));
+    Route::post('district-coordinator-edit-date/{id}/{phaseNumber}', 'DistrictCoordinatorController@editDate')->middleware(pagePermByUrl('admin.district-coordinator.index', 'full'));
+    Route::delete('district-coordinator-delete-date/{id}/{phaseNumber}', 'DistrictCoordinatorController@deleteDate')->middleware(pagePermByUrl('admin.district-coordinator.index', 'full'));
 
 
     //Candidate updateName CandidateController
-    Route::post("candidate-update-name/{id}", "CandidateController@updateName")->middleware('page-perm:50,full');
-    Route::get("get-candidate/{candidate}", "CandidateController@getCandidate")->name('candidate-get')->middleware('page-perm:50,view');
+    Route::post("candidate-update-name/{id}", "CandidateController@updateName")->middleware(pagePermByUrls(['admin.district-coordinator.index', 'admin.district-body.index', 'admin.local-body.index', 'admin.central-committee-coordinator.index', 'admin.central-committee.index', 'admin.consulting-committee.index'], 'full'));
+    Route::get("get-candidate/{candidate}", "CandidateController@getCandidate")->name('candidate-get')->middleware(pagePermByUrls(['admin.district-coordinator.index', 'admin.district-body.index', 'admin.local-body.index', 'admin.central-committee-coordinator.index', 'admin.central-committee.index', 'admin.consulting-committee.index'], 'view'));
 
     //Update candidate popularization number
-    Route::post("district-coordinator-update-popularization-number/{id}", "DistrictCoordinatorController@updatePopularizationNumber")->name('district-coordinator-update-popularization-number')->middleware('page-perm:50,full');
-    Route::post("local-body-update-popularization-number/{id}", "LocalBodyController@updatePopularizationNumber")->name('local-body-coordinator-update-popularization-number')->middleware('page-perm:50,full');
-    Route::post("district-body-update-popularization-number/{id}", "DistrictBodyController@updatePopularizationNumber")->name('distric-body-update-popularization-number')->middleware('page-perm:50,full');
-    Route::post("central-committee-coordinator-update-popularization-number/{id}", "CentralCommitteeCoordinatorController@updatePopularizationNumber")->name('central-committee-coordinator-update-popularization-number')->middleware('page-perm:50,full');
+    Route::post("district-coordinator-update-popularization-number/{id}", "DistrictCoordinatorController@updatePopularizationNumber")->name('district-coordinator-update-popularization-number')->middleware(pagePermByUrl('admin.district-coordinator.index', 'full'));
+    Route::post("local-body-update-popularization-number/{id}", "LocalBodyController@updatePopularizationNumber")->name('local-body-coordinator-update-popularization-number')->middleware(pagePermByUrl('admin.local-body.index', 'full'));
+    Route::post("district-body-update-popularization-number/{id}", "DistrictBodyController@updatePopularizationNumber")->name('distric-body-update-popularization-number')->middleware(pagePermByUrl('admin.district-body.index', 'full'));
+    Route::post("central-committee-coordinator-update-popularization-number/{id}", "CentralCommitteeCoordinatorController@updatePopularizationNumber")->name('central-committee-coordinator-update-popularization-number')->middleware(pagePermByUrl('admin.central-committee-coordinator.index', 'full'));
 
-    Route::post("central-committee-update-popularization1-number/{id}", "CentralCommitteeController@updatePopularizationNumber1")->name('central-committee-update-popularization1-number')->middleware('page-perm:50,full');
-    Route::post("central-committee-update-popularization2-number/{id}", "CentralCommitteeController@updatePopularizationNumber2")->name('central-committee-update-popularization2-number')->middleware('page-perm:50,full');
-    Route::post("consulting-committee-update-popularization-number/{id}", "ConsultingCommitteeController@updatePopularizationNumber")->name('consulting-committee-update-popularization-number')->middleware('page-perm:50,full');
+    Route::post("central-committee-update-popularization1-number/{id}", "CentralCommitteeController@updatePopularizationNumber1")->name('central-committee-update-popularization1-number')->middleware(pagePermByUrl('admin.central-committee.index', 'full'));
+    Route::post("central-committee-update-popularization2-number/{id}", "CentralCommitteeController@updatePopularizationNumber2")->name('central-committee-update-popularization2-number')->middleware(pagePermByUrl('admin.central-committee.index', 'full'));
+    Route::post("consulting-committee-update-popularization-number/{id}", "ConsultingCommitteeController@updatePopularizationNumber")->name('consulting-committee-update-popularization-number')->middleware(pagePermByUrl('admin.consulting-committee.index', 'full'));
 
 
     //Update Applications States
-    Route::post("district-coordinator-update-application-state/{id}", "DistrictCoordinatorController@updateState")->name("district-coordinator-update-application-state")->middleware('page-perm:50,full');
-    Route::post("district-body-update-application-state/{id}", "DistrictBodyController@updateState")->name("district-body-update-application-state")->middleware('page-perm:50,full');
-    Route::post("local-body-update-application-state/{id}", "LocalBodyController@updateState")->name("local-body-update-application-state")->middleware('page-perm:50,full');
-    Route::post("central-committee-coordinator-update-application-state/{id}", "CentralCommitteeCoordinatorController@updateState")->name("central-committee-coordinator-update-application-state")->middleware('page-perm:50,full');
-    Route::post("central-committee-update-application-state/{id}", "CentralCommitteeController@updateState")->name("central-committee-update-application-state")->middleware('page-perm:50,full');
-    Route::post("consulting-committee-update-application-state/{id}", "ConsultingCommitteeController@updateState")->name("consulting-committee-update-application-state")->middleware('page-perm:50,full');
+    Route::post("district-coordinator-update-application-state/{id}", "DistrictCoordinatorController@updateState")->name("district-coordinator-update-application-state")->middleware(pagePermByUrl('admin.district-coordinator.index', 'full'));
+    Route::post("district-body-update-application-state/{id}", "DistrictBodyController@updateState")->name("district-body-update-application-state")->middleware(pagePermByUrl('admin.district-body.index', 'full'));
+    Route::post("local-body-update-application-state/{id}", "LocalBodyController@updateState")->name("local-body-update-application-state")->middleware(pagePermByUrl('admin.local-body.index', 'full'));
+    Route::post("central-committee-coordinator-update-application-state/{id}", "CentralCommitteeCoordinatorController@updateState")->name("central-committee-coordinator-update-application-state")->middleware(pagePermByUrl('admin.central-committee-coordinator.index', 'full'));
+    Route::post("central-committee-update-application-state/{id}", "CentralCommitteeController@updateState")->name("central-committee-update-application-state")->middleware(pagePermByUrl('admin.central-committee.index', 'full'));
+    Route::post("consulting-committee-update-application-state/{id}", "ConsultingCommitteeController@updateState")->name("consulting-committee-update-application-state")->middleware(pagePermByUrl('admin.consulting-committee.index', 'full'));
 
     //District Body هيئة قضاء
-    Route::resource('district-body', 'DistrictBodyController')->except(['index', 'show'])->middleware('page-perm:50,full');
-    Route::resource('district-body', 'DistrictBodyController')->only(['index', 'show'])->middleware('page-perm:50,view');
-    Route::delete('district-body-delete-date/{id}/{phaseNumber}', 'DistrictBodyController@deleteDate')->middleware('page-perm:50,full');
-    Route::post('district-body-edit-date/{id}/{phaseNumber}', 'DistrictBodyController@editDate')->middleware('page-perm:50,full');
+    Route::resource('district-body', 'DistrictBodyController')->except(['index', 'show'])->middleware(pagePermByUrl('admin.district-body.index', 'full'));
+    Route::resource('district-body', 'DistrictBodyController')->only(['index', 'show'])->middleware(pagePermByUrl('admin.district-body.index', 'view'));
+    Route::delete('district-body-delete-date/{id}/{phaseNumber}', 'DistrictBodyController@deleteDate')->middleware(pagePermByUrl('admin.district-body.index', 'full'));
+    Route::post('district-body-edit-date/{id}/{phaseNumber}', 'DistrictBodyController@editDate')->middleware(pagePermByUrl('admin.district-body.index', 'full'));
 
     //Local Body Controller هيئة محلية
-    Route::resource('local-body', 'LocalBodyController')->except(['index', 'show'])->middleware('page-perm:50,full');
-    Route::resource('local-body', 'LocalBodyController')->only(['index', 'show'])->middleware('page-perm:50,view');
-    Route::delete('local-body-delete-date/{id}/{phaseNumber}', 'LocalBodyController@deleteDate')->middleware('page-perm:50,full');
-    Route::post('local-body-edit-date/{id}/{phaseNumber}', 'LocalBodyController@editDate')->middleware('page-perm:50,full');
+    Route::resource('local-body', 'LocalBodyController')->except(['index', 'show'])->middleware(pagePermByUrl('admin.local-body.index', 'full'));
+    Route::resource('local-body', 'LocalBodyController')->only(['index', 'show'])->middleware(pagePermByUrl('admin.local-body.index', 'view'));
+    Route::delete('local-body-delete-date/{id}/{phaseNumber}', 'LocalBodyController@deleteDate')->middleware(pagePermByUrl('admin.local-body.index', 'full'));
+    Route::post('local-body-edit-date/{id}/{phaseNumber}', 'LocalBodyController@editDate')->middleware(pagePermByUrl('admin.local-body.index', 'full'));
 
     //District Controller
-    Route::post('get-regions-by-district-id/{id}', 'DistrictController@getRegionsByDistrictId')->middleware('page-perm:50,view');
+    Route::post('get-regions-by-district-id/{id}', 'DistrictController@getRegionsByDistrictId')->middleware(pagePermByUrls(['admin.district-coordinator.index', 'admin.district-body.index', 'admin.local-body.index', 'admin.central-committee-coordinator.index', 'admin.central-committee.index', 'admin.consulting-committee.index'], 'view'));
 
 
     //Central Committee Coordinator
-    Route::resource('central-committee-coordinator', 'CentralCommitteeCoordinatorController')->except(['index', 'show'])->middleware('page-perm:50,full');
-    Route::resource('central-committee-coordinator', 'CentralCommitteeCoordinatorController')->only(['index', 'show'])->middleware('page-perm:50,view');
-    Route::delete('central-committee-coordinator-delete-date/{id}/{phaseNumber}', 'CentralCommitteeCoordinatorController@deleteDate')->middleware('page-perm:50,full');
-    Route::post('central-committee-coordinator-edit-date/{id}/{phaseNumber}', 'CentralCommitteeCoordinatorController@editDate')->middleware('page-perm:50,full');
+    Route::resource('central-committee-coordinator', 'CentralCommitteeCoordinatorController')->except(['index', 'show'])->middleware(pagePermByUrl('admin.central-committee-coordinator.index', 'full'));
+    Route::resource('central-committee-coordinator', 'CentralCommitteeCoordinatorController')->only(['index', 'show'])->middleware(pagePermByUrl('admin.central-committee-coordinator.index', 'view'));
+    Route::delete('central-committee-coordinator-delete-date/{id}/{phaseNumber}', 'CentralCommitteeCoordinatorController@deleteDate')->middleware(pagePermByUrl('admin.central-committee-coordinator.index', 'full'));
+    Route::post('central-committee-coordinator-edit-date/{id}/{phaseNumber}', 'CentralCommitteeCoordinatorController@editDate')->middleware(pagePermByUrl('admin.central-committee-coordinator.index', 'full'));
 
 
     //Central Committee Memeber
-    Route::resource('central-committee', 'CentralCommitteeController')->except(['index', 'show'])->middleware('page-perm:50,full');
-    Route::resource('central-committee', 'CentralCommitteeController')->only(['index', 'show'])->middleware('page-perm:50,view');
-    Route::delete('central-committee-delete-date/{id}/{phaseNumber}', 'CentralCommitteeController@deleteDate')->middleware('page-perm:50,full');
-    Route::post('central-committee-edit-date/{id}/{phaseNumber}', 'CentralCommitteeController@editDate')->middleware('page-perm:50,full');
+    Route::resource('central-committee', 'CentralCommitteeController')->except(['index', 'show'])->middleware(pagePermByUrl('admin.central-committee.index', 'full'));
+    Route::resource('central-committee', 'CentralCommitteeController')->only(['index', 'show'])->middleware(pagePermByUrl('admin.central-committee.index', 'view'));
+    Route::delete('central-committee-delete-date/{id}/{phaseNumber}', 'CentralCommitteeController@deleteDate')->middleware(pagePermByUrl('admin.central-committee.index', 'full'));
+    Route::post('central-committee-edit-date/{id}/{phaseNumber}', 'CentralCommitteeController@editDate')->middleware(pagePermByUrl('admin.central-committee.index', 'full'));
 
 
     //Consulting Committee لجنة إستشارية
-    Route::resource('consulting-committee', 'ConsultingCommitteeController')->except(['index', 'show'])->middleware('page-perm:50,full');
-    Route::resource('consulting-committee', 'ConsultingCommitteeController')->only(['index', 'show'])->middleware('page-perm:50,view');
-    Route::delete('consulting-committee-delete-date/{id}/{phaseNumber}', 'ConsultingCommitteeController@deleteDate')->middleware('page-perm:50,full');
-    Route::post('consulting-committee-edit-date/{id}/{phaseNumber}', 'ConsultingCommitteeController@editDate')->middleware('page-perm:50,full');
+    Route::resource('consulting-committee', 'ConsultingCommitteeController')->except(['index', 'show'])->middleware(pagePermByUrl('admin.consulting-committee.index', 'full'));
+    Route::resource('consulting-committee', 'ConsultingCommitteeController')->only(['index', 'show'])->middleware(pagePermByUrl('admin.consulting-committee.index', 'view'));
+    Route::delete('consulting-committee-delete-date/{id}/{phaseNumber}', 'ConsultingCommitteeController@deleteDate')->middleware(pagePermByUrl('admin.consulting-committee.index', 'full'));
+    Route::post('consulting-committee-edit-date/{id}/{phaseNumber}', 'ConsultingCommitteeController@editDate')->middleware(pagePermByUrl('admin.consulting-committee.index', 'full'));
 
 
     //Donations — page 49

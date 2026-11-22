@@ -22,6 +22,23 @@ class CheckPagePermission
      */
     public function handle(Request $request, Closure $next, $pageId, $requirement = 'view')
     {
+        // Several pages share one helper route (e.g. the Party Organization pages all use the same candidate lookup):
+        // 'page-perm:51|52|53,view' lets the request through when ANY of those pages satisfies the requirement.
+        if (str_contains((string) $pageId, '|')) {
+            $lastError = null;
+            foreach (explode('|', (string) $pageId) as $one) {
+                try {
+                    return $this->handle($request, $next, $one, $requirement);
+                } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+                    if ($e->getStatusCode() !== 403) {
+                        throw $e;
+                    }
+                    $lastError = $e;
+                }
+            }
+            throw $lastError;
+        }
+
         $admin = auth('admin')->user();
         $granted = $admin?->permissionLevel($pageId);
 
