@@ -245,11 +245,13 @@ class TalentApiTest extends CouncilTestCase
         $this->callTalent('verify', ['phone' => $phone, 'code' => '222222']);
         $this->assertStringContainsString('code_expired', $this->body, 'the right code no longer works after 5 wrong tries');
 
+        // a dummy number, and phpunit.xml has no SMS login, so nothing real is sent
+        $this->assertEmpty(config('services.sms.username'), 'tests must not have an SMS login');
         for ($i = 0; $i < 3; $i++) {
-            $this->callTalent('send-code', ['phone' => '96171555444', 'hardware_id' => 'T-hw-' . $i]);
+            $this->callTalent('send-code', ['phone' => '96100000001', 'hardware_id' => 'T-hw-' . $i]);
             $this->assertTrue($this->ok(), $this->body);
         }
-        $this->callTalent('send-code', ['phone' => '96171555444', 'hardware_id' => 'T-hw-x']);
+        $this->callTalent('send-code', ['phone' => '96100000001', 'hardware_id' => 'T-hw-x']);
         $this->assertSame(429, $this->status);
     }
 

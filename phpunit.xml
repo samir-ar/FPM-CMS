@@ -29,5 +29,9 @@
         <server name="MAIL_DRIVER" value="array"/>
         <server name="QUEUE_CONNECTION" value="sync"/>
         <server name="SESSION_DRIVER" value="array"/>
+        <!-- no test may ever send a real SMS: with an empty login FpmApisRepository::sendSMS() throws instead of calling the provider.
+             (a Talent test once sent 3 real codes per run to a real phone, because that code builds the repository itself and cannot be mocked) -->
+        <server name="SMS_USERNAME" value=""/>
+        <server name="SMS_PASSWORD" value=""/>
     </php>
 </phpunit>
