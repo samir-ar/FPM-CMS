@@ -1946,7 +1946,10 @@ class ApiController extends Controller
         }
 
         // the terms exist in Arabic (default) and English; the member switches with one button in the app
-        $language = $request->input('language') === 'en' ? 'en' : 'ar';
+        // the language the screen's own button asked for - NOT the phone's Accept-Language header, which the SetLanguage
+        // middleware writes over request('language') (an English phone would otherwise get English for both buttons)
+        $asked = $request->attributes->get('requested_language', $request->input('language'));
+        $language = $asked === 'en' ? 'en' : 'ar';
         $category = $request->type === 'terms' ? ($language === 'en' ? 'competency-terms-en' : 'competency-terms') : 'competency-faq';
         $content = Content::where('category', $category)->first();
 

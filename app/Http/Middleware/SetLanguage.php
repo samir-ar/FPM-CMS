@@ -27,6 +27,10 @@ class SetLanguage
         // ships translations for.
         $language = $request->getPreferredLanguage(['en', 'ar']) ?: 'en';
 
+        // merge() below overwrites a 'language' the app put in the request itself (e.g. the FPM Talent Terms screen asks
+        // for Arabic or English with its own button); keep what was asked so those screens can still read it
+        $request->attributes->set('requested_language', $request->input('language'));
+
         $request->merge(['language' => $language]);
         App::setLocale($language);
 

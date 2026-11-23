@@ -37,6 +37,28 @@ class TalentTermsLanguageTest extends CouncilTestCase
         $this->assertStringContainsString('The terms in English', $en['content']);
     }
 
+    // the real route runs the SetLanguage middleware, which writes the phone's Accept-Language over request('language')
+    public function test_the_buttons_language_wins_over_the_phones_accept_language_header(): void
+    {
+        $now = now();
+        DB::table('contents')->where('category', 'like', 'competency-terms%')->delete();
+        DB::table('contents')->insert([
+            ['category' => 'competency-terms', 'text' => '<p>الشروط بالعربية</p>', 'created_at' => $now, 'updated_at' => $now],
+            ['category' => 'competency-terms-en', 'text' => '<p>The terms in English</p>', 'created_at' => $now, 'updated_at' => $now],
+        ]);
+
+        foreach (['en', 'ar', null] as $phone) {
+            $headers = $phone ? ['Accept-Language' => $phone] : [];
+            $ar = $this->withHeaders($headers)->postJson('/api/v2/competency-static-page', ['type' => 'terms', 'language' => 'ar'])->json();
+            $this->assertSame('ar', $ar['language'], "Arabic button, phone '$phone'");
+            $this->assertStringContainsString('الشروط بالعربية', $ar['content']);
+
+            $en = $this->withHeaders($headers)->postJson('/api/v2/competency-static-page', ['type' => 'terms', 'language' => 'en'])->json();
+            $this->assertSame('en', $en['language'], "English button, phone '$phone'");
+            $this->assertStringContainsString('The terms in English', $en['content']);
+        }
+    }
+
     public function test_an_english_version_not_written_yet_comes_back_empty_not_as_arabic(): void
     {
         DB::table('contents')->where('category', 'competency-terms-en')->delete();
