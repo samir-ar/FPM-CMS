@@ -36,6 +36,10 @@ class LawsController extends Controller
                     return $row->getTranslation('name', 'en');
                 })
 
+                ->addColumn('guest_label', function ($row) {
+                    return $row->show_for_guest ? 'Yes' : 'No';
+                })
+
                 ->addColumn('action', function ($row) {
                     return "<a class='edit-link' href='" . route('admin.laws.edit', $row->id) . "'>" .
                         '<i class="fa fa-edit" aria-hidden="true"></i></a>' .
@@ -53,13 +57,14 @@ class LawsController extends Controller
             'table_title' => '',
             'slug'        => 'Laws',
             'custom_btn' => "<a href='" . route('admin.laws.create') . "' class='btn btn-primary'>Add Law</a>",
-            'headers'    => ['id', 'Name', 'Status', 'Date', 'Action'],
+            'headers'    => ['id', 'Name', 'Status', 'Date', 'Visible to guests', 'Action'],
             'action' => route('admin.laws.index'),
             'columns' => json_encode([
                 ['data' => 'id', 'name' => 'id'],
                 ['data' =>  'name_en', 'name' => 'name'],
                 ['data' =>  'status', 'name' => 'status'],
                 ['data' =>  'date', 'name' => 'date'],
+                ['data' =>  'guest_label', 'name' => 'show_for_guest', 'searchable' => false],
                 ['data' => 'action', 'name' => 'action', 'searchable' => false, 'sortable' => false],
             ]),
 
@@ -92,6 +97,7 @@ class LawsController extends Controller
                         //$this->drawHtml('multiple-file-upload', 'Images', 'images',  null, ['add' => route('admin.laws.upload_file'), 'delete' => route('admin.laws.remove_file')],'', 'col-md-12'),
 
                         $this->drawHtml('pdf', 'PDF file', 'file',  null, null, '', 'col-md-12'),
+                        $this->drawHtml('checkbox', 'Visible to guests / ظاهر للزوار', 'show_for_guest', null, null, '', 'col-md-12'),
 
                     ],
                 ],
@@ -135,6 +141,7 @@ class LawsController extends Controller
             $law->details = request('details');
             $law->date = request('date');
             $law->status = request('status');
+            $law->show_for_guest = $request->has('show_for_guest');
             $law->save();
         }else{
             $file = $request->file('file');
@@ -208,6 +215,7 @@ class LawsController extends Controller
                         $this->drawHtml('date-picker', 'Date', 'date', $law->date, null, '', 'col-md-12'),
 
                         $this->drawHtml('pdf', 'PDF file', 'file',  $law->file, null, '', 'col-md-12'),
+                        $this->drawHtml('checkbox', 'Visible to guests / ظاهر للزوار', 'show_for_guest', (bool) $law->show_for_guest, null, '', 'col-md-12'),
                     ],
                 ],
 
@@ -256,6 +264,7 @@ class LawsController extends Controller
         $law->details = request('details');
         $law->status = request('status');
         $law->date = request('date');
+        $law->show_for_guest = $request->has('show_for_guest');
 
         if (request('file'))
             $law->file = $this->moveFile(request('file'), 'images/laws');

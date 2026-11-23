@@ -20,6 +20,7 @@ class Law extends Model
         'order',
         'file',
         'status',
+        'show_for_guest',
     ];
 
     // public function getFileAttribute($attr)

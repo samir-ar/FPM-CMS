@@ -11,7 +11,7 @@ class Album extends Model
     use MyTranslationTrait;
 
     protected $translatable = ['name', 'description'];
-    protected $fillable = ["name","type","description","thumbnail"];
+    protected $fillable = ["name","type","description","thumbnail","show_for_guest"];
 
     public function medias(){
         return $this->hasMany(Media::class);

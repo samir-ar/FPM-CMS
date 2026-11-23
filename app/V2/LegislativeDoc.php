@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class LegislativeDoc extends Model
 {
     protected $table = 'legislative_docs';
-    protected $fillable = ['category_id', 'subcategory_id', 'title', 'date', 'file_name', 'order'];
+    protected $fillable = ['category_id', 'subcategory_id', 'title', 'date', 'file_name', 'order', 'show_for_guest'];
 
     public function category()
     {

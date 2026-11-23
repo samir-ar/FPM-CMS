@@ -47,6 +47,10 @@ class AlbumController extends Controller
                     return "<a href='".route('admin.media.index',$row)."'> media </a>";
                 })
 
+                ->addColumn('guest_label', function($row){
+                    return $row->show_for_guest ? 'Yes' : 'No';
+                })
+
                  ->addColumn('action', function($row){
                     return "<a class='edit-link' href='" . route('admin.albums.edit', $row->id) . "'>".
                         '<i class="fa fa-edit" aria-hidden="true"></i></a>'.
@@ -64,7 +68,7 @@ class AlbumController extends Controller
             'table_title' => '',
             'slug'		=> 'Archives',
             'custom_btn' => "<a href='" . route('admin.albums.create') ."' class='btn btn-primary'>Add Album</a>",
-            'headers'	=> ['id','Name' ,'Description' ,'Media', 'Date', 'Action'],
+            'headers'	=> ['id','Name' ,'Description' ,'Media', 'Date', 'Visible to guests', 'Action'],
             'action' => route('admin.albums.index'),
             'columns' => json_encode([
                 ['data' => 'id', 'name' => 'id'],
@@ -72,6 +76,7 @@ class AlbumController extends Controller
                 ['data' =>  'description', 'name'=> 'description'],
                 ['data' =>  'media', 'name'=> 'media'],
                 ['data' =>  'date', 'name'=> 'date'],
+                ['data' =>  'guest_label', 'name'=> 'show_for_guest', 'searchable' => false],
                 ['data' => 'action', 'name' => 'action', 'searchable' => false, 'sortable' => false],
             ]),
         ]);
@@ -118,7 +123,8 @@ class AlbumController extends Controller
                         $this->drawHtml('small_text', 'Title (In English)', 'name', $album->getTranslation('name', 'en'),null, '', 'col-md-6 required'),
                         $this->drawHtml('small_text', 'عنوان (بالعربية) ', 'name_ar', $album->getTranslation('name','ar'), null, '', 'col-md-6 required right-to-left'),
                         $this->drawHtml('text', 'Description (In English)', 'description', $album->getTranslation('description', 'en'), null, '', 'col-md-6 required'),
-                        $this->drawHtml('text', 'وصف (بالعربية)', 'descriptionar', $album->getTranslation('description', 'ar'),  null, '', 'col-md-6 required right-to-left')
+                        $this->drawHtml('text', 'وصف (بالعربية)', 'descriptionar', $album->getTranslation('description', 'ar'),  null, '', 'col-md-6 required right-to-left'),
+                        $this->drawHtml('checkbox', 'Visible to guests / ظاهر للزوار', 'show_for_guest', (bool) $album->show_for_guest, null, '', 'col-md-12'),
                     ],
                 ],
                 [
@@ -165,6 +171,7 @@ class AlbumController extends Controller
         ]);
 
         $album->type = request('type');
+        $album->show_for_guest = $request->has('show_for_guest');
         $album->save();
 
         if(request("thumbnail")){
@@ -239,6 +246,7 @@ class AlbumController extends Controller
         ]);
 
         $album->type = request('type');
+        $album->show_for_guest = $request->has('show_for_guest');
 
         $album->save();
 
@@ -296,6 +304,7 @@ class AlbumController extends Controller
                         $this->drawHtml('text', 'Description (In English)', 'description', '', null, '', 'col-md-6 required'),
                         $this->drawHtml('text', 'وصف (بالعربية)', 'description_ar', '', null, '', 'col-md-6 required right-to-left'),
                         $this->drawHtml('file', 'Upload Thumbnail', 'thumbnail', '',"image/*" , '', 'col-md-12 required'),
+                        $this->drawHtml('checkbox', 'Visible to guests / ظاهر للزوار', 'show_for_guest', null, null, '', 'col-md-12'),
 
                /*          $this->drawHtml('multiple-file-upload', 'Upload Images', 'images', '', ['add' => route('admin.media.upload') , 'delete' => route('admin.media.delete'), 'default' => null] , '', 'col-md-12  required multiImageUpload'),
                         $this->drawHtml('file', 'Upload Video', 'video', '',"video/*" , '', 'col-md-12 required videoUploader'),

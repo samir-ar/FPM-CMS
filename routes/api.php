@@ -196,11 +196,12 @@ Route::group(['namespace' => 'Api\V2', 'prefix' => 'v2/', 'middleware' => ['lang
     // guest or member: a valid token = the whole list, no token = only the Founder and President boxes (see the controller)
     Route::post('representatives', 'ApiController@getRepresentatives')->middleware('not-required-token');
     Route::post('biography/{id}', 'ApiController@getBiographyDetails');
-    Route::post('laws', 'ApiController@getLaws');
-    Route::post('law-files', 'ApiController@downloadLawFiles');
+    // laws / political statements / legislative documents: a guest only gets what is ticked "Visible to guests"
+    Route::post('laws', 'ApiController@getLaws')->middleware('not-required-token');
+    Route::post('law-files', 'ApiController@downloadLawFiles')->middleware('not-required-token');
     Route::post('about-us', 'ApiController@aboutUs');
-    Route::post('political-work', 'ApiController@getPoliticalWork');
-    Route::post('legislative-docs', 'ApiController@getLegislativeDocs');
+    Route::post('political-work', 'ApiController@getPoliticalWork')->middleware('not-required-token');
+    Route::post('legislative-docs', 'ApiController@getLegislativeDocs')->middleware('not-required-token');
     Route::post('legislative-categories', 'ApiController@getLegislativeCategories');
     Route::post('legislative-subcategories', 'ApiController@getLegislativeSubcategories');
     Route::post('electoral-districts', 'ApiController@getElectoralDistricts');

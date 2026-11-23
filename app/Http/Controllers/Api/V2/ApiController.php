@@ -523,6 +523,11 @@ class ApiController extends Controller
 
         $album = Album::select("id", "name", "description", "type", "created_at", "thumbnail");
 
+        // a guest (no valid token) only gets the albums the admin ticked "Visible to guests"
+        if (!request('user')) {
+            $album->where('show_for_guest', 1);
+        }
+
         if (request('type')) {
             $album->where('type', request('type'));
         }
@@ -568,6 +573,9 @@ class ApiController extends Controller
             return $q->get();
         })->get(); */
         $album = Album::where("id", request("id"))->with("medias");
+        if (!request('user')) {
+            $album->where('show_for_guest', 1);
+        }
 
 
         $album = $album->get()->map(function ($q) {
@@ -1724,7 +1732,7 @@ class ApiController extends Controller
 
     public function getLaws(Request $request, ApiRepository $apiRepo)
     {
-        return response()->json($apiRepo->getLaws($request->status)->map(function ($g) {
+        return response()->json($apiRepo->getLaws($request->status, !request('user'))->map(function ($g) {
             return [
                 'id' => $g->id,
                 'name' => $g->name,
@@ -1743,6 +1751,12 @@ class ApiController extends Controller
 
         if ($validator->fails()) {
             return $this->api_error_response('missing_parameters', 101, implode(', ', $validator->messages()->all()));
+        }
+
+        // a guest may only download a law that is ticked "Visible to guests"
+        $law = \App\V2\Law::find($request->law_id);
+        if (!$law || (!request('user') && !$law->show_for_guest)) {
+            return $this->api_error_response('not_found', 404, 'Not found', 404);
         }
 
         $zipFile = $repo->getLawFiles($request->law_id);
@@ -1858,6 +1872,7 @@ class ApiController extends Controller
         }
 
         $docs = \App\V2\PoliticalWorkDocument::where('category', request('category'))
+            ->when(!request('user'), fn($q) => $q->where('show_for_guest', 1))
             ->orderBy('document_date', 'desc')
             ->get()
             ->map(function ($d) {
@@ -1909,7 +1924,8 @@ class ApiController extends Controller
             return $this->api_error_response('missing_parameters', 101, implode(', ', $validator->messages()->all()));
         }
 
-        $query = \App\V2\LegislativeDoc::where('category_id', $request->category_id);
+        $query = \App\V2\LegislativeDoc::where('category_id', $request->category_id)
+            ->when(!request('user'), fn($q) => $q->where('show_for_guest', 1));
 
         // A doc without a subcategory shows directly on the main category tab;
         // picking a specific subcategory narrows down to just that subcategory's docs.

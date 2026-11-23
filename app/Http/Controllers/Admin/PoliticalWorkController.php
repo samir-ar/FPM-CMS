@@ -26,6 +26,7 @@ class PoliticalWorkController extends Controller
                     PoliticalWorkDocument::$categories[$row->category] ?? $row->category)
                 ->addColumn('document_date_label', fn($row) =>
                     optional($row->document_date)->format('Y-m-d'))
+                ->addColumn('guest_label', fn($row) => $row->show_for_guest ? 'Yes' : 'No')
                 ->addColumn('action', fn($row) =>
                     "<a href='" . route('admin.political-work.edit', $row->id) . "' class='btn btn-xs btn-info' style='margin-right:4px'><i class='fa fa-edit'></i></a>" .
                     "<a data-toggle='modal' class='delete-link' href='#deleteModal' id='" .
@@ -52,13 +53,14 @@ class PoliticalWorkController extends Controller
             'slug'        => 'political-work',
             'custom_btn'  => "<a href='" . route('admin.political-work.create') . "' class='btn btn-primary'>إضافة وثيقة</a>",
             'custom_btn1' => $filterButtons,
-            'headers'     => ['id', 'Category', 'Title', 'تاريخ الوثيقة', 'Action'],
+            'headers'     => ['id', 'Category', 'Title', 'تاريخ الوثيقة', 'Visible to guests', 'Action'],
             'action'      => route('admin.political-work.index'),
             'columns'     => json_encode([
                 ['data' => 'id',                   'name' => 'id'],
                 ['data' => 'category_label',       'name' => 'category_label'],
                 ['data' => 'title',                'name' => 'title'],
                 ['data' => 'document_date_label',  'name' => 'document_date_label'],
+                ['data' => 'guest_label',          'name' => 'show_for_guest', 'searchable' => false],
                 ['data' => 'action',               'name' => 'action', 'searchable' => false, 'sortable' => false],
             ]),
         ]);
@@ -81,6 +83,7 @@ class PoliticalWorkController extends Controller
                     $this->drawHtml('small_text', 'العنوان', 'title', null, null, '', 'col-md-12 required'),
                     $this->drawHtml('file', 'ملف PDF', 'pdf', null, 'application/pdf', '', 'col-md-12 required'),
                     $this->drawHtml('date-picker', 'تاريخ الوثيقة', 'document_date', null, null, '', 'col-md-12 required'),
+                    $this->drawHtml('checkbox', 'Visible to guests / ظاهر للزوار', 'show_for_guest', null, null, '', 'col-md-12'),
                 ],
             ]],
         ]);
@@ -100,6 +103,7 @@ class PoliticalWorkController extends Controller
         $doc->title         = request('title');
         $doc->file_name     = $this->moveFile(request('pdf'), 'political_work');
         $doc->document_date = request('document_date');
+        $doc->show_for_guest = $request->has('show_for_guest');
         $doc->save();
 
         return redirect()->route('admin.political-work.index')
@@ -126,6 +130,7 @@ class PoliticalWorkController extends Controller
                     $this->drawHtml('file', 'ملف PDF جديد (اتركه فارغاً للإبقاء على الملف الحالي)', 'pdf', null, 'application/pdf', '', 'col-md-12'),
                     $this->drawHtml('date-picker', 'تاريخ الوثيقة', 'document_date',
                         optional($doc->document_date)->format('Y-m-d'), null, '', 'col-md-12 required'),
+                    $this->drawHtml('checkbox', 'Visible to guests / ظاهر للزوار', 'show_for_guest', (bool) $doc->show_for_guest, null, '', 'col-md-12'),
                 ],
             ]],
         ]);
@@ -144,6 +149,7 @@ class PoliticalWorkController extends Controller
         $doc->category      = request('category');
         $doc->title         = request('title');
         $doc->document_date = request('document_date');
+        $doc->show_for_guest = $request->has('show_for_guest');
         if ($request->hasFile('pdf')) {
             $this->removeFile('political_work/' . $doc->file_name);
             $doc->file_name = $this->moveFile(request('pdf'), 'political_work');

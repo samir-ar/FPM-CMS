@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Storage;
 
 class PoliticalWorkDocument extends Model
 {
-    protected $fillable = ['category', 'title', 'file_name', 'document_date'];
+    protected $fillable = ['category', 'title', 'file_name', 'document_date', 'show_for_guest'];
 
     protected $casts = ['document_date' => 'date'];
 

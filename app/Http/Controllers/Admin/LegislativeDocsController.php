@@ -29,6 +29,7 @@ class LegislativeDocsController extends Controller
                     }
                     return $catName;
                 })
+                ->addColumn('guest_label', fn($r) => $r->show_for_guest ? 'Yes' : 'No')
                 ->addColumn('action', fn($r) =>
                     "<a href='" . route('admin.legislative-docs.edit', $r->id) . "' class='btn btn-xs btn-info' style='margin-right:4px'><i class='fa fa-edit'></i></a>" .
                     "<a data-toggle='modal' class='delete-link btn btn-xs btn-danger' href='#deleteModal' id='" .
@@ -44,13 +45,14 @@ class LegislativeDocsController extends Controller
             'slug'        => 'legislative-docs',
             'custom_btn'  => "<a href='" . route('admin.legislative-docs.create') . "' class='btn btn-primary'>إضافة وثيقة</a> " .
                 "<a href='" . route('admin.legislative-doc-categories.index') . "' class='btn btn-default'>إدارة التبويبات</a>",
-            'headers'     => ['id', 'التبويب', 'العنوان', 'التاريخ', 'Action'],
+            'headers'     => ['id', 'التبويب', 'العنوان', 'التاريخ', 'Visible to guests', 'Action'],
             'action'      => route('admin.legislative-docs.index'),
             'columns'     => json_encode([
                 ['data' => 'id',        'name' => 'id'],
                 ['data' => 'tab_label', 'name' => 'tab_label'],
                 ['data' => 'title',     'name' => 'title'],
                 ['data' => 'date',      'name' => 'date'],
+                ['data' => 'guest_label', 'name' => 'show_for_guest', 'searchable' => false],
                 ['data' => 'action',    'name' => 'action', 'searchable' => false, 'sortable' => false],
             ]),
         ]);
@@ -105,6 +107,7 @@ class LegislativeDocsController extends Controller
                     $this->drawHtml('date-picker', 'التاريخ', 'date', now()->toDateString(), null, '', 'col-md-12 required'),
                     $this->drawHtml('file', 'ملف PDF', 'pdf', null, 'application/pdf', '', 'col-md-12 required'),
                     $this->drawHtml('small_text', 'الترتيب', 'order', '0', null, '', 'col-md-6'),
+                    $this->drawHtml('checkbox', 'Visible to guests / ظاهر للزوار', 'show_for_guest', null, null, '', 'col-md-12'),
                 ],
             ]],
         ]);
@@ -129,6 +132,7 @@ class LegislativeDocsController extends Controller
         $doc->date      = \Carbon\Carbon::parse($request->date)->toDateString();
         $doc->file_name = $this->moveFile($request->file('pdf'), 'legislative_docs');
         $doc->order     = $request->order ?? 0;
+        $doc->show_for_guest = $request->has('show_for_guest');
         $doc->save();
 
         return redirect()->route('admin.legislative-docs.index')
@@ -155,6 +159,7 @@ class LegislativeDocsController extends Controller
                     $this->drawHtml('link', 'الملف الحالي', 'current_pdf', \Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/storage/legislative_docs/' . $doc->file_name), 'عرض الملف', 'col-md-12'),
                     $this->drawHtml('file', 'ملف PDF جديد', 'pdf', null, 'application/pdf', '', 'col-md-12'),
                     $this->drawHtml('small_text', 'الترتيب', 'order', $doc->order, null, '', 'col-md-6'),
+                    $this->drawHtml('checkbox', 'Visible to guests / ظاهر للزوار', 'show_for_guest', (bool) $doc->show_for_guest, null, '', 'col-md-12'),
                 ],
             ]],
         ]);
@@ -177,6 +182,7 @@ class LegislativeDocsController extends Controller
         $doc->title = $request->title;
         $doc->date  = \Carbon\Carbon::parse($request->date)->toDateString();
         $doc->order = $request->order ?? 0;
+        $doc->show_for_guest = $request->has('show_for_guest');
         if ($request->hasFile('pdf')) {
             $this->removeFile('legislative_docs/' . $doc->file_name);
             $doc->file_name = $this->moveFile($request->file('pdf'), 'legislative_docs');

@@ -46,9 +46,12 @@ class ApiRepository
         })->orderBy('date', 'desc')->get();
     }
 
-    public function getLaws($status)
+    public function getLaws($status, $guestOnly = false)
     {
         $query = Law::where('deleted_at', null)->orderBy('date', 'desc');
+        if ($guestOnly) {
+            $query->where('show_for_guest', 1);
+        }
         if ($status !== null) {
             $query->where('status', $status);
         }
