@@ -240,6 +240,10 @@ class ApiController extends Controller
         if ($validator->fails()) {
             return $this->api_error_response('missing_parameters', 101, implode(', ', $validator->messages()->all()));
         }
+        if (!$repo->findVisibleNews(request('news_id'), request('groups'))) {
+            return $this->api_error_response('not_found', 404, 'Not found', 404);
+        }
+
         return response()->json($repo->likeNews($user, request('news_id'), request('like')));
     }
 
@@ -323,6 +327,10 @@ class ApiController extends Controller
             return $this->api_error_response('missing_parameters', 101, implode(', ', $validator->messages()->all()));
         }
 
+        if (!$repo->findVisibleEvent($request->input('event_id'), request('groups'))) {
+            return $this->api_error_response('not_found', 404, 'Not found', 404);
+        }
+
         return response()->json($repo->likeEvent($user, $request->input('event_id'), (bool) $request->input('like')));
     }
 
@@ -334,6 +342,10 @@ class ApiController extends Controller
 
         if ($validator->fails()) {
             return $this->api_error_response('missing_parameters', 101, implode(', ', $validator->messages()->all()));
+        }
+
+        if (!$repo->findVisibleEvent($request->input('event_id'), request('groups'))) {
+            return $this->api_error_response('not_found', 404, 'Not found', 404);
         }
 
         return response()->json($repo->shareEvent($request->input('event_id')));
@@ -349,6 +361,10 @@ class ApiController extends Controller
 
         if ($validator->fails()) {
             return $this->api_error_response('missing_parameters', 101, implode(', ', $validator->messages()->all()));
+        }
+
+        if (!$repo->findVisibleNews(request('news_id'), request('groups'))) {
+            return $this->api_error_response('not_found', 404, 'Not found', 404);
         }
 
         return response()->json($repo->shareNews(request('news_id'), $user));
@@ -1371,8 +1387,11 @@ class ApiController extends Controller
             return $this->api_error_response('missing_parameters', 101, implode(', ', $validator->messages()->all()));
         }
 
-        $event = Event::find(request('event_id'));
-
+        // the same visibility as the event lists: a guest only gets an event ticked "Public" (show_for_guest)
+        $event = $repo->findVisibleEvent(request('event_id'), request('groups'), !request('user'));
+        if (!$event) {
+            return $this->api_error_response('not_found', 404, 'Not found', 404);
+        }
 
         return response()->json($repo->getEventInstance($event));
     }
@@ -1529,8 +1548,11 @@ class ApiController extends Controller
             return $this->api_error_response('missing_parameters', 101, implode(', ', $validator->messages()->all()));
         }
 
-        $news = News::find(request('news_id'));
-
+        // the same visibility as the news lists (member: his groups / the "everyone" groups)
+        $news = $repo->findVisibleNews(request('news_id'), request('groups'));
+        if (!$news) {
+            return $this->api_error_response('not_found', 404, 'Not found', 404);
+        }
 
         $user = request('user');
         $placeholder = Placeholder::where('type', 'news')->first()->image;

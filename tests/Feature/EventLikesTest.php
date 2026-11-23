@@ -20,7 +20,7 @@ class EventLikesTest extends CouncilTestCase
 {
     private function makeEvent(): int
     {
-        return DB::table('events')->insertGetId([
+        $id = DB::table('events')->insertGetId([
             'name' => 'T event',
             'details' => '<p>details</p>',
             'location' => 'Beirut',
@@ -30,6 +30,11 @@ class EventLikesTest extends CouncilTestCase
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+        // like every real event it is for the "everyone" group (81): an event without any group is hidden everywhere, and
+        // since 2026-11-23 liking / sharing / opening an event follows the same visibility as the lists
+        DB::table('groups_events')->insert(['event_id' => $id, 'group_group_id' => 81, 'created_at' => now(), 'updated_at' => now()]);
+
+        return $id;
     }
 
     private function callApi(int $userId, string $method, array $data): array

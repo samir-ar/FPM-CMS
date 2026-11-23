@@ -141,6 +141,36 @@ class ApiRepository
         return $query->orderBy('date', 'desc')->limit(200);
     }
 
+    // Opening ONE news item / event by id must follow the SAME rule as the lists (getNewsByGroups, getEventsUpcomingByGroup ...):
+    // it is visible only when it is linked to one of the person's groups or to the two "everyone" groups (81 / 82), and a
+    // GUEST additionally needs the "Public" tick. Before, the by-id lookups answered for ANY id (a guest could read every event
+    // the admin had not shown to guests; a member could read news meant for other groups). Returns null when not visible.
+    public function findVisibleNews($newsId, $groups_ids, bool $guestOnly = false)
+    {
+        $query = News::whereHas('groups', function ($q) use ($groups_ids) {
+            return $q->whereIn('group_id', $groups_ids ?? [])->orWhere('group_id', 81)->orWhere('group_id', 82);
+        })->where('id', $newsId);
+
+        if ($guestOnly) {
+            $query->where('show_for_guest', true);
+        }
+
+        return $query->first();
+    }
+
+    public function findVisibleEvent($eventId, $groups_ids, bool $guestOnly = false)
+    {
+        $query = Event::whereHas('groups', function ($q) use ($groups_ids) {
+            return $q->whereIn('group_id', $groups_ids ?? [])->orWhere('group_id', 81)->orWhere('group_id', 82);
+        })->where('id', $eventId);
+
+        if ($guestOnly) {
+            $query->where('show_for_guest', true);
+        }
+
+        return $query->first();
+    }
+
     public function skipModeNews()
     {
         $url = "https://www.tayyar.org/Rss/Type/4";
