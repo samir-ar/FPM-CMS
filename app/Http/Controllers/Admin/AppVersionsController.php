@@ -11,6 +11,7 @@ use App\V2\Setting;
 class AppVersionsController extends Controller
 {
     use FormTrait;
+    use FileTrait;
 
 
     /**
@@ -52,6 +53,15 @@ class AppVersionsController extends Controller
                             $this->drawHtml('small_text', 'Update Message Title', 'update_title', $settings->update_title, null, '', 'col-md-12'),
                             $this->drawHtml('small_text', 'Update Message Text', 'update_message', $settings->update_message, null, '', 'col-md-12'),
                         ]
+                    ],[
+                       'wrapper-class' => 'col-md-12',
+                       'class' => 'box-default',
+                       'box-header' => 'Landing page (fpmmobile.com) - phone picture',
+                       'form_fields' =>[
+                            $this->drawHtml('link', 'Current picture', 'current_landing_phone_image', Setting::landingPhoneUrl(), 'View the picture shown now', 'col-md-12'),
+                            $this->drawHtml('file', 'New phone picture (PNG / JPG / WEBP, max 5 MB). Leave empty to keep the current one.', 'landing_phone_image', null, 'image/png,image/jpeg,image/webp', '', 'col-md-12'),
+                            $this->drawHtml('checkbox', 'Go back to the original built-in picture', 'reset_landing_phone_image', false, null, '', 'col-md-12'),
+                        ]
                     ]
 
 
@@ -72,7 +82,8 @@ class AppVersionsController extends Controller
             'android_version' => 'required',
             'ios_version' => 'required',
             'update_title' => 'required',
-            'update_message' => 'required'
+            'update_message' => 'required',
+            'landing_phone_image' => 'nullable|image|mimes:png,jpg,jpeg,webp|max:5120',
         ]);
 
         $settings = Setting::first();
@@ -92,6 +103,12 @@ class AppVersionsController extends Controller
         $settings->national_council_min_build = request('national_council_min_build') !== null && request('national_council_min_build') !== ''
             ? (int) request('national_council_min_build')
             : null;
+
+        if ($request->hasFile('landing_phone_image')) {
+            $settings->landing_phone_image = $this->moveFile($request->file('landing_phone_image'), 'landing');
+        } elseif ($request->has('reset_landing_phone_image')) {
+            $settings->landing_phone_image = null;
+        }
 
         $settings->save();
 
