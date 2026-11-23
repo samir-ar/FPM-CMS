@@ -89,14 +89,20 @@ class TalentTermsLanguageTest extends CouncilTestCase
 
     public function test_the_cms_page_saves_the_english_terms_next_to_the_arabic_ones(): void
     {
+        DB::table('contents')->where('category', 'competency-faq')->delete();
+        DB::table('contents')->insert(['category' => 'competency-faq', 'text' => '<p>old faq</p>', 'created_at' => now(), 'updated_at' => now()]);
+
         $this->actingAs($this->adminUser(), 'admin')->post(route('admin.competency-static.update', [], false), [
-            'terms' => '<p>عربي</p>', 'terms_en' => '<p>English text</p>', 'faq' => '',
+            'terms' => '<p>عربي</p>', 'terms_en' => '<p>English text</p>',
         ])->assertRedirect();
+        $this->assertSame('<p>old faq</p>', DB::table('contents')->where('category', 'competency-faq')->value('text'), 'saving the Terms leaves the old FAQ text alone');
 
         $this->assertSame('<p>English text</p>', DB::table('contents')->where('category', 'competency-terms-en')->value('text'));
         $this->assertSame('<p>عربي</p>', DB::table('contents')->where('category', 'competency-terms')->value('text'));
 
         $page = $this->actingAs($this->adminUser(), 'admin')->get(route('admin.competency-static.index', [], false))->assertOk()->getContent();
         $this->assertStringContainsString('Terms and Conditions (English)', $page);
+        $this->assertStringNotContainsString('الأسئلة الشائعة', $page, 'the FAQ box is gone from this page');
+        $this->assertStringNotContainsString('name=\'faq\'', $page);
     }
 }

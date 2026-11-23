@@ -15,11 +15,10 @@ class CompetencyStaticController extends Controller
     {
         $terms = Content::where('category', 'competency-terms')->first();
         $termsEn = Content::where('category', 'competency-terms-en')->first();
-        $faq = Content::where('category', 'competency-faq')->first();
 
         return view('components.form')->with([
             'layout'      => 'layouts.cms',
-            'pageTitle'   => 'منصة الكفاءات - الشروط والأسئلة الشائعة',
+            'pageTitle'   => 'منصة الكفاءات - الشروط والأحكام',
             'method'      => 'post',
             'form_action' => route('admin.competency-static.update'),
 
@@ -40,21 +39,15 @@ class CompetencyStaticController extends Controller
                         $this->drawHtml('text', 'Content', 'terms_en', optional($termsEn)->text, null, '', 'col-md-12'),
                     ],
                 ],
-                [
-                    'wrapper-class' => 'col-md-12',
-                    'class' => 'box-default',
-                    'box-header' => 'الأسئلة الشائعة',
-                    'form_fields' => [
-                        $this->drawHtml('text', 'المحتوى', 'faq', optional($faq)->text, null, '', 'col-md-12'),
-                    ],
-                ],
+                // the FAQ is no longer edited here: the app reads it from FPM Talent > Talent FAQ (/admin/talent-faqs)
             ],
         ]);
     }
 
     public function update(Request $request)
     {
-        foreach (['terms' => 'competency-terms', 'terms_en' => 'competency-terms-en', 'faq' => 'competency-faq'] as $field => $category) {
+        // competency-faq is left alone (an older app version may still read it)
+        foreach (['terms' => 'competency-terms', 'terms_en' => 'competency-terms-en'] as $field => $category) {
             $r = Content::where('category', $category)->first();
 
             if (!$r) {
