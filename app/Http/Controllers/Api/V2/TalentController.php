@@ -81,7 +81,8 @@ class TalentController extends Controller
 
     public function faqs(Request $request)
     {
-        $lang = $request->input('language') === 'en' ? 'en' : 'ar';
+        // the language the screen's own button asked for, NOT the phone's Accept-Language (SetLanguage writes that over request('language'))
+        $lang = $request->attributes->get('requested_language', $request->input('language')) === 'en' ? 'en' : 'ar';
 
         return response()->json(
             TalentFaq::where('language', $lang)->where('is_active', true)->orderBy('sort_order')->orderBy('id')->get()

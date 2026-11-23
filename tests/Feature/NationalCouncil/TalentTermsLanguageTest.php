@@ -59,6 +59,27 @@ class TalentTermsLanguageTest extends CouncilTestCase
         }
     }
 
+    // same for the Talent FAQ screen: its two-language button must win over the phone's Accept-Language header
+    public function test_the_faq_language_button_wins_over_the_phones_accept_language_header(): void
+    {
+        $now = now();
+        DB::table('talent_faqs')->insert([
+            ['language' => 'ar', 'question' => 'سؤال عربي ZQ', 'answer' => 'جواب', 'is_active' => 1, 'sort_order' => 1, 'created_at' => $now, 'updated_at' => $now],
+            ['language' => 'en', 'question' => 'English question ZQ', 'answer' => 'Answer', 'is_active' => 1, 'sort_order' => 1, 'created_at' => $now, 'updated_at' => $now],
+        ]);
+
+        foreach (['en', 'ar', null] as $phone) {
+            $headers = $phone ? ['Accept-Language' => $phone] : [];
+            $ar = json_encode($this->withHeaders($headers)->postJson('/api/v2/talent-faqs', ['language' => 'ar'])->json(), JSON_UNESCAPED_UNICODE);
+            $this->assertStringContainsString('سؤال عربي ZQ', $ar, "Arabic button, phone '$phone'");
+            $this->assertStringNotContainsString('English question ZQ', $ar);
+
+            $en = json_encode($this->withHeaders($headers)->postJson('/api/v2/talent-faqs', ['language' => 'en'])->json(), JSON_UNESCAPED_UNICODE);
+            $this->assertStringContainsString('English question ZQ', $en, "English button, phone '$phone'");
+            $this->assertStringNotContainsString('سؤال عربي ZQ', $en);
+        }
+    }
+
     public function test_an_english_version_not_written_yet_comes_back_empty_not_as_arabic(): void
     {
         DB::table('contents')->where('category', 'competency-terms-en')->delete();
