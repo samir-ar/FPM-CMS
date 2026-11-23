@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\Admin;
 
 use Carbon\Carbon;
+use App\Exports\CouncilRowsExport;
+use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\DB;
 
@@ -232,12 +235,11 @@ class UserActivityController extends Controller
             ->count('app_users.member_id');
     }
 
-    /** Member list behind a DAU/WAU/MAU/YAU tile, for the "click to see who" popup. */
-    public function members(string $period)
+    private function sinceDateFor(string $period): ?string
     {
         $today = Carbon::now(config('app.timezone'))->toDateString();
 
-        $sinceDate = match ($period) {
+        return match ($period) {
             'today' => $today,
             'week'  => Carbon::parse($today)->startOfWeek(Carbon::MONDAY)->toDateString(),
             'month' => Carbon::parse($today)->startOfMonth()->toDateString(),
@@ -245,17 +247,19 @@ class UserActivityController extends Controller
             'decade' => Carbon::parse($today)->subDays(3650)->toDateString(),
             default => null,
         };
+    }
 
-        if (!$sinceDate) {
-            return response()->json(['error' => 'Invalid period'], 400);
-        }
-
-        // district/town come from fpm_users, not app_users — app_users'
-        // own copies of those columns aren't reliably kept in sync.
-        // last_active uses created_at (a real timestamp) rather than
-        // activity_date (date-only) - one log row per member per day, so
-        // this is the moment their most recent day's activity was first
-        // recorded, the closest real time-of-day data actually tracked.
+    /**
+     * Members behind one tile (activity_date >= $from) or one chart day (activity_date = $from, $exactDay).
+     * is_new = the member's very FIRST logged activity is inside that same window (for the Active Today tile and for a
+     * single chart day that is "first time active that day", as before; for Week / Month / Year / 10 Years it is "first
+     * time active in that period". Tracking only started on TRACKING_STARTED_AT, so on the Year and 10-Years tiles
+     * everybody counts as new, which is simply what the data says).
+     */
+    private function memberList(string $from, bool $exactDay)
+    {
+        // district/town come from fpm_users, not app_users - app_users' own copies of those columns aren't reliably kept in sync.
+        // last_active uses created_at (a real timestamp) rather than activity_date (date-only): one log row per member per day.
         $members = DB::table('user_activity_logs')
             ->join('app_users', 'app_users.id', '=', 'user_activity_logs.app_user_id')
             ->leftJoin('fpm_users', 'fpm_users.MemberId', '=', 'app_users.member_id')
@@ -267,30 +271,21 @@ class UserActivityController extends Controller
                 DB::raw('MAX(user_activity_logs.created_at) as last_active')
             )
             ->whereNull('app_users.deleted_at')
-            ->where('user_activity_logs.activity_date', '>=', $sinceDate)
+            ->where('user_activity_logs.activity_date', $exactDay ? '=' : '>=', $from)
             ->groupBy('app_users.member_id', 'app_users.name', 'fpm_users.district', 'fpm_users.town')
             ->orderByDesc('last_active')
             ->get();
 
-        // last_active is stored in UTC (see TracksUserActivityTrait) -
-        // convert to Beirut time for display, same as everywhere else an
-        // admin-facing timestamp is shown. Sort order above is unaffected
-        // since a fixed-offset conversion preserves relative ordering.
-        //
-        // is_new uses the same definition as the Active Today tile's "new"
-        // count: never active before today (MIN(activity_date) across all
-        // of a member's history is today) - computed here regardless of
-        // which tile's popup this is, so it only ever lights up members who
-        // are genuinely first-time-active today.
         $newMemberIds = DB::table('user_activity_logs')
             ->join('app_users', 'app_users.id', '=', 'user_activity_logs.app_user_id')
             ->whereNull('app_users.deleted_at')
             ->select('app_users.member_id')
             ->groupBy('app_users.member_id')
-            ->havingRaw('MIN(user_activity_logs.activity_date) = ?', [$today])
+            ->havingRaw('MIN(user_activity_logs.activity_date) ' . ($exactDay ? '=' : '>=') . ' ?', [$from])
             ->pluck('member_id')
             ->flip();
 
+        // last_active is stored in UTC (see TracksUserActivityTrait) - convert to Beirut time for display.
         $members->each(function ($m) use ($newMemberIds) {
             if ($m->last_active) {
                 $m->last_active = Carbon::parse($m->last_active, 'UTC')
@@ -300,52 +295,74 @@ class UserActivityController extends Controller
             $m->is_new = $newMemberIds->has($m->member_id);
         });
 
-        return response()->json($members);
+        return $members;
+    }
+
+    private function validDate(string $date): bool
+    {
+        return (bool) preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) && Carbon::createFromFormat('Y-m-d', $date) !== false;
+    }
+
+    /** The Excel file of a popup: exactly what the popup shows with its filters (only new / district / town). */
+    private function exportMemberList($members, Request $request, string $fileName)
+    {
+        if ($request->boolean('new')) {
+            $members = $members->filter(fn($m) => $m->is_new);
+        }
+        if ($request->filled('district')) {
+            $members = $members->filter(fn($m) => $m->district === $request->input('district'));
+        }
+        if ($request->filled('town')) {
+            $members = $members->filter(fn($m) => $m->town === $request->input('town'));
+        }
+
+        $rows = $members->map(fn($m) => [
+            (string) $m->member_id, (string) $m->name, (string) $m->district, (string) $m->town, (string) $m->last_active, $m->is_new ? 'Yes' : 'No',
+        ])->values()->all();
+
+        return Excel::download(
+            new CouncilRowsExport(['Member ID', 'Name', 'District', 'Town', 'Last Activity', 'New'], $rows),
+            $fileName . '-' . Carbon::now(config('app.timezone'))->format('Ymd-His') . '.xlsx'
+        );
+    }
+
+    /** Member list behind a DAU/WAU/MAU/YAU tile, for the "click to see who" popup. */
+    public function members(string $period)
+    {
+        $sinceDate = $this->sinceDateFor($period);
+        if (!$sinceDate) {
+            return response()->json(['error' => 'Invalid period'], 400);
+        }
+
+        return response()->json($this->memberList($sinceDate, false));
+    }
+
+    public function exportMembers(Request $request, string $period)
+    {
+        $sinceDate = $this->sinceDateFor($period);
+        if (!$sinceDate) {
+            abort(404);
+        }
+
+        return $this->exportMemberList($this->memberList($sinceDate, false), $request, 'active-' . $period);
     }
 
     /** Member list behind a single point on the "Daily Active Members" chart - that exact day only, not "since". */
     public function membersByDate(string $date)
     {
-        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) || !Carbon::createFromFormat('Y-m-d', $date)) {
+        if (!$this->validDate($date)) {
             return response()->json(['error' => 'Invalid date'], 400);
         }
 
-        // Same shape/joins as members() above, just activity_date = $date
-        // instead of >= $sinceDate - one exact day, not a rolling window.
-        $members = DB::table('user_activity_logs')
-            ->join('app_users', 'app_users.id', '=', 'user_activity_logs.app_user_id')
-            ->leftJoin('fpm_users', 'fpm_users.MemberId', '=', 'app_users.member_id')
-            ->select(
-                'app_users.member_id',
-                'app_users.name',
-                'fpm_users.district',
-                'fpm_users.town',
-                DB::raw('MAX(user_activity_logs.created_at) as last_active')
-            )
-            ->whereNull('app_users.deleted_at')
-            ->where('user_activity_logs.activity_date', '=', $date)
-            ->groupBy('app_users.member_id', 'app_users.name', 'fpm_users.district', 'fpm_users.town')
-            ->orderByDesc('last_active')
-            ->get();
+        return response()->json($this->memberList($date, true));
+    }
 
-        $newMemberIds = DB::table('user_activity_logs')
-            ->join('app_users', 'app_users.id', '=', 'user_activity_logs.app_user_id')
-            ->whereNull('app_users.deleted_at')
-            ->select('app_users.member_id')
-            ->groupBy('app_users.member_id')
-            ->havingRaw('MIN(user_activity_logs.activity_date) = ?', [$date])
-            ->pluck('member_id')
-            ->flip();
+    public function exportMembersByDate(Request $request, string $date)
+    {
+        if (!$this->validDate($date)) {
+            abort(404);
+        }
 
-        $members->each(function ($m) use ($newMemberIds) {
-            if ($m->last_active) {
-                $m->last_active = Carbon::parse($m->last_active, 'UTC')
-                    ->setTimezone(config('app.timezone'))
-                    ->toDateTimeString();
-            }
-            $m->is_new = $newMemberIds->has($m->member_id);
-        });
-
-        return response()->json($members);
+        return $this->exportMemberList($this->memberList($date, true), $request, 'active-on-' . $date);
     }
 }

@@ -347,6 +347,8 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::get('user-activity', 'UserActivityController@index')->name('user-activity.index')->middleware('page-perm:90,view');
     Route::get('user-activity/members/{period}', 'UserActivityController@members')->name('user-activity.members')->middleware('page-perm:90,view');
     Route::get('user-activity/members-by-date/{date}', 'UserActivityController@membersByDate')->name('user-activity.members-by-date')->middleware('page-perm:90,view');
+    Route::get('user-activity/members/{period}/export', 'UserActivityController@exportMembers')->name('user-activity.members.export')->middleware('page-perm:90,view');
+    Route::get('user-activity/members-by-date/{date}/export', 'UserActivityController@exportMembersByDate')->name('user-activity.members-by-date.export')->middleware('page-perm:90,view');
 
     //Content Engagement — page 89
     Route::get('content-engagement', 'ContentEngagementController@index')->name('content-engagement.index')->middleware('page-perm:89,view');

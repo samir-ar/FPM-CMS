@@ -79,6 +79,16 @@
                         </select>
                     </div>
                 </div>
+                <div class="row" style="margin-bottom: 10px;">
+                    <div class="col-sm-6">
+                        <label style="font-weight:normal; cursor:pointer; margin:6px 0 0 0;">
+                            <input type="checkbox" id="activityOnlyNew"> Show only new members <span class="text-muted">(جديد)</span>
+                        </label>
+                    </div>
+                    <div class="col-sm-6 text-right">
+                        <button type="button" id="activityExportBtn" class="btn btn-success btn-sm"><i class="fa fa-file-excel-o"></i> Export to Excel</button>
+                    </div>
+                </div>
                 <p id="activityMembersCount" class="text-muted"></p>
                 <div style="max-height: 55vh; overflow-y: auto;">
                     <table class="table table-striped">
@@ -217,6 +227,7 @@
 @section('footer_resources')
 <script>
     var activityModalMembers = [];
+    var activityModalUrl = '';   // the list the popup is showing; its Excel file is this + '/export'
 
     function escapeHtml(s) {
         return $('<div>').text(s == null ? '' : s).html();
@@ -247,8 +258,9 @@
     function applyActivityFilters() {
         var district = $('#activityDistrictFilter').val();
         var town = $('#activityTownFilter').val();
+        var onlyNew = $('#activityOnlyNew').is(':checked');
         var filtered = activityModalMembers.filter(function (m) {
-            return (!district || m.district === district) && (!town || m.town === town);
+            return (!district || m.district === district) && (!town || m.town === town) && (!onlyNew || m.is_new);
         });
         renderActivityRows(filtered);
     }
@@ -279,8 +291,22 @@
         applyActivityFilters();
     });
     $('#activityTownFilter').on('change', applyActivityFilters);
+    $('#activityOnlyNew').on('change', applyActivityFilters);
+
+    // Excel file with exactly what the popup shows now (same tile, same filters)
+    $('#activityExportBtn').on('click', function () {
+        if (!activityModalUrl) { return; }
+        var params = $.param({
+            'new': $('#activityOnlyNew').is(':checked') ? 1 : 0,
+            'district': $('#activityDistrictFilter').val() || '',
+            'town': $('#activityTownFilter').val() || ''
+        });
+        window.location = activityModalUrl + '/export?' + params;
+    });
 
     function openActivityModalFromUrl(url, title) {
+        activityModalUrl = url;
+        $('#activityOnlyNew').prop('checked', false);
         $('#activityMembersModalTitle').text(title);
         $('#activityMembersModalBody').html('<tr><td colspan="5" class="text-center text-muted">Loading...</td></tr>');
         $('#activityMembersCount').text('');
