@@ -75,6 +75,10 @@ class ApiController extends Controller
     use ResponseTrait;
     use TokenTrait;
 
+    // dynamic_representatives ids that a guest (no login) may see in the Representatives list: 11 = الرئيس المؤسس, 12 = الرئيس
+    // (same ids on local, staging and production). Everything else needs a logged-in member.
+    private const GUEST_REPRESENTATIVE_BOX_IDS = [11, 12];
+
     public function myProfile(Request $request)
     {
         $token = $request->user->token;
@@ -1634,6 +1638,14 @@ class ApiController extends Controller
         $categories = DynamicRepresentative::with(['persons' => function ($q) {
             $q->orderBy('order', 'asc');
         }])->orderBy('order', 'asc')->get();
+
+        // Only the Founder (الرئيس المؤسس) and the President (الرئيس) boxes are public. Everybody else on the
+        // list (national council, political council, coordinators ...) is for logged-in members only: the route
+        // accepts a token but does not require one, and a request without a valid token gets just those two.
+        // (The app's guest screen used to show only the first two boxes ON THE PHONE while the server sent all of them.)
+        if (!request('user')) {
+            $categories = $categories->whereIn('id', self::GUEST_REPRESENTATIVE_BOX_IDS)->values();
+        }
 
         $memberIds = $categories->flatMap(fn($r) => $r->persons)
             ->pluck('member_id')->filter()->unique()->values();

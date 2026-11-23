@@ -184,7 +184,8 @@ Route::group(['namespace' => 'Api\V2', 'prefix' => 'v2/', 'middleware' => ['lang
 
 
     Route::post('get-payment-amounts', 'ApiController@getPaymentAmounts');
-    Route::post('representatives', 'ApiController@getRepresentatives');
+    // guest or member: a valid token = the whole list, no token = only the Founder and President boxes (see the controller)
+    Route::post('representatives', 'ApiController@getRepresentatives')->middleware('not-required-token');
     Route::post('biography/{id}', 'ApiController@getBiographyDetails');
     Route::post('achievements', 'ApiController@getAchievements');
     Route::post('laws', 'ApiController@getLaws');
