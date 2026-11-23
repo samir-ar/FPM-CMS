@@ -24,11 +24,7 @@ Route::group(['namespace' => 'Api\V2', 'prefix' => 'v2/', 'middleware' => ['lang
     Route::post('verify-pin', 'RegistrationController@verify_pin');
     Route::post('country-codes', 'ApiController@getCountryCodes');
     Route::post('app-versions', 'ApiController@appVersions');
-    Route::post('business-type', 'CommunityController@getBusinessTypes');
     Route::post('social-links', 'CommunityController@getSocialLinks');
-    Route::post('get-community', 'CommunityController@getCommunityPosts');
-    Route::post('directory-members', 'CommunityController@getDirectoryMembers');
-    Route::post('community-districts', 'CommunityController@getDistricts');
     Route::get('image-proxy', 'CommunityController@imageProxy');
     Route::get('member-photo/{memberId}', 'ApiController@getMemberPhoto');
 
@@ -38,6 +34,11 @@ Route::group(['namespace' => 'Api\V2', 'prefix' => 'v2/', 'middleware' => ['lang
         Route::post('update-profile-info', 'ApiController@updateProfileInfo');
         Route::post('my-directory-listing-status', 'CommunityController@getMyDirectoryListingStatus');
         Route::post('toggle-directory-listing', 'CommunityController@toggleMyDirectoryListing');
+        // FPM Community (directory with phone numbers + posts): members only. social-links (Talk to us) and image-proxy stay public.
+        Route::post('business-type', 'CommunityController@getBusinessTypes');
+        Route::post('get-community', 'CommunityController@getCommunityPosts');
+        Route::post('directory-members', 'CommunityController@getDirectoryMembers');
+        Route::post('community-districts', 'CommunityController@getDistricts');
         // Route::post('get-qr-code', 'ApiController@getQRCode');
         Route::post('google-forms', 'ApiController@getInternalProcess');
         Route::post('single-google-form', 'ApiController@getSingleInternalProcess');
@@ -255,7 +256,7 @@ Route::group(['namespace' => 'Api', 'prefix' => '', 'middleware' => ['lang']], f
 
 
     Route::post('get-payment-amounts', 'ApiController@getPaymentAmounts');
-    Route::post('representatives', 'ApiController@getRepresentatives');
+    // (the legacy POST /api/representatives list was removed 2026-11-23: no supported app version calls it)
     Route::post('about-us', 'ApiController@aboutUs');
     Route::post('faq-categories', 'ApiController@faqCategories');
     Route::post('faqs', 'ApiController@faqsByCategory');

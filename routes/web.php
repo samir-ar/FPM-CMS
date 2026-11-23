@@ -698,4 +698,5 @@ Route::get('donations', 'TransactionController@create')->name('transactions.crea
 Route::post('donations/store', 'TransactionController@store')->name('transactions.store');
 Route::get('payment-mobile-response/{success}/{message}', 'TransactionController@responseUpdateTransaction')->name('payment-mobile-response');
 
-Auth::routes();
+// register is switched OFF: it would create a row in `users`, the table the CMS admin login uses
+Auth::routes(['register' => false]);

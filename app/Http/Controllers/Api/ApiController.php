@@ -484,26 +484,6 @@ class ApiController extends Controller
         return response()->json(['message' => 'Thank you for applying.']);
     }
 
-    public function getRepresentatives(Request $request, ApiRepository $repo)
-    {
-        $content = Content::where('category', 'representative-content')->first();
-        $representatives =  Representative::orderBy('order', 'asc')->get()->map(function($r){
-		return [
-			'id' => $r->id,
-			'name' => $r->name,
-			'category' => $r->category,
-			'image' => $r->image ? Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/representatives/' . $r->image) : null,
-		];
-	});
-
-
-        return response()->json([
-            'title' => $content ? $content->title : null,
-            'text' => $content ? $content->text : null,
-            'representatives' => $representatives,
-        ]);
-    }
-
     public function getLinks(Request $request, ApiRepository $repo)
     {
         if(!request('user'))
