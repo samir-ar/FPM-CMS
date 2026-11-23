@@ -694,9 +694,8 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
 //Route::get('/owner/logout', 'Auth\OwnerLoginController@logout')->name('owner.logout');
 Route::get('/admin/logout', 'Auth\LoginController@logout')->name('admin.logout');
 
-Route::get('donations', 'TransactionController@create')->name('transactions.create');
-Route::post('donations/store', 'TransactionController@store')->name('transactions.store');
-Route::get('payment-mobile-response/{success}/{message}', 'TransactionController@responseUpdateTransaction')->name('payment-mobile-response');
+// the public donation form (donations, donations/store, payment-mobile-response) was removed 2026-11-23: it let anyone create transaction rows,
+// the payment gateway pages fail with 500 on production and no app screen uses it. The CMS Transactions pages (admin.*) are untouched.
 
 // register is switched OFF: it would create a row in `users`, the table the CMS admin login uses
 Auth::routes(['register' => false]);

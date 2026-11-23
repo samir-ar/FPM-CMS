@@ -159,12 +159,11 @@ Route::group(['namespace' => 'Api\V2', 'prefix' => 'v2/', 'middleware' => ['lang
         Route::post('talent-guest-send-code', 'TalentController@guestSendCode');
         Route::post('talent-guest-verify', 'TalentController@guestVerify');
         Route::post('talent-submit', 'TalentController@submit');
+        // (i-pay / e-bill removed 2026-11-23: old donation / bill payment endpoints, never called by the app, open to anyone, gateway pages fail)
         Route::post('news', 'ApiController@getNews');
         Route::post('paginated-news', 'ApiController@getNewsWithPagination')->name('api.news.paginated');
         Route::post('important-links', 'ApiController@getLinks');
         Route::post('webviews', 'ApiController@getWebviews');
-        Route::post('i-pay', 'ApiController@pay');
-        Route::post('e-bill', 'ApiController@bill');
         Route::post('get-wall-feed', 'ApiController@getWallFeed');
 
         // Guest-visible per admin's "Show For Guest" flag (see feature/guest-access-rules)
@@ -241,14 +240,8 @@ Route::group(['namespace' => 'Api', 'prefix' => '', 'middleware' => ['lang']], f
 });
 
 
-    Route::group(['middleware' => ['not-required-token', 'fpm-auth']], function(){
-        Route::post('news', 'ApiController@getNews');
-        Route::post('paginated-news', 'ApiController@getNewsWithPagination')->name('api.news.paginated');
-        Route::post('important-links', 'ApiController@getLinks');
-        Route::post('webviews', 'ApiController@getWebviews');
-        Route::post('i-pay', 'ApiController@pay');
-        Route::post('e-bill', 'ApiController@bill');
-    });
+    // the old optional-token block of this group (api/news, paginated-news, important-links, webviews, i-pay, e-bill) was removed 2026-11-23:
+    // no supported app calls it (the app uses /api/v2/); the news pagination link now resolves to the v2 route name.
 
 
 

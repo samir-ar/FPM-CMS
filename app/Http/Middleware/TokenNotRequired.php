@@ -31,6 +31,10 @@ class TokenNotRequired
 
             $user = $this->toUser($token);
 
+            // a token that matches nobody (wrong, old or tampered): a clean answer, not a PHP error text
+            if (!$user) {
+                throw new Exception('Invalid Access Token');
+            }
 
             if(!$user->verified)
                 throw new Exception('User Did not finish verification');
