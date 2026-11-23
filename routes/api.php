@@ -34,6 +34,12 @@ Route::group(['namespace' => 'Api\V2', 'prefix' => 'v2/', 'middleware' => ['lang
         Route::post('update-profile-info', 'ApiController@updateProfileInfo');
         Route::post('my-directory-listing-status', 'CommunityController@getMyDirectoryListingStatus');
         Route::post('toggle-directory-listing', 'CommunityController@toggleMyDirectoryListing');
+        // content the app never offers to guests: members only (political statements, legislative documents, laws stay public on purpose)
+        Route::post('achievements', 'ApiController@getAchievements');
+        Route::post('national-plans', 'ApiController@getNationalPlans');
+        Route::post('faq-categories', 'ApiController@faqCategories');
+        Route::post('faqs', 'ApiController@faqsByCategory');
+        Route::post('get-payment-amounts', 'ApiController@getPaymentAmounts');
         // FPM Community (directory with phone numbers + posts): members only. social-links (Talk to us) and image-proxy stay public.
         Route::post('business-type', 'CommunityController@getBusinessTypes');
         Route::post('get-community', 'CommunityController@getCommunityPosts');
@@ -184,21 +190,16 @@ Route::group(['namespace' => 'Api\V2', 'prefix' => 'v2/', 'middleware' => ['lang
     });
 
 
-    Route::post('get-payment-amounts', 'ApiController@getPaymentAmounts');
     // guest or member: a valid token = the whole list, no token = only the Founder and President boxes (see the controller)
     Route::post('representatives', 'ApiController@getRepresentatives')->middleware('not-required-token');
     Route::post('biography/{id}', 'ApiController@getBiographyDetails');
-    Route::post('achievements', 'ApiController@getAchievements');
     Route::post('laws', 'ApiController@getLaws');
     Route::post('law-files', 'ApiController@downloadLawFiles');
     Route::post('about-us', 'ApiController@aboutUs');
-    Route::post('faq-categories', 'ApiController@faqCategories');
-    Route::post('faqs', 'ApiController@faqsByCategory');
     Route::post('political-work', 'ApiController@getPoliticalWork');
     Route::post('legislative-docs', 'ApiController@getLegislativeDocs');
     Route::post('legislative-categories', 'ApiController@getLegislativeCategories');
     Route::post('legislative-subcategories', 'ApiController@getLegislativeSubcategories');
-    Route::post('national-plans', 'ApiController@getNationalPlans');
     Route::post('electoral-districts', 'ApiController@getElectoralDistricts');
     Route::post('towns', 'ApiController@getTowns');
     Route::post('competency-static-page', 'ApiController@getCompetencyStaticPage');
@@ -208,9 +209,7 @@ Route::group(['namespace' => 'Api\V2', 'prefix' => 'v2/', 'middleware' => ['lang
 
 Route::group(['namespace' => 'Api', 'prefix' => '', 'middleware' => ['lang']], function(){
 
-    Route::post('send-verification', 'V2\RegistrationController@sendVerfication');
-    Route::post('verify-pin', 'V2\RegistrationController@verify_pin');
-    Route::post('country-codes', 'ApiController@getCountryCodes');
+    // (the open legacy aliases send-verification / verify-pin / country-codes of this old group were removed 2026-11-23; the app uses /api/v2/)
 
 
     Route::group(['middleware' => ['my-auth', 'fpm-auth']], function () {
@@ -255,11 +254,7 @@ Route::group(['namespace' => 'Api', 'prefix' => '', 'middleware' => ['lang']], f
     });
 
 
-    Route::post('get-payment-amounts', 'ApiController@getPaymentAmounts');
-    // (the legacy POST /api/representatives list was removed 2026-11-23: no supported app version calls it)
-    Route::post('about-us', 'ApiController@aboutUs');
-    Route::post('faq-categories', 'ApiController@faqCategories');
-    Route::post('faqs', 'ApiController@faqsByCategory');
+    // the open legacy routes of the old API group (about-us, faq-categories, faqs, get-payment-amounts) were removed 2026-11-23: no supported app version calls them
 
 });
 
