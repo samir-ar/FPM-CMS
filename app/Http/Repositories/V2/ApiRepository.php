@@ -141,34 +141,34 @@ class ApiRepository
         return $query->orderBy('date', 'desc')->limit(200);
     }
 
-    // Opening ONE news item / event by id must follow the SAME rule as the lists (getNewsByGroups, getEventsUpcomingByGroup ...):
-    // it is visible only when it is linked to one of the person's groups or to the two "everyone" groups (81 / 82), and a
-    // GUEST additionally needs the "Public" tick. Before, the by-id lookups answered for ANY id (a guest could read every event
-    // the admin had not shown to guests; a member could read news meant for other groups). Returns null when not visible.
+    // Opening ONE news item / event by id. Visible when
+    //   - it is ticked "Public" (show_for_guest): that tick already means "anyone can read it" (the public web page /news/{id}, /events/{id}
+    //     shows exactly those to everybody), so it opens for a guest and for every member; or
+    //   - (members only) it is linked to one of the person's groups or to the two "everyone" groups (81 / 82), like in the lists.
+    // Before, the by-id lookups answered for ANY id (a guest could read every event the admin had not shown to guests; a member could read
+    // news meant for other groups). Returns null when not visible.
     public function findVisibleNews($newsId, $groups_ids, bool $guestOnly = false)
     {
-        $query = News::whereHas('groups', function ($q) use ($groups_ids) {
-            return $q->whereIn('group_id', $groups_ids ?? [])->orWhere('group_id', 81)->orWhere('group_id', 82);
-        })->where('id', $newsId);
-
-        if ($guestOnly) {
-            $query->where('show_for_guest', true);
-        }
-
-        return $query->first();
+        return News::where('id', $newsId)->where(function ($w) use ($groups_ids, $guestOnly) {
+            $w->where('show_for_guest', true);
+            if (!$guestOnly) {
+                $w->orWhereHas('groups', function ($q) use ($groups_ids) {
+                    return $q->whereIn('group_id', $groups_ids ?? [])->orWhere('group_id', 81)->orWhere('group_id', 82);
+                });
+            }
+        })->first();
     }
 
     public function findVisibleEvent($eventId, $groups_ids, bool $guestOnly = false)
     {
-        $query = Event::whereHas('groups', function ($q) use ($groups_ids) {
-            return $q->whereIn('group_id', $groups_ids ?? [])->orWhere('group_id', 81)->orWhere('group_id', 82);
-        })->where('id', $eventId);
-
-        if ($guestOnly) {
-            $query->where('show_for_guest', true);
-        }
-
-        return $query->first();
+        return Event::where('id', $eventId)->where(function ($w) use ($groups_ids, $guestOnly) {
+            $w->where('show_for_guest', true);
+            if (!$guestOnly) {
+                $w->orWhereHas('groups', function ($q) use ($groups_ids) {
+                    return $q->whereIn('group_id', $groups_ids ?? [])->orWhere('group_id', 81)->orWhere('group_id', 82);
+                });
+            }
+        })->first();
     }
 
     public function skipModeNews()

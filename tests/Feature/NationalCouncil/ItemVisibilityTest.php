@@ -5,8 +5,9 @@ namespace Tests\Feature\NationalCouncil;
 use Illuminate\Support\Facades\DB;
 
 // Found by the member-to-member / guest check of 2026-11-23: opening ONE news item or event by id answered for ANY id, while the
-// lists hide what is not for you. Now the by-id calls (open, like, share) follow the same rule as the lists:
-//   visible = linked to one of your groups or to the two "everyone" groups (81 / 82); a guest additionally needs the "Public" tick.
+// lists hide what is not for you. Now the by-id calls (open, like, share) are:
+//   visible = ticked "Public" (anyone may read it, exactly like the public web page) OR, for a member, linked to one of his groups or
+//   to the two "everyone" groups (81 / 82). Items with no group that are not ticked Public are hidden (they never showed in a list).
 class ItemVisibilityTest extends CouncilTestCase
 {
     private const TOKEN = 'zq-visibility-token';
@@ -28,18 +29,20 @@ class ItemVisibilityTest extends CouncilTestCase
         $this->makeAppUser('ZQ visibility', '5900000444', ['token' => self::TOKEN, 'verified' => 1]);
     }
 
-    private function news(int $group, bool $public): int
+    private function news(?int $group, bool $public): int
     {
         $id = DB::table('news')->insertGetId([
             'title' => json_encode(['en' => 'ZQ', 'ar' => 'ZQ خبر'], JSON_UNESCAPED_UNICODE), 'source' => json_encode(['en' => 's', 'ar' => 'م'], JSON_UNESCAPED_UNICODE),
             'details' => json_encode(['en' => 'd', 'ar' => 'ت'], JSON_UNESCAPED_UNICODE), 'date' => now(), 'show_for_guest' => $public ? 1 : 0, 'created_at' => now(), 'updated_at' => now(),
         ]);
-        DB::table('groups_news')->insert(['news_id' => $id, 'group_group_id' => $group, 'created_at' => now(), 'updated_at' => now()]);
+        if ($group !== null) {
+            DB::table('groups_news')->insert(['news_id' => $id, 'group_group_id' => $group, 'created_at' => now(), 'updated_at' => now()]);
+        }
 
         return $id;
     }
 
-    private function event(int $group, bool $public): int
+    private function event(?int $group, bool $public): int
     {
         $id = DB::table('events')->insertGetId([
             'name' => json_encode(['en' => 'ZQ', 'ar' => 'ZQ نشاط'], JSON_UNESCAPED_UNICODE), 'organized_by' => json_encode(['en' => 'o', 'ar' => 'م'], JSON_UNESCAPED_UNICODE),
@@ -47,7 +50,9 @@ class ItemVisibilityTest extends CouncilTestCase
             'lng' => 0, 'lat' => 0, 'from_date' => now()->addDay(), 'to_date' => now()->addDays(2), 'show_for_guest' => $public ? 1 : 0, 'image' => '', 'public' => 0,
             'created_at' => now(), 'updated_at' => now(),
         ]);
-        DB::table('groups_events')->insert(['event_id' => $id, 'group_group_id' => $group, 'created_at' => now(), 'updated_at' => now()]);
+        if ($group !== null) {
+            DB::table('groups_events')->insert(['event_id' => $id, 'group_group_id' => $group, 'created_at' => now(), 'updated_at' => now()]);
+        }
 
         return $id;
     }
@@ -57,28 +62,42 @@ class ItemVisibilityTest extends CouncilTestCase
         return ['token' => self::TOKEN];
     }
 
-    public function test_a_guest_opens_only_an_event_ticked_public_and_for_everyone(): void
+    public function test_a_guest_opens_only_an_event_ticked_public(): void
     {
         $visible = $this->event(81, true);
-        $notPublic = $this->event(81, false);       // for everyone, but the admin did NOT show it to guests
-        $otherGroup = $this->event($this->privateGroup, true); // ticked public but only for a private group
+        $publicNoGroup = $this->event(null, true);                 // ticked Public, no group: the public web page shows it too
+        $publicOtherGroup = $this->event($this->privateGroup, true);
+        $notPublic = $this->event(81, false);                      // for everyone, but the admin did NOT show it to guests
+        $notPublicNoGroup = $this->event(null, false);             // never shown anywhere
 
-        $this->postJson('/api/v2/single-event', ['event_id' => $visible])->assertOk()->assertJsonPath('id', $visible);
-        $this->postJson('/api/v2/single-event', ['event_id' => $notPublic])->assertStatus(404);
-        $this->postJson('/api/v2/single-event', ['event_id' => $otherGroup])->assertStatus(404);
+        foreach ([$visible, $publicNoGroup, $publicOtherGroup] as $id) {
+            $this->postJson('/api/v2/single-event', ['event_id' => $id])->assertOk()->assertJsonPath('id', $id);
+        }
+        foreach ([$notPublic, $notPublicNoGroup] as $id) {
+            $this->postJson('/api/v2/single-event', ['event_id' => $id])->assertStatus(404);
+        }
     }
 
     public function test_a_member_opens_news_and_events_of_the_everyone_groups_but_not_of_other_groups(): void
     {
         $newsOpen = $this->news(81, false);
+        $newsPublicNoGroup = $this->news(null, true);               // like the party memos ticked Public but linked to no group
         $newsClosed = $this->news($this->privateGroup, false);
+        $newsNoGroupNotPublic = $this->news(null, false);
         $eventOpen = $this->event(82, false);
+        $eventPublicNoGroup = $this->event(null, true);
         $eventClosed = $this->event($this->privateGroup, false);
 
-        $this->postJson('/api/v2/single-news', ['news_id' => $newsOpen], $this->asMember())->assertOk();
-        $this->postJson('/api/v2/single-news', ['news_id' => $newsClosed], $this->asMember())->assertStatus(404);
+        foreach ([$newsOpen, $newsPublicNoGroup] as $id) {
+            $this->postJson('/api/v2/single-news', ['news_id' => $id], $this->asMember())->assertOk();
+        }
+        foreach ([$newsClosed, $newsNoGroupNotPublic] as $id) {
+            $this->postJson('/api/v2/single-news', ['news_id' => $id], $this->asMember())->assertStatus(404);
+        }
 
-        $this->postJson('/api/v2/single-event', ['event_id' => $eventOpen], $this->asMember())->assertOk();
+        foreach ([$eventOpen, $eventPublicNoGroup] as $id) {
+            $this->postJson('/api/v2/single-event', ['event_id' => $id], $this->asMember())->assertOk();
+        }
         $this->postJson('/api/v2/single-event', ['event_id' => $eventClosed], $this->asMember())->assertStatus(404);
     }
 
