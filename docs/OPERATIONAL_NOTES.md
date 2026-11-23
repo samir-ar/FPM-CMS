@@ -333,3 +333,26 @@ Before: fresh RDS snapshot + a copy of the app_users table (compare counts). The
 6. Smoke tests: real SMS login; Apple review login; the OLD live app 4.4.21 against the new server; council poll + results; poll free text; Talent as member and guest; e-mail test; PDF viewer; Home avatar.
 7. Publish both apps by hand; THEN CMS minimum build + Force Update (230040141 android + ios) and `national_council_min_build`.
 8. After the release: `app-users:dedupe` (dry run), fresh backup, `--commit`, then restore and run the held-back migration `2026_11_19_100000`, re-run the double-vote checks.
+
+## Session of 2026-11-22 / 23: production patches, sync check, and what we learned
+
+### Language sent by a screen vs the phone's language (2026-11-23)
+`SetLanguage` (middleware on the app API) runs `$request->merge(['language' => Accept-Language])`, so ANY `language` field in the request body is overwritten by the phone's header. Screens that have their own language button (Talent Terms, Talent FAQ) must read `$request->attributes->get('requested_language', $request->input('language'))`. Symptom was "Arabic and English buttons both show English". When adding a new endpoint that takes `language` in the body, use the same pattern. Tests that call the controller directly bypass the middleware: use `postJson('/api/v2/...')` with an `Accept-Language` header (see `TalentTermsLanguageTest`).
+
+### Talent FAQ: where to fill it
+CMS > FPM Talent > **Talent FAQ** (`/admin/talent-faqs`), two tabs (Arabic / English), each language has its own list; the old "FAQ" box on the Terms page is NOT used by the app any more. The app asks `talent-faqs` with the button's language and an empty language list stays empty (no fallback). `talent_faq_20261123.sql` loads 18 Arabic + 17 English questions.
+
+### Tests must never send real SMS (2026-11-23)
+`TalentController::guestSendCode` builds `new FpmApisRepository()` itself, so it cannot be mocked. `phpunit.xml` now sets empty SMS credentials; `sendSMS()` then throws (caught and logged by the Talent code). A full-suite run on this machine used to send 3 real codes per run.
+
+### Profile save wipes grants of pages that are not on the Profile form (2026-11-22)
+`ProfilesController::update` deletes all of a profile's grants and re-adds only the ticked lines. Pages with `show_in_profile_form=0` therefore lost their grants every time anyone saved a profile (production menu: Transactions empty, Add Account and the Party Organization pages missing). Fixed by migration `2026_11_22_120000_...` (sets the flag, grants Super Admin full, copies parent grants, never overwrites). Rule: a page that appears in the sidebar MUST have `show_in_profile_form=1`.
+
+### News likes can be duplicated (found 2026-11-22, NOT fixed yet)
+`ApiRepository::likeNews` guard `$user->news->where('news_id', ...)` never matches (News models have no `news_id` attribute) and `users_news` has no unique(user_id, news_id), so every "like" request adds a row. Proven locally (3 requests = 3 rows). All like counts (Daily/Monthly Likes charts, Top Liked, per-district) can be inflated. Planned fix: `->where('news_id',$id)->exists()` / `syncWithoutDetaching`, de-duplicate existing rows (keep oldest, backup first), unique key. Production measurement queries were given to the user (rows vs `COUNT(DISTINCT user_id, news_id)`); result not received yet.
+
+### Environments are checked by checksum (2026-11-23)
+Local, staging and GitHub had drifted behind production after a week of production-only patches. Method that works: `md5` of every tracked file under app/routes/resources/database/config with line endings stripped (`tr -d ''`), local vs staging (ssh) and vs production (user runs the `find ... | md5sum > /tmp/prod_md5.txt` one-liner, downloads the file, deletes it). 2026-11-23 result: production == local for all 782 shared files; only difference = migration `2026_11_19_100000_one_active_account_per_member` (held back on purpose until after the app release). Staging was missing the 7 files of the 22 Nov patches and was brought level. Rule now: every fix goes to local + staging + GitHub (+ production by the user's commands).
+
+### Production backups to keep until the user says delete
+/root: `persons_before_copy_from_majlis_*.json`, `persons_before_reps_fix_*.json`, `loginlimits_before_20261122.tar.gz`, `newsimage_before_20261122.tar.gz`, `uploadpreview_before_20261122.tar.gz`, `ownperms_before_20261122.tar.gz`, `termslang_before_20261123.tar.gz`, `faqlang_before_20261123.tar.gz`; DB tables `profile_permissions_backup_20261122`, `pages_backup_20261122`. Staging /root: `staging_before_20261123.tar.gz`, `staging_before_termslang_20261123.tar.gz`, `staging_before_faqlang_20261123.tar.gz`.
