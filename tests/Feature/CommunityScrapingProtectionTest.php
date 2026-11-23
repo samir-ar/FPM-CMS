@@ -123,6 +123,17 @@ class CommunityScrapingProtectionTest extends CouncilTestCase
         $this->postJson('/api/v2/community-districts', [], $this->signHeaders('community-districts', []) + ['token' => self::TOKEN])->assertOk();
     }
 
+    // end to end through the real HTTP stack: behind the AWS load balancer the LOG names the visitor, not the balancer
+    public function test_the_pull_log_records_the_real_visitor_ip_behind_the_load_balancer(): void
+    {
+        Log::spy();
+        $params = ['business_type_id' => $this->typeId];
+        $this->withServerVariables(['REMOTE_ADDR' => '172.31.3.114', 'HTTP_X_FORWARDED_FOR' => '6.6.6.6, 203.0.113.7'])
+            ->postJson('/api/v2/directory-members', $params, $this->signHeaders('directory-members', $params) + ['token' => self::TOKEN])->assertOk();
+
+        Log::shouldHaveReceived('info')->with('community_pull', \Mockery::on(fn ($c) => $c['ip'] === '203.0.113.7'))->once();
+    }
+
     public function test_the_community_allowance_is_separate_from_the_municipalities_allowance(): void
     {
         for ($i = 0; $i < 50; $i++) {
