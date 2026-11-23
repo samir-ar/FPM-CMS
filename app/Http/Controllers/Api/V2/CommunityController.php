@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use App\Http\Traits\FileTrait;
 use App\Http\Traits\ResponseTrait;
 use App\Http\Controllers\Controller;
+use App\Support\MemberPullGuard;
 
 class CommunityController extends Controller
 {
@@ -148,6 +149,10 @@ class CommunityController extends Controller
 
     public function getDirectoryMembers(Request $request)
     {
+        if ($limited = MemberPullGuard::check($request, 'community', 'getDirectoryMembers', ['business_type_id' => $request->input('business_type_id'), 'district' => $request->input('district_id')])) {
+            return $limited;
+        }
+
         $validator = Validator::make($request->all(), [
             'business_type_id' => 'required|exists:business_types,id',
         ]);
@@ -225,6 +230,10 @@ class CommunityController extends Controller
 
     public function getCommunityPosts(Request $request)
     {
+        if ($limited = MemberPullGuard::check($request, 'community', 'getCommunityPosts', ['business_type_id' => $request->input('business_type_id')])) {
+            return $limited;
+        }
+
         $query = CommunityPost::where('status', 'approved');
 
         if (request('business_type_id')) {

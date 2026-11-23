@@ -40,11 +40,15 @@ Route::group(['namespace' => 'Api\V2', 'prefix' => 'v2/', 'middleware' => ['lang
         Route::post('faq-categories', 'ApiController@faqCategories');
         Route::post('faqs', 'ApiController@faqsByCategory');
         Route::post('get-payment-amounts', 'ApiController@getPaymentAmounts');
-        // FPM Community (directory with phone numbers + posts): members only. social-links (Talk to us) and image-proxy stay public.
-        Route::post('business-type', 'CommunityController@getBusinessTypes');
-        Route::post('get-community', 'CommunityController@getCommunityPosts');
-        Route::post('directory-members', 'CommunityController@getDirectoryMembers');
-        Route::post('community-districts', 'CommunityController@getDistricts');
+        // FPM Community (directory with phone numbers + posts): members only AND signed by the real app (app-signature, like the
+        // elections and municipalities); directory-members and get-community are also capped per member (MemberPullGuard).
+        // social-links (Talk to us) and image-proxy stay public. The app signs every request, so no app update is needed.
+        Route::group(['middleware' => ['app-signature']], function () {
+            Route::post('business-type', 'CommunityController@getBusinessTypes');
+            Route::post('get-community', 'CommunityController@getCommunityPosts');
+            Route::post('directory-members', 'CommunityController@getDirectoryMembers');
+            Route::post('community-districts', 'CommunityController@getDistricts');
+        });
         // Route::post('get-qr-code', 'ApiController@getQRCode');
         Route::post('google-forms', 'ApiController@getInternalProcess');
         Route::post('single-google-form', 'ApiController@getSingleInternalProcess');

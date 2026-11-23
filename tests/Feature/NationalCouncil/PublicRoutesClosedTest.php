@@ -51,10 +51,12 @@ class PublicRoutesClosedTest extends CouncilTestCase
             'ElectionStateVoltersNumber' => 0, 'Role' => '', 'RoleId' => 0, 'PersonImage' => '', 'created_at' => now(), 'updated_at' => now(),
         ]);
         $this->makeAppUser('ZQ member', '5900000222', ['token' => 'zq-community-token', 'verified' => 1]);
+        // (since the anti-scraping step the lists also need the app's request signature: a member WITHOUT it gets 403, never 401 -
+        // the signed member request is tested in CommunityScrapingProtectionTest)
         foreach (['business-type', 'get-community', 'community-districts'] as $path) {
-            $this->withHeaders(['token' => 'zq-community-token'])->postJson('/api/v2/' . $path, [])->assertOk();
+            $this->withHeaders(['token' => 'zq-community-token'])->postJson('/api/v2/' . $path, [])->assertStatus(403);
         }
-        $this->assertNotSame(401, $this->withHeaders(['token' => 'zq-community-token'])->postJson('/api/v2/directory-members', ['business_type_id' => $typeId ?: 1])->getStatusCode());
+        $this->assertSame(403, $this->withHeaders(['token' => 'zq-community-token'])->postJson('/api/v2/directory-members', ['business_type_id' => $typeId ?: 1])->getStatusCode());
     }
 
     // content the app never offers to guests is members only; the political statements, legislative documents and laws stay public on purpose
