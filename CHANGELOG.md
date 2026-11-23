@@ -6,6 +6,7 @@ All notable changes to the FPM-CMS (Laravel backend) are documented in this file
 
 ### Added
 
+- **Real visitor IP in logs and per-IP counters (2026-11-23):** behind the AWS load balancer `$request->ip()` was the balancer for everybody; `App\Http\Middleware\TrustProxies` now trusts only 172.31.0.0/16 and only X-Forwarded-For (not proto/host); `TRUSTED_PROXIES` in .env overrides. Tests `TrustedProxyClientIpTest`.
 - **FPM Community anti-scraping (2026-11-23):** the four Community read lists need the app's request signature like the elections / municipalities, and `directory-members` + `get-community` are capped per member (50/hour, 150/day, alert at 100, every pull logged). `App\Support\MemberPullGuard`. No app update needed. Tests `CommunityScrapingProtectionTest`.
 - **Guest access trimmed (2026-11-23):** achievements, national plans, FAQ lists and payment amounts need a logged-in member; the open copies of about-us, country-codes, faq-categories, faqs, get-payment-amounts, send-verification and verify-pin under `/api/` (old group) were removed. Political statements, legislative documents and laws stay public on purpose. Test `PublicRoutesClosedTest`.
 - **Three open doors closed (2026-11-23):** `/register` (page, route, controller removed: it could create CMS admin users), the legacy `POST /api/representatives` list (removed), and the FPM Community lists (`business-type`, `get-community`, `directory-members`, `community-districts`) now need a logged-in member. Test `PublicRoutesClosedTest`. Deployed to production + staging + GitHub.
