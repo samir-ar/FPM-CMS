@@ -102,7 +102,8 @@ class TalentTermsLanguageTest extends CouncilTestCase
 
         $page = $this->actingAs($this->adminUser(), 'admin')->get(route('admin.competency-static.index', [], false))->assertOk()->getContent();
         $this->assertStringContainsString('Terms and Conditions (English)', $page);
-        $this->assertStringNotContainsString('الأسئلة الشائعة', $page, 'the FAQ box is gone from this page');
-        $this->assertStringNotContainsString('name=\'faq\'', $page);
+        // (not the words "الأسئلة الشائعة": the sidebar has a menu item with that name) - the form field itself is gone
+        $this->assertStringNotContainsString("name='faq'", $page, 'the FAQ box is gone from this page');
+        $this->assertStringContainsString("name='terms_en'", $page);
     }
 }
