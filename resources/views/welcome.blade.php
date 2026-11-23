@@ -51,7 +51,7 @@
 
                 <div class="row justify-content-center mb-4">
                     <div class="col-md-4 col-sm-12 d-flex justify-content-center p-4">
-                        <img class="w-75" src="{{ \App\V2\Setting::landingPhoneUrl() }}" alt="FPM app">
+                        <img class="w-100" src="{{ \App\V2\Setting::landingPhoneUrl() }}" alt="FPM app">
                     </div>
                 </div>
 
