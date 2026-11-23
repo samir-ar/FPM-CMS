@@ -2014,6 +2014,26 @@ class ApiController extends Controller
     // is counted per MEMBER (a flat cap that only a script could hit - a person browsing the screens makes a handful
     // of calls) and written to the log (who, what, which قضاء / village / municipality, from which IP), so a slow
     // scraper pacing itself under the cap still leaves a trail. Returns a 429 response when the cap is reached.
+    // The app builds the qada from the member's PROFILE district ("قضاء " + district), but the municipality / mukhtar
+    // tables name some of them differently: profile "المتن الشمالي" is stored as "قضاء المتن", the three Beirut
+    // profile districts as "بيروت", and "المنية-الضنية" has no "قضاء" prefix. Without this, the "My municipality" /
+    // "My mukhtar" cards were empty for those members (found 2026-11-23). The name the app sent is always kept, the
+    // stored spelling is added, so every existing request behaves exactly as before.
+    private function qadaVariants(string $qada): array
+    {
+        $qada = trim($qada);
+        $bare = trim(preg_replace('/^قضاء\s+/u', '', $qada));
+        $aliases = [
+            'المتن الشمالي' => 'قضاء المتن',
+            'بيروت الاولى' => 'بيروت',
+            'بيروت الثانية' => 'بيروت',
+            'بيروت' => 'بيروت',
+            'المنية-الضنية' => 'المنية-الضنية',
+        ];
+
+        return array_values(array_unique(array_filter([$qada, $aliases[$bare] ?? null])));
+    }
+
     private function guardDirectoryPull(Request $request, string $endpoint)
     {
         $user = request('user');
@@ -2068,7 +2088,7 @@ class ApiController extends Controller
             return $this->api_error_response('missing_parameters', 101, implode(', ', $validator->messages()->all()));
         }
 
-        $members = \App\V2\Mukhtar::where('qada', $request->qada)
+        $members = \App\V2\Mukhtar::whereIn('qada', $this->qadaVariants($request->qada))
             ->where('village_name', $request->village)
             ->orderByRaw("CASE position WHEN 'مختار' THEN 1 WHEN 'عضو اختياري' THEN 2 ELSE 3 END")
             ->orderBy('votes', 'desc')
@@ -2100,7 +2120,7 @@ class ApiController extends Controller
             return $this->api_error_response('missing_parameters', 101, implode(', ', $validator->messages()->all()));
         }
 
-        $list = \App\V2\Mukhtar::where('qada', $request->qada)
+        $list = \App\V2\Mukhtar::whereIn('qada', $this->qadaVariants($request->qada))
             ->select('village_name')
             ->groupBy('village_name')
             ->orderBy('village_name')
@@ -2124,7 +2144,7 @@ class ApiController extends Controller
             return $this->api_error_response('missing_parameters', 101, implode(', ', $validator->messages()->all()));
         }
 
-        $list = \App\V2\MunicipalityMember::where('qada', $request->qada)
+        $list = \App\V2\MunicipalityMember::whereIn('qada', $this->qadaVariants($request->qada))
             ->select('municipality_name')
             ->groupBy('municipality_name')
             ->orderBy('municipality_name')
@@ -2149,7 +2169,7 @@ class ApiController extends Controller
             return $this->api_error_response('missing_parameters', 101, implode(', ', $validator->messages()->all()));
         }
 
-        $members = \App\V2\MunicipalityMember::where('qada', $request->qada)
+        $members = \App\V2\MunicipalityMember::whereIn('qada', $this->qadaVariants($request->qada))
             ->where('municipality_name', $request->municipality)
             ->orderByRaw("CASE position WHEN 'رئيس' THEN 1 WHEN 'نائب رئيس' THEN 2 WHEN 'عضو' THEN 3 ELSE 4 END")
             ->orderBy('votes', 'desc')
