@@ -136,14 +136,14 @@
     .pod.p1 .nm { font-size: 19px; }
     .pod .w { font-size: clamp(32px, 3vw, 48px); font-weight: 800; line-height: 1; letter-spacing: -.03em; }
     .pod.p1 .w { font-size: clamp(42px, 4vw, 64px); background: linear-gradient(180deg, #fff, #ffd9a1); -webkit-background-clip: text; background-clip: text; color: transparent; }
-    .pod .pc { margin-top: 8px; font-size: 13px; color: var(--muted); }
+    .pod .pc { margin-top: 10px; font-size: clamp(22px, 2vw, 30px); font-weight: 800; color: #ffc88a; letter-spacing: -.01em; }
 
     .av { width: 100%; height: 100%; border-radius: 50%; overflow: hidden; display: grid; place-items: center; font-weight: 800; color: #2b1500; background: linear-gradient(145deg, #ffd08a, var(--orange)); border: 2px solid rgba(255,255,255,.35); }
     .av img { width: 100%; height: 100%; object-fit: cover; object-position: center top; display: block; }
     .win .av, .p1 .av, .row.win .av, .row.lead .av { border-color: var(--orange); }
 
     .rows { display: grid; gap: 6px; }
-    .row { display: grid; grid-template-columns: 34px 52px minmax(160px, 300px) 1fr 200px; align-items: center; gap: 16px; padding: 11px 16px; border-radius: 16px; background: rgba(255,255,255,.045); border: 1px solid transparent; transition: border-color .5s, background .5s; }
+    .row { display: grid; grid-template-columns: 34px 52px minmax(160px, 300px) 1fr 250px; align-items: center; gap: 16px; padding: 11px 16px; border-radius: 16px; background: rgba(255,255,255,.045); border: 1px solid transparent; transition: border-color .5s, background .5s; }
     .row:hover { background: rgba(255,255,255,.09); }
     .row.win, .row.lead { background: rgba(244,141,36,.1); border-color: rgba(244,141,36,.38); }
     .rank { text-align: center; font-weight: 800; color: var(--faint); font-size: 16px; }
@@ -156,8 +156,8 @@
     .row.win .bar i, .row.lead .bar i { background: linear-gradient(90deg, #f48d24, #ffb25c); }
     .bar i::after { content: ''; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, rgba(255,255,255,.45) 50%, transparent 70%); transform: translateX(-100%); animation: sweep 3.2s ease-in-out infinite; }
     @keyframes sweep { 60%, 100% { transform: translateX(100%); } }
-    .fig { text-align: end; white-space: nowrap; color: var(--muted); font-size: 13px; }
-    .fig b { color: var(--text); font-size: 24px; font-weight: 800; margin-inline-end: 8px; letter-spacing: -.02em; }
+    .fig { text-align: end; white-space: nowrap; color: #ffc88a; font-size: 24px; font-weight: 800; }
+    .fig b { color: var(--text); font-size: 24px; font-weight: 800; margin-inline-end: 22px; letter-spacing: -.02em; }
     .cut { display: flex; align-items: center; gap: 14px; margin: 8px 0; color: #ffc88a; font-size: 11px; letter-spacing: .24em; text-transform: uppercase; font-weight: 700; }
     .cut::before, .cut::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, rgba(244,141,36,.7), transparent); }
     .wait { text-align: center; color: var(--muted); padding: 22px 0 6px; font-size: 15px; }
@@ -245,7 +245,7 @@
 
     @media (max-width: 1100px) {
         header { flex-wrap: wrap; } .hero, .kpis { grid-column: 1 / -1; } .kpis { grid-template-columns: 1fr; }
-        .row { grid-template-columns: 28px 44px 1fr 120px; } .bar { grid-column: 2 / 5; grid-row: 2; }
+        .row { grid-template-columns: 28px 44px 1fr 160px; } .bar { grid-column: 2 / 5; grid-row: 2; }
         h1 { white-space: normal; }
     }
     @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
@@ -345,7 +345,6 @@
 
     function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
     function fmt(n) { return Number(n).toLocaleString('en-US'); }
-    function votes(n) { return n + (n === 1 ? ' vote' : ' votes'); }
 
     function count(node, to, ms) {
         ms = ms || 900;
@@ -377,9 +376,12 @@
 
     // The winners' podium: with a number of winners set it holds ALL of them (first row = 2nd, 1st, 3rd as a
     // podium, the rest below); without one it is the top three.
-    function renderPodium(box, q, top) {
+    function podiumRows(q, top) {
         var rows = top ? q.rows.filter(function (r) { return isWin(r, top); }) : q.rows.filter(function (r) { return r.weight > 0; }).slice(0, 3);
-        rows = rows.slice(0, 12);
+        return rows.slice(0, 12);
+    }
+    function renderPodium(box, q, top) {
+        var rows = podiumRows(q, top);
         var sig = rows.map(function (r) { return r.id + ':' + r.weight; }).join('|') + '#' + top;
         if (box.getAttribute('data-sig') === sig) return;
         box.setAttribute('data-sig', sig); box.textContent = '';
@@ -388,7 +390,7 @@
             var face = el('div', 'face'); face.appendChild(avatar(r.name, r.photo)); face.appendChild(el('div', 'badge', r.rank));
             pod.appendChild(face); pod.appendChild(el('div', 'nm', r.name));
             var w = el('div', 'w'); count(w, r.weight); pod.appendChild(w);
-            pod.appendChild(el('div', 'pc', votes(r.votes) + ' \u00b7 ' + r.pct + '%'));
+            pod.appendChild(el('div', 'pc', r.pct + '%'));
             return pod;
         }
         // a tree: 1st alone on top, then 2nd+3rd, then 4th-6th, then 7th-10th ...
@@ -407,7 +409,14 @@
         var before = {}; Object.keys(existing).forEach(function (k) { before[k] = existing[k].getBoundingClientRect().top; });
         Array.prototype.forEach.call(list.querySelectorAll('.cut'), function (n) { n.remove(); });
         var seen = {};
+        // the people already shown in the top circles are NOT repeated in the list (only once there are votes: until then there is no podium)
+        var inPodium = {}; if (q.cast_weight > 0) podiumRows(q, top).forEach(function (r) { inPodium[r.id] = true; });
         q.rows.forEach(function (r, idx) {
+            if (inPodium[r.id]) {
+                var after = q.rows[idx + 1];
+                if (top && r.rank <= top && after && after.rank > top) { list.appendChild(el('div', 'cut', 'Cut-off · top ' + top)); }
+                return;
+            }
             var node = existing[r.id], fresh = !node;
             if (fresh) {
                 node = el('div', 'row'); node.setAttribute('data-id', r.id);
@@ -424,8 +433,8 @@
             if (r.won_by_age) node.children[2].appendChild(el('span', 'agetag', 'older – wins the tie'));
             else if (r.tied_with_older) node.children[2].appendChild(el('span', 'agetag dim', 'tie – older ranked first'));
             count(node.querySelector('.fig b'), r.weight);
-            node.querySelector('.fig span').textContent = votes(r.votes) + ' · ' + r.pct + '%';
-            node.title = r.name + ' — weight ' + r.weight + ', ' + votes(r.votes) + ', ' + r.pct + '% of the weight';
+            node.querySelector('.fig span').textContent = r.pct + '%';
+            node.title = r.name + ' — weight ' + r.weight + ', ' + r.pct + '% of the weight';
             list.appendChild(node);
             var w = (r.weight * 100 / max) + '%', bi = node.querySelector('.bar i');
             if (fresh) { requestAnimationFrame(function () { requestAnimationFrame(function () { bi.style.width = w; }); }); } else { bi.style.width = w; }
@@ -479,7 +488,7 @@
             node.appendChild(el('div', 'elected'));
             var tools = el('div', 'qtools');
             var inp = el('input', 'qsearch'); inp.type = 'search'; inp.placeholder = 'Find a candidate\u2026';
-            var tg = el('button', 'tgl', 'Winners only'); tg.type = 'button';
+            var tg = el('button', 'tgl', 'Winners only'); tg.type = 'button'; tg.style.display = 'none';
             inp.addEventListener('input', function () { applyFilter(node); });
             tg.addEventListener('click', function () { tg.classList.toggle('on'); applyFilter(node); });
             tools.appendChild(inp); tools.appendChild(tg); node.appendChild(tools);
@@ -722,7 +731,7 @@
         count(r.querySelector('.fig b'), r.getAttribute('data-final'), ms || 1500);
         var prev = r.previousElementSibling; // the cut-off line sits just above the first non-winner
         var next = r.nextElementSibling; if (next && next.classList.contains('cut')) next.classList.remove('rh');
-        if (prev && prev.classList.contains('cut')) { /* shown with the winner above it */ }
+        if (prev && prev.classList.contains('cut')) { prev.classList.remove('rh'); }   // the cut-off line above the first listed row
     }
     function paintCount() { ctl.count.textContent = at + ' / ' + steps.length; ctl.next.textContent = at >= steps.length ? 'Done' : 'Next →'; }
     // One step of the reveal. Returns how long (ms) the auto-play should wait before the next one.

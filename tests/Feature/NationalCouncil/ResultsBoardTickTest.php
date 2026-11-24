@@ -70,6 +70,20 @@ class ResultsBoardTickTest extends CouncilTestCase
         $this->assertSame(1, (int) DB::table('council_national_polls')->where('id', $pub)->value('show_in_results'));
     }
 
+    // the look the user asked for (2026-11-24): the people in the top circles are not repeated in the list below,
+    // and only the percentage is shown (no "N votes"), in a bigger type
+    public function test_the_board_shows_only_the_percentage_and_does_not_repeat_the_podium_in_the_list(): void
+    {
+        $this->actingAs($this->adminUser(), 'admin');
+        $html = $this->get(route('admin.national-council-poll.results-overview', [], false))->assertOk()->getContent();
+
+        $this->assertStringContainsString('function podiumRows(q, top)', $html);
+        $this->assertStringContainsString('if (inPodium[r.id])', $html, 'the list skips the people already shown in the top circles');
+        $this->assertStringNotContainsString('votes(r.votes)', $html, 'no vote counts on the board');
+        $this->assertStringNotContainsString("' vote'", $html);
+        $this->assertMatchesRegularExpression("/\.pod \.pc \{[^}]*font-size: clamp\(22px/", $html, 'the percentage is bigger');
+    }
+
     public function test_the_logo_is_served_by_this_server_even_when_asset_url_points_elsewhere(): void
     {
         $this->actingAs($this->adminUser(), 'admin');
