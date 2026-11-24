@@ -3,6 +3,7 @@
 namespace App\Imports;
 
 use App\V2\Mukhtar;
+use App\Support\LebanesePhone;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\ToCollection;
 
@@ -81,7 +82,7 @@ class MukhtarsImport implements ToCollection
             }
 
             $position = in_array($positionRaw, self::$validPositions) ? $positionRaw : 'مختار';
-            $phone = ($phoneRaw === '' || $phoneRaw === '#N/A') ? null : $phoneRaw;
+            $phone = ($phoneRaw === '' || $phoneRaw === '#N/A') ? null : LebanesePhone::withLeadingZero($phoneRaw);   // Excel drops the leading 0 of 03451111
             $isMountasib = $mountasibRaw !== '';
             $votes = (int) str_replace(['٬', ',', ' '], '', $votesRaw);
 
