@@ -21,4 +21,10 @@ class TalentSubmission extends Model
     {
         return json_decode((string) $this->roles_json, true) ?: [];
     }
+
+    // answers to the questions the admin added in the CMS: [{key, label, value}]
+    public function extras(): array
+    {
+        return json_decode((string) $this->extra_json, true) ?: [];
+    }
 }

@@ -8,10 +8,12 @@ use App\Http\Traits\ResponseTrait;
 use App\V2\TalentAttachment;
 use App\V2\TalentChoice;
 use App\V2\TalentFaq;
+use App\V2\TalentFormItem;
 use App\V2\TalentRole;
 use App\V2\TalentSubmission;
 use App\V2\TalentTrack;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -48,7 +50,7 @@ class TalentController extends Controller
 
         $tracks = TalentTrack::orderBy('id')->get()
             ->filter(fn (TalentTrack $t) => $t->visibleTo($isMember))
-            ->map(function (TalentTrack $t) use ($member) {
+            ->map(function (TalentTrack $t) use ($member, $isMember) {
                 $used = $member ? $this->usedCount($t, $member) : 0;
 
                 return [
@@ -65,6 +67,10 @@ class TalentController extends Controller
                     'audience' => $t->audienceFor(),
                     'max_per_member' => (int) $t->max_per_member,
                     'my_count' => $used,
+                    // the form, as edited in the CMS (Talent Tracks > Edit the form). An app that knows it draws the form from this
+                    // list and tells us so with form_version when it submits; an older app keeps its own fixed form.
+                    'form_version' => 1,
+                    'form' => TalentFormItem::activeFor($t->code, $isMember)->map(fn (TalentFormItem $i) => $i->toApi())->values()->all(),
                 ];
             })->values();
 
@@ -209,17 +215,22 @@ class TalentController extends Controller
             }
         }
 
-        $rules = $this->rulesFor($track, (bool) $member);
+        // An app that draws the form from the CMS (it sends form_version) is validated against THAT form; an older app, which
+        // has the form built in, keeps the fixed rules it always had (so nothing the admin changes can break it).
+        $items = $request->has('form_version') ? TalentFormItem::activeFor($track->code, (bool) $member) : null;
+        $rules = $this->rulesFor($track, (bool) $member, $items);
         $validator = Validator::make($request->all(), $rules['rules'], [], $rules['names']);
         if ($validator->fails()) {
             return $this->api_error_response('missing_parameters', 101, implode(', ', $validator->messages()->all()));
         }
 
-        // the ticked roles (and the free text of "any other field")
+        // the ticked roles (and the free text of "any other field"); a form without the roles block needs none
+        $rolesWanted = $items === null || $items->contains('kind', 'roles');
         $roles = $this->resolveRoles($request->input('roles'));
-        if ($roles === null) {
+        if ($roles === null && $rolesWanted) {
             return $this->api_error_response('invalid_roles', 107, 'يرجى اختيار دور واحد على الأقل');
         }
+        $roles = $roles ?? [];
 
         // limit per member / phone and cycle
         $used = $member ? $this->usedCount($track, $member)
@@ -229,18 +240,26 @@ class TalentController extends Controller
         }
 
         // a second tap / a retry of the same form must not create a second row
-        $fingerprint = 'talent-submit:' . md5(($member ? 'u' . $member->id : 'g' . $guestPhone) . '|' . $track->code . '|' . $request->input('nominee_name') . '|' . $request->input('reasons') . '|' . $request->input('cover_letter'));
+        $fingerprint = 'talent-submit:' . md5(($member ? 'u' . $member->id : 'g' . $guestPhone) . '|' . $track->code . '|' . json_encode($request->except(['guest_token', 'cv', 'docs', 'device_id', 'hardware_id', 'user', 'groups']), JSON_UNESCAPED_UNICODE) . '|' . collect($request->allFiles())->flatten()->map(fn ($f) => $f->getClientOriginalName() . $f->getSize())->implode(','));
         if (!Cache::add($fingerprint, 1, 60)) {
             return response()->json(['success' => true, 'duplicate' => true]);
         }
 
-        $submission = DB::transaction(function () use ($request, $track, $member, $guestPhone, $roles) {
+        $submission = DB::transaction(function () use ($request, $track, $member, $guestPhone, $roles, $items) {
             $fpm = $member && !empty($member->member_id)
                 ? DB::table('fpm_users')->where('MemberId', ltrim((string) $member->member_id, '0'))->first()
                 : null;
 
             $isPeer = $track->code === TalentTrack::PEER;
             $text = fn ($k) => ($v = trim(strip_tags((string) $request->input($k)))) !== '' ? mb_substr($v, 0, self::TEXT_MAX) : null;
+
+            // answers to the questions the admin added in the CMS (only for an app that follows the form)
+            $extra = [];
+            foreach (($items ?? collect())->filter(fn (TalentFormItem $i) => $i->isCustom()) as $item) {
+                if (($answer = $text($item->key)) !== null) {
+                    $extra[] = ['key' => $item->key, 'label' => (string) $item->label, 'value' => $answer];
+                }
+            }
 
             $submission = TalentSubmission::create([
                 'track' => $track->code,
@@ -270,6 +289,7 @@ class TalentController extends Controller
                 'interests' => $isPeer ? null : $text('interests'),
                 'cover_letter' => $isPeer ? null : $text('cover_letter'),
                 'roles_json' => json_encode($roles, JSON_UNESCAPED_UNICODE),
+                'extra_json' => $extra ? json_encode($extra, JSON_UNESCAPED_UNICODE) : null,
                 'acknowledged' => true,
                 'device_id' => mb_substr((string) $request->input('device_id'), 0, 191) ?: null,
                 'hardware_id' => mb_substr((string) $request->input('hardware_id'), 0, 191) ?: null,
@@ -296,7 +316,44 @@ class TalentController extends Controller
         return response()->json(['success' => true, 'id' => $submission->id]);
     }
 
-    private function rulesFor(TalentTrack $track, bool $isMember): array
+    // The rules of a form drawn from the CMS: only what the admin left on the form is asked, with the admin's required / optional.
+    private function dynamicRulesFor(TalentTrack $track, bool $isMember, Collection $items, array $names): array
+    {
+        $rules = ['acknowledged' => 'required|accepted'];
+
+        foreach ($items->where('kind', 'field') as $i) {
+            $names[$i->key] = $i->label;
+            $kind = $i->input === 'textarea' ? 'string|max:' . self::TEXT_MAX : 'string|max:191';
+            if ($i->input === 'dropdown') {
+                $allowed = $i->choices_key ? TalentChoice::names($i->choices_key) : $i->optionList();
+                $rules[$i->key] = [$i->required ? 'required' : 'nullable', 'string', Rule::in($allowed)];
+            } else {
+                $rules[$i->key] = ($i->required ? 'required|' : 'nullable|') . $kind;
+            }
+        }
+
+        $rules['roles'] = $items->contains('kind', 'roles') ? 'required|array|min:1|max:20' : 'nullable|array|max:20';
+
+        $location = $items->firstWhere('kind', 'location');
+        if ($track->code === TalentTrack::PEER) {
+            $needed = $location && $location->required ? 'required|string|max:191' : 'nullable|string|max:191';
+            $rules['nominee_district'] = $needed;
+            $rules['nominee_town'] = $needed;
+        }
+
+        $cv = $items->firstWhere('kind', 'cv');
+        $rules['cv'] = ($cv && $cv->required ? 'required' : 'nullable') . '|file|mimes:pdf,doc,docx|max:5120';
+        $rules['docs'] = 'nullable|array|max:' . self::MAX_DOCS;
+        $rules['docs.*'] = 'file|mimes:pdf,jpg,jpeg,png|max:5120';
+
+        if ($track->code === TalentTrack::SELF && !$isMember) {
+            $rules += ['full_name' => 'required|string|max:191', 'email' => 'nullable|email|max:191', 'district' => 'required|string|max:191', 'town' => 'required|string|max:191'];
+        }
+
+        return ['names' => $names, 'rules' => $rules];
+    }
+
+    private function rulesFor(TalentTrack $track, bool $isMember, ?Collection $items = null): array
     {
         $long = 'required|string|max:' . self::TEXT_MAX;
         $common = ['roles' => 'required|array|min:1|max:20', 'acknowledged' => 'required|accepted'];
@@ -306,6 +363,10 @@ class TalentController extends Controller
             'professional' => 'الخبرات المهنية', 'interests' => 'مجالات الاهتمام', 'cover_letter' => 'الرسالة التعريفية',
             'full_name' => 'الاسم', 'nominee_district' => 'قضاء الشخص المسمّى', 'nominee_town' => 'بلدة الشخص المسمّى', 'education_level' => 'المستوى التعليمي', 'district' => 'القضاء', 'town' => 'البلدة', 'cv' => 'السيرة الذاتية', 'acknowledged' => 'الإقرار', 'roles' => 'الأدوار',
         ];
+
+        if ($items !== null) {
+            return $this->dynamicRulesFor($track, $isMember, $items, $names);
+        }
 
         if ($track->code === TalentTrack::PEER) {
             return ['names' => $names, 'rules' => $common + [

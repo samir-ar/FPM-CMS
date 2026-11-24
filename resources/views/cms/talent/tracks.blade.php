@@ -29,6 +29,7 @@
                         <div class="box-header with-border">
                             <h3 class="box-title">{{ $t->code === 'peer' ? 'Track 1: naming others' : 'Track 2: showing interest' }}</h3>
                             <span class="pull-right label label-{{ $state === 'open' ? 'success' : ($state === 'upcoming' ? 'warning' : 'default') }}">{{ strtoupper($state) }} now</span>
+                            <a href="{{ route('admin.talent-form.edit', $t->code) }}" class="btn btn-xs btn-default pull-right" style="margin-right:8px"><i class="fa fa-list"></i> Edit the form (questions, order)</a>
                         </div>
                         <div class="box-body">
                             <div class="form-group">

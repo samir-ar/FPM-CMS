@@ -49,6 +49,9 @@
                         {!! $field('Organizational / public experience', $s->organizational) !!}
                         {!! $field('Areas of interest', $s->interests) !!}
                         {!! $field('Cover letter', $s->cover_letter) !!}
+                        @foreach ($s->extras() as $extra)
+                            {!! $field($extra['label'] ?? $extra['key'], $extra['value'] ?? '') !!}
+                        @endforeach
                         <tr>
                             <th>Roles</th>
                             <td>

@@ -98,7 +98,7 @@ class TalentSubmissionsController extends Controller
         $roles = fn ($s) => collect($s->roles())->map(fn ($r) => $r['name'] . (!empty($r['other']) ? ' (' . $r['other'] . ')' : ''))->implode(' | ');
         $head = ['ID', 'Date', 'Track', 'Cycle', 'Who', 'Name', 'Member ID', 'Phone', 'Email', 'District', 'Town', 'Organizational role',
             'Nominee', 'Nominee district', 'Nominee town', 'Education level', 'Profession', 'Relation to FPM', 'Relationship between', 'Reasons', 'Strengths', 'Personal info', 'Academic', 'Professional',
-            'Organizational / public', 'Interests', 'Cover letter', 'Roles', 'Status', 'Notes', 'Files'];
+            'Organizational / public', 'Interests', 'Cover letter', 'Roles', 'Status', 'Notes', 'Files', 'Extra questions (added in the CMS)'];
 
         return response()->streamDownload(function () use ($rows, $head, $roles) {
             $out = fopen('php://output', 'w');
@@ -110,6 +110,7 @@ class TalentSubmissionsController extends Controller
                     $s->submitter_email, $s->submitter_district, $s->submitter_town, $s->submitter_role, $s->nominee_name, $s->nominee_district, $s->nominee_town, $s->education_level, $s->profession, $s->relation_to_fpm,
                     $s->relationship_between, $s->reasons, $s->strengths, $s->personal_info, $s->academic, $s->professional, $s->organizational,
                     $s->interests, $s->cover_letter, $roles($s), $s->status, $s->admin_notes, $s->attachments->pluck('original_name')->implode(' | '),
+                    collect($s->extras())->map(fn ($x) => ($x['label'] ?? $x['key']) . ': ' . ($x['value'] ?? ''))->implode(' | '),
                 ]);
             }
             fclose($out);
