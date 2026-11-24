@@ -58,4 +58,28 @@ class ResultsBoardUnpublishedTest extends CouncilTestCase
         $this->assertStringNotContainsString('cdn.example.test/fpm/storage/council-board', $html, 'the logo must not be taken from the asset (S3) address');
         $this->assertFileExists(public_path('council-board/fpm-logo.png'));
     }
+
+    // (a poll with NO voters at all, like a brand-new test poll, used to crash this page with a division by zero)
+    // the printable results report of ONE poll ("النتائج" link in the polls list) loaded its stylesheet and logo
+    // through asset() too: on production both were looked up in the S3 bucket (403) and the page came out unstyled
+    public function test_the_single_poll_results_report_loads_its_css_and_logo_from_this_server(): void
+    {
+        $this->actingAs($this->adminUser(), 'admin');
+        $id = $this->poll('ZQ report poll', 0);
+        $prop = new \ReflectionProperty(app('url'), 'assetRoot');
+        $prop->setAccessible(true);
+        $before = $prop->getValue(app('url'));
+        $prop->setValue(app('url'), 'https://cdn.example.test/fpm/storage');
+        try {
+            $html = $this->get(route('admin.national-council-poll.results', $id, false))->assertOk()->getContent();
+        } finally {
+            $prop->setValue(app('url'), $before);
+        }
+
+        $this->assertStringContainsString('/cms/css/report.css', $html);
+        $this->assertStringContainsString('/landing/img/fpm-logo.svg', $html);
+        $this->assertStringNotContainsString('cdn.example.test', $html, 'no file of this page may be taken from the asset (S3) address');
+        $this->assertFileExists(public_path('cms/css/report.css'));
+        $this->assertFileExists(public_path('landing/img/fpm-logo.svg'));
+    }
 }

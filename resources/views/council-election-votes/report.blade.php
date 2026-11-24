@@ -2,7 +2,7 @@
 <head>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
-    <link rel="stylesheet" href="{{ asset('/cms/css/report.css') }}"/>
+    <link rel="stylesheet" href="{{ url('cms/css/report.css') }}"/>
     <style>
         .bg-orange{
             background: var(--orange);
@@ -12,7 +12,7 @@
 
 <body dir="rtl">
 <header>
-    <img src="{{ asset('landing/img/fpm-logo.svg') }}" >
+    <img src="{{ url('landing/img/fpm-logo.svg') }}" >
     <h1>  نتائج التصويت للمجلس الوطني لعام  {{$poll->created_at->year}} </h1>
     <h6>{{$title}}</h6>
 </header>
@@ -35,7 +35,7 @@
 
             <div class="col-3">
                 <span>نسبة التصويت:</span>
-                <span>{{round($votersCount *100 /$electorsCount,3)}}</span>
+                <span>{{ $electorsCount ? round($votersCount *100 /$electorsCount,3) : 0 }}</span>
             </div>
             
 
