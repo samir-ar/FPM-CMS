@@ -96,6 +96,19 @@ class TalentApiTest extends CouncilTestCase
         $this->assertSame([], $guest['tracks'], 'members-only tracks stay hidden from guests');
     }
 
+    public function test_the_config_carries_the_cms_grey_line_of_each_track(): void
+    {
+        $uid = $this->makeAppUser('ZQ member', '5800000009');
+        TalentTrack::where('code', 'peer')->update(['member_note' => 'سطر من الإدارة']);
+        $this->open('peer');
+        $this->open('self', ['audience' => 'members']);
+        TalentTrack::where('code', 'self')->update(['member_note' => null]);
+
+        $tracks = collect($this->callTalent('config', [], $uid)['tracks'])->keyBy('code');
+        $this->assertSame('سطر من الإدارة', $tracks['peer']['member_note']);
+        $this->assertNull($tracks['self']['member_note']);
+    }
+
     public function test_open_upcoming_closed_and_the_audience(): void
     {
         $u = $this->makeAppUser('T talent 2', '5900000002');

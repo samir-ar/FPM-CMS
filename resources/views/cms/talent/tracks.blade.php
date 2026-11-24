@@ -90,6 +90,11 @@
                                 <textarea class="form-control" rows="5" dir="rtl" name="tracks[{{ $t->code }}][intro]">{{ old('tracks.'.$t->code.'.intro', $t->intro) }}</textarea>
                             </div>
                             <div class="form-group">
+                                <label>Grey line under the welcome box (members)</label>
+                                <textarea class="form-control" rows="2" dir="rtl" name="tracks[{{ $t->code }}][member_note]">{{ old('tracks.'.$t->code.'.member_note', $t->member_note) }}</textarea>
+                                <p class="help-block">Shown in the app above the form, to members only (not to guests). Empty = no line. Older app versions keep showing their own sentence.</p>
+                            </div>
+                            <div class="form-group">
                                 <label>The sentence the member must tick</label>
                                 <textarea class="form-control" rows="3" dir="rtl" name="tracks[{{ $t->code }}][acknowledgement]">{{ old('tracks.'.$t->code.'.acknowledgement', $t->acknowledgement) }}</textarea>
                             </div>

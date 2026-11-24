@@ -57,6 +57,7 @@ class TalentController extends Controller
                     'subtitle' => $t->subtitle,
                     'intro' => $t->intro,
                     'acknowledgement' => $t->acknowledgement,
+                    'member_note' => $t->member_note,
                     'state' => $t->state(),
                     'message' => $t->state() === 'open' ? null : $this->stateMessage($t),
                     'opens_at' => $t->opens_at ? $t->opens_at->timestamp : null,

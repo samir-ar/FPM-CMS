@@ -53,6 +53,21 @@ class TalentAdminTest extends CouncilTestCase
         $this->assertSame('public', TalentTrack::where('code', 'self')->value('audience'));
     }
 
+    public function test_the_grey_line_of_the_form_is_a_cms_text_per_track_and_can_be_emptied(): void
+    {
+        $page = $this->admin()->get(route('admin.talent-tracks.index', [], false))->assertOk()->getContent();
+        $this->assertStringContainsString('member_note', $page);
+        $this->assertStringContainsString('Grey line under the welcome box', $page);
+
+        $this->admin()->post(route('admin.talent-tracks.update', [], false), ['tracks' => [
+            'peer' => ['title' => 'x', 'member_note' => '  سطر رمادي جديد  ', 'max_per_member' => '10'],
+            'self' => ['title' => 'y', 'member_note' => '', 'max_per_member' => '1'],
+        ]])->assertRedirect()->assertSessionHasNoErrors();
+
+        $this->assertSame('سطر رمادي جديد', TalentTrack::where('code', 'peer')->value('member_note'));
+        $this->assertNull(TalentTrack::where('code', 'self')->value('member_note'), 'empty = no line in the app');
+    }
+
     public function test_a_closing_date_before_the_opening_date_is_refused(): void
     {
         $this->admin()->post(route('admin.talent-tracks.update', [], false), ['tracks' => [
