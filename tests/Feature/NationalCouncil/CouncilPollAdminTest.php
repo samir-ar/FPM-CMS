@@ -326,8 +326,10 @@ class CouncilPollAdminTest extends CouncilTestCase
         $bId = DB::table('council_national_polls')->insertGetId(['title' => 'T results B', 'is_published' => 0, 'created_at' => now(), 'updated_at' => now()]);
         $url = route('admin.national-council-poll.results-overview', [], false);
 
-        // a published poll that is already closed stays listed; an unpublished one is not listed at all
+        // a ticked poll that is already closed stays listed; a poll that is not ticked is not listed at all
         $closedId = DB::table('council_national_polls')->insertGetId(['title' => 'T results closed', 'is_published' => 1, 'closes_at' => now()->subDay(), 'created_at' => now(), 'updated_at' => now()]);
+        // the board lists the polls ticked "Show on results page" (since 2026-11-24, whatever their publish state)
+        DB::table('council_national_polls')->whereIn('id', [$a->id, $closedId])->update(['show_in_results' => 1]);
         $this->get($url)->assertOk()->assertSee('T results A')->assertSee('T results closed')->assertDontSee('T results B')->assertDontSee('T candidate A');
 
         // one poll chosen: only its results
@@ -338,7 +340,7 @@ class CouncilPollAdminTest extends CouncilTestCase
 
         // the live page keeps asking this JSON for fresh numbers
         $json = $this->getJson(route('admin.national-council-poll.results-overview.data', [], false) . '?polls[]=' . $a->id . '&polls[]=' . $closedId . '&polls[]=' . $bId . '&polls[]=99999999&top=1', ['X-Requested-With' => 'XMLHttpRequest'])->assertOk()->json();
-        $this->assertSame([$a->id, $closedId], array_column($json['polls'], 'id'), 'an unpublished poll and an id that does not exist are ignored, not a crash');
+        $this->assertSame([$a->id, $closedId], array_column($json['polls'], 'id'), 'a poll that is not ticked and an id that does not exist are ignored, not a crash');
         $this->assertSame(1, $json['top']);
         $rowA = $json['polls'][0]['questions'][0]['rows'][0];
         $this->assertSame('T candidate A', $rowA['name']);
@@ -371,7 +373,7 @@ class CouncilPollAdminTest extends CouncilTestCase
 
         // results: each poll's own number, unless the box on the page is filled
         $other = DB::table('council_national_polls')->where('title', 'T seats')->value('id');
-        DB::table('council_national_polls')->whereIn('id', [$poll->id, $other])->update(['is_published' => 1]);   // results exist for published polls only
+        DB::table('council_national_polls')->whereIn('id', [$poll->id, $other])->update(['is_published' => 1, 'show_in_results' => 1]);   // the board shows ticked polls only
         $url = route('admin.national-council-poll.results-overview.data', [], false);
         $json = $this->getJson($url . '?polls[]=' . $poll->id . '&polls[]=' . $other)->assertOk()->json('polls');
         $this->assertSame([0, 7], array_column($json, 'top'));
@@ -388,6 +390,7 @@ class CouncilPollAdminTest extends CouncilTestCase
         DB::table('answer_council_national_polls')->where('id', $a)->update(['member_id' => (string) $this->members[0]]);
         DB::table('answer_council_national_polls')->where('id', $b)->update(['member_id' => (string) $this->members[1]]);
         $this->actingAs($this->adminUser(), 'admin');
+        DB::table('council_national_polls')->where('id', $poll->id)->update(['show_in_results' => 1]);   // the board shows ticked polls only
         $url = route('admin.national-council-poll.results-overview.data', [], false) . '?polls[]=' . $poll->id . '&top=1';
         $rows = fn() => collect($this->getJson($url)->assertOk()->json('polls.0.questions.0'))->only(['rows', 'tie_at_cutoff'])->all();
 

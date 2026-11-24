@@ -15,4 +15,18 @@ $(function () {
             alert('Failed to save the closing time. See the console for details.');
         });
     });
+
+    // "Show on results page": the tick saves by itself; if it fails it goes back and says so
+    $('body').on('change', '.poll-show-results-tick', function () {
+        var box = $(this), id = box.data('id'), on = box.is(':checked');
+
+        $.post('/admin/national-council-poll/' + id + '/show-in-results', {
+            _token: $('meta[name=csrf-token]').attr('content'),
+            show: on ? 1 : 0
+        }).fail(function (xhr) {
+            box.prop('checked', !on);
+            console.error('Failed to save the results tick', xhr.status, xhr.responseText);
+            alert('Could not save the tick. Nothing was changed.');
+        });
+    });
 });

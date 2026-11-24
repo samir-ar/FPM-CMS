@@ -665,6 +665,7 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::post('national-council-poll/{id}/reset-votes/send-code', 'NationalCouncilPollResetController@sendCode')->name('national-council-poll.reset-votes.send')->middleware(pagePermByUrl('admin.national-council-poll.reset-votes', 'full'));
     Route::post('national-council-poll/{id}/reset-votes', 'NationalCouncilPollResetController@confirm')->name('national-council-poll.reset-votes.confirm')->middleware(pagePermByUrl('admin.national-council-poll.reset-votes', 'full'));
     Route::post('national-council-poll/{id}/closes-at', 'NationalCouncilPollController@updateClosesAt')->name('national-council-poll.closes-at')->middleware('page-perm:58,full');
+    Route::post('national-council-poll/{id}/show-in-results', 'NationalCouncilPollController@updateShowInResults')->name('national-council-poll.show-in-results')->middleware('page-perm:58,full');
     // who voted + from which device (never WHAT they voted)
     Route::get('national-council-poll/{id}/voters', 'NationalCouncilPollVotersController@progress')->name('national-council-poll.progress')->middleware(pagePermByUrl('admin.national-council-poll.progress', 'view'));
     Route::get('national-council-poll/{id}/voters/export', 'NationalCouncilPollVotersController@progressExport')->name('national-council-poll.progress.export')->middleware(pagePermByUrl('admin.national-council-poll.progress', 'view'));

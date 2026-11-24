@@ -292,12 +292,8 @@
     <div id="chooser">
         <div class="pick-title">Choose a poll</div>
         <div class="pick-sub">Select the poll whose results you want to open.</div>
-        <label class="sub" style="display:inline-flex; align-items:center; gap:8px; cursor:pointer; margin:10px 0 4px;">
-            <input type="checkbox" id="showUnpublished" @if($showUnpublished) checked @endif>
-            Also show unpublished polls (for testing)
-        </label>
         @if($polls->isEmpty())
-            <div class="sub">{{ $showUnpublished ? 'There are no polls yet.' : 'There are no published polls. Tick the box above to show unpublished ones too.' }}</div>
+            <div class="sub">No poll is shown here yet. In the polls list, tick "Show on results page" for the poll you want to display.</div>
         @endif
         <div class="pcards">
             @foreach($polls as $p)
@@ -339,7 +335,6 @@
     var cfg = {
         initial: {!! json_encode($initial, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) !!},
         dataUrl: {!! json_encode($dataUrl) !!},
-        unpublished: {{ $showUnpublished ? 'true' : 'false' }},
         every: 5000
     };
     var stages = document.getElementById('stages'), chooser = document.getElementById('chooser'), pickerCard = document.getElementById('pickerCard');
@@ -630,7 +625,7 @@
     }
 
     function chosen() { return Array.prototype.map.call(document.querySelectorAll('#picker input[name=poll]:checked'), function (c) { return c.value; }); }
-    function query() { var q = chosen().map(function (v) { return 'polls[]=' + encodeURIComponent(v); }); var t = parseInt(topInput.value, 10); if (t > 0) q.push('top=' + t); if (cfg.unpublished) q.push('unpublished=1'); return q.join('&'); }
+    function query() { var q = chosen().map(function (v) { return 'polls[]=' + encodeURIComponent(v); }); var t = parseInt(topInput.value, 10); if (t > 0) q.push('top=' + t); return q.join('&'); }
     function setUrl() { history.replaceState(null, '', location.pathname + (query() ? '?' + query() : '')); }
 
     function refresh() {
@@ -651,9 +646,7 @@
         if (r) { r.checked = true; setUrl(); refresh(); }
     });
     var tt; topInput.addEventListener('input', function () { clearTimeout(tt); tt = setTimeout(function () { setUrl(); refresh(); }, 350); });
-    document.getElementById('changeBtn').addEventListener('click', function () { location.href = location.pathname + (cfg.unpublished ? '?unpublished=1' : ''); });
-    // the tick: show unpublished polls too (the page reloads with ?unpublished=1; untick = back to published only)
-    document.getElementById('showUnpublished').addEventListener('change', function () { location.href = location.pathname + (this.checked ? '?unpublished=1' : ''); });
+    document.getElementById('changeBtn').addEventListener('click', function () { location.href = location.pathname; });
     document.getElementById('refreshBtn').addEventListener('click', function () { refresh(); });
     function toggleFull() { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); }
     document.getElementById('fs').addEventListener('click', toggleFull);

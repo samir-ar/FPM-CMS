@@ -67,6 +67,13 @@ class NationalCouncilPollController extends Controller
                         "</div>";
                 })
 
+                // "Show on results page": ticked = this poll is listed on the results board (published or not)
+                ->addColumn('show_in_results', function($row){
+                    return "<label style='font-weight:normal; cursor:pointer; margin:0;'>".
+                        "<input type='checkbox' class='poll-show-results-tick' data-id='{$row->id}'" . ($row->show_in_results ? ' checked' : '') . "> Display".
+                        "</label>";
+                })
+
                 ->addColumn('questions', function($row){
                     return "<a href='".route('admin.national-council-poll.questions.index',$row)."' class='text-success'>Questions</a>";
                 })
@@ -86,7 +93,7 @@ class NationalCouncilPollController extends Controller
                     // wiped a poll's votes); the page itself is not linked from here any more
                 })
 
-                ->rawColumns(['is_published','closes','action','questions','results'])
+                ->rawColumns(['is_published','closes','action','questions','results','show_in_results'])
 
                 ->make(true);
         }
@@ -98,7 +105,7 @@ class NationalCouncilPollController extends Controller
             'table_title' => '',
             'slug'		=> 'national-council-poll',
             'custom_btn' => "<a href='" . route('admin.national-council-poll.create') ."' class='btn btn-primary'>Add National Council Poll</a> <a href='" . route('admin.national-council-poll.results-overview') ."' class='btn btn-default' style='margin-left:6px;'>Results of several polls</a>",
-            'headers'	=> ['id', 'Title', 'Publish','Closes at','Results','questions','Creation Date','Action'],
+            'headers'	=> ['id', 'Title', 'Publish','Closes at','Results','Show on results page','questions','Creation Date','Action'],
             'scripts' => ['/js/council-poll-list.js'],
             'action' => route('admin.national-council-poll.index'),
             'columns' => json_encode([
@@ -107,6 +114,7 @@ class NationalCouncilPollController extends Controller
                 ['data' => 'is_published', 'name' => 'is_published'],
                 ['data' => 'closes', 'name' => 'closes', 'searchable' => false, 'sortable' => false],
                 ['data' => 'results', 'name' => 'results'],
+                ['data' => 'show_in_results', 'name' => 'show_in_results', 'searchable' => false, 'sortable' => false],
                 ['data' => 'questions', 'name' => 'questions'],
                 ['data' => 'created_at', 'name' => 'created_at'],
                 ['data' =>  'action', 'name'=> 'action', 'searchable' => false, 'sortable' => false],
@@ -352,6 +360,20 @@ HTML;
         return response()->json(['message' => 'Closing time updated']);
     }
 
+    // The tick "Show on results page" of one poll (saved by a click in the polls list).
+    public function updateShowInResults(Request $request, $id)
+    {
+        $poll = CouncilNationalPoll::find($id);
+        if (!$poll) {
+            return response()->json(['message' => 'Poll not found'], 404);
+        }
+
+        $poll->show_in_results = $request->boolean('show');
+        $poll->save();
+
+        return response()->json(['message' => $poll->show_in_results ? 'Shown on the results page' : 'Hidden from the results page', 'show' => (bool) $poll->show_in_results]);
+    }
+
     // One click Publish / Unpublish from the polls list. A poll with no question cannot be published (members
     // would see an empty poll); unpublishing is always allowed.
     public function togglePublish($id)
@@ -544,11 +566,9 @@ HTML;
     // Same permission as the single-poll results (Council polls, view). Nothing here changes any data.
     public function resultsOverview(Request $request)
     {
-        // only PUBLISHED polls are listed (a closed one stays until it is unpublished); an unpublished poll is
-        // not an election the members saw, so it has no results page - unless the admin ticks "Also show unpublished
-        // polls" on the page (to try the board with a test poll)
-        $showUnpublished = $request->boolean('unpublished');
-        $polls = CouncilNationalPoll::when(!$showUnpublished, fn($q) => $q->where('is_published', 1))->orderByDesc('id')->get(['id', 'title', 'is_published', 'closes_at', 'winners', 'created_at'])->map(function ($p) {
+        // the board lists exactly the polls ticked "Show on results page" in the polls list - published or not
+        // (a published poll is ticked automatically when this shipped; a new poll starts unticked)
+        $polls = CouncilNationalPoll::where('show_in_results', 1)->orderByDesc('id')->get(['id', 'title', 'is_published', 'closes_at', 'winners', 'created_at'])->map(function ($p) {
             // what the "choose a poll" cards show
             $p->electors = CouncilNationalPollPermission::where('poll_id', $p->id)->count();
             $p->voters = CouncilNationalPollVote::where('poll_id', $p->id)->distinct()->count(DB::raw("COALESCE(NULLIF(member_id,''), CONCAT('u', user_id))"));
@@ -567,9 +587,8 @@ HTML;
             'polls' => $polls,
             'chosen' => $chosen->all(),
             'top' => $top,
-            'showUnpublished' => $showUnpublished,
             // first paint comes with the page; after that the page asks resultsOverviewData() every few seconds
-            'initial' => $this->resultsPayload($chosen->all(), $top, $showUnpublished),
+            'initial' => $this->resultsPayload($chosen->all(), $top),
             'dataUrl' => route('admin.national-council-poll.results-overview.data'),
         ]);
     }
@@ -580,17 +599,17 @@ HTML;
         $chosen = collect((array) $request->get('polls', []))->map(fn($v) => (int) $v)->filter()->unique()->values()->all();
         $top = max(0, (int) $request->get('top', 0));
 
-        return response()->json($this->resultsPayload($chosen, $top, $request->boolean('unpublished')));
+        return response()->json($this->resultsPayload($chosen, $top));
     }
 
     // Everything the live page draws, as plain arrays: per chosen poll its headline numbers and, per question,
     // the ranked rows (with the candidate's photo when he was picked from the member list).
-    private function resultsPayload(array $pollIds, int $top, bool $includeUnpublished = false): array
+    private function resultsPayload(array $pollIds, int $top): array
     {
         $out = [];
         foreach ($pollIds as $pollId) {
             $poll = CouncilNationalPoll::with('meeting', 'questions.answers')->find($pollId);
-            if (!$poll || (!$poll->is_published && !$includeUnpublished)) {
+            if (!$poll || !$poll->show_in_results) {
                 continue;
             }
 
