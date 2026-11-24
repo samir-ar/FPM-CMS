@@ -106,7 +106,8 @@ class NationalCouncilPollController extends Controller
             'slug'		=> 'national-council-poll',
             'custom_btn' => "<a href='" . route('admin.national-council-poll.create') ."' class='btn btn-primary'>Add National Council Poll</a> <a href='" . route('admin.national-council-poll.results-overview') ."' class='btn btn-default' style='margin-left:6px;'>Results of several polls</a>",
             'headers'	=> ['id', 'Title', 'Publish','Closes at','Results','Show on results page','questions','Creation Date','Action'],
-            'scripts' => ['/js/council-poll-list.js'],
+            // the version number makes browsers fetch the new script after a change instead of keeping an old cached copy
+            'scripts' => ['/js/council-poll-list.js?v=' . (filemtime(public_path('js/council-poll-list.js')) ?: 1)],
             'action' => route('admin.national-council-poll.index'),
             'columns' => json_encode([
                 ['data' => 'id', 'name' => 'id'],

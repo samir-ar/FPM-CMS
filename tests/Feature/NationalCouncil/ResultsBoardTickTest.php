@@ -46,6 +46,7 @@ class ResultsBoardTickTest extends CouncilTestCase
         $this->assertStringNotContainsString('checked', $row['show_in_results']);
         $html = $this->get(route('admin.national-council-poll.index', [], false))->assertOk()->getContent();
         $this->assertStringContainsString('Show on results page', $html);
+        $this->assertMatchesRegularExpression('#/js/council-poll-list\.js\?v=\d+#', $html, 'the script carries a version so a browser never keeps an old copy');
 
         $url = route('admin.national-council-poll.show-in-results', $id, false);
         $this->postJson($url, ['show' => 1])->assertOk()->assertJsonPath('show', true);
