@@ -119,7 +119,7 @@
 @endphp
 <header>
     <div class="brand">
-        <div class="mark"><img src="{{ asset('council-board/fpm-logo.png') }}" alt=""></div>
+        <div class="mark"><img src="{{ url('council-board/fpm-logo.png') }}" alt=""></div>
         <div>
             <div class="kicker">Poll results</div>
             <h1 class="auto">{{ $question }}</h1>

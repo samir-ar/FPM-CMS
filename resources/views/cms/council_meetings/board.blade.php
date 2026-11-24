@@ -243,7 +243,7 @@
 <header>
     <div class="brand">
         <div class="mark">
-            <img src="{{ asset('council-board/fpm-logo.png') }}" alt="">
+            <img src="{{ url('council-board/fpm-logo.png') }}" alt="">
         </div>
         <div style="min-width:0">
             <div class="kicker">National Council &middot; Live attendance</div>

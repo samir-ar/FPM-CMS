@@ -545,8 +545,10 @@ HTML;
     public function resultsOverview(Request $request)
     {
         // only PUBLISHED polls are listed (a closed one stays until it is unpublished); an unpublished poll is
-        // not an election the members saw, so it has no results page
-        $polls = CouncilNationalPoll::where('is_published', 1)->orderByDesc('id')->get(['id', 'title', 'is_published', 'closes_at', 'winners', 'created_at'])->map(function ($p) {
+        // not an election the members saw, so it has no results page - unless the admin ticks "Also show unpublished
+        // polls" on the page (to try the board with a test poll)
+        $showUnpublished = $request->boolean('unpublished');
+        $polls = CouncilNationalPoll::when(!$showUnpublished, fn($q) => $q->where('is_published', 1))->orderByDesc('id')->get(['id', 'title', 'is_published', 'closes_at', 'winners', 'created_at'])->map(function ($p) {
             // what the "choose a poll" cards show
             $p->electors = CouncilNationalPollPermission::where('poll_id', $p->id)->count();
             $p->voters = CouncilNationalPollVote::where('poll_id', $p->id)->distinct()->count(DB::raw("COALESCE(NULLIF(member_id,''), CONCAT('u', user_id))"));
@@ -565,8 +567,9 @@ HTML;
             'polls' => $polls,
             'chosen' => $chosen->all(),
             'top' => $top,
+            'showUnpublished' => $showUnpublished,
             // first paint comes with the page; after that the page asks resultsOverviewData() every few seconds
-            'initial' => $this->resultsPayload($chosen->all(), $top),
+            'initial' => $this->resultsPayload($chosen->all(), $top, $showUnpublished),
             'dataUrl' => route('admin.national-council-poll.results-overview.data'),
         ]);
     }
@@ -577,17 +580,17 @@ HTML;
         $chosen = collect((array) $request->get('polls', []))->map(fn($v) => (int) $v)->filter()->unique()->values()->all();
         $top = max(0, (int) $request->get('top', 0));
 
-        return response()->json($this->resultsPayload($chosen, $top));
+        return response()->json($this->resultsPayload($chosen, $top, $request->boolean('unpublished')));
     }
 
     // Everything the live page draws, as plain arrays: per chosen poll its headline numbers and, per question,
     // the ranked rows (with the candidate's photo when he was picked from the member list).
-    private function resultsPayload(array $pollIds, int $top): array
+    private function resultsPayload(array $pollIds, int $top, bool $includeUnpublished = false): array
     {
         $out = [];
         foreach ($pollIds as $pollId) {
             $poll = CouncilNationalPoll::with('meeting', 'questions.answers')->find($pollId);
-            if (!$poll || !$poll->is_published) {
+            if (!$poll || (!$poll->is_published && !$includeUnpublished)) {
                 continue;
             }
 
