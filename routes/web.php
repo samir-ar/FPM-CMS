@@ -142,7 +142,6 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::post('users/import/store', 'UsersController@importStore')->name('users.import.store')->middleware('page-perm:8,full');
     Route::get('users/export', 'UsersController@export')->name('users.export')->middleware('page-perm:8,view');
     Route::get('users/installation-report', 'UsersController@installationReport')->name('users.installation-report')->middleware('page-perm:8,view');
-    Route::get('users/installation-report/download', 'UsersController@installationReportDownload')->name('users.installation-report.download')->middleware('page-perm:8,view');
     // Login limits: see / reset the app-login counters (code requests, wrong codes) for one member or for everybody
     Route::get('users/login-limits', 'LoginLimitsController@index')->name('users.login-limits')->middleware(pagePermByUrl('admin.users.login-limits', 'full'));
     Route::post('users/login-limits/reset-member', 'LoginLimitsController@resetMember')->name('users.login-limits.reset-member')->middleware(pagePermByUrl('admin.users.login-limits', 'full'));

@@ -96,7 +96,9 @@
                 processing: true,
                 serverSide: true,
                 
-                @if(Request::get('district'))
+                @if(isset($ajaxQuery) && $ajaxQuery !== '')
+                    ajax: "{!! $action . '?' . $ajaxQuery !!}",
+                @elseif(Request::get('district'))
                     ajax: "{{ $action.'?district='.Request::get('district')}}",
                 @elseif(Request::get('type'))
                     ajax: "{{ $action.'?type='.Request::get('type')}}",

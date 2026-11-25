@@ -44,6 +44,7 @@ class UsersController extends Controller
             } elseif ($request->get('scan_access') === 'none') {
                 $data->where('can_scan_checkin', false);
             }
+            $this->applyTableFilters($data, $this->tableFilters($request));
 
             return DataTables::of($data)
                 ->filterColumn('phone_number', function($query, $keyword){
@@ -116,17 +117,53 @@ class UsersController extends Controller
             return "<a href='{$url}' class='btn " . ($active ? 'btn-primary' : 'btn-default') . "' style='margin-right:4px'>{$label}</a>";
         };
 
+        // the filters (kept in the page address, so a reload or the Excel button keeps them)
+        $filters = $this->tableFilters($request);
+        $hidden = ($scanAccess ? "<input type='hidden' name='scan_access' value='" . e($scanAccess) . "'>" : '');
+        $districtOptions = "<option value=''>All districts</option>";
+        foreach (\Illuminate\Support\Facades\DB::table('fpm_users')->whereNotNull('district')->where('district', '!=', '')->distinct()->orderBy('district')->pluck('district') as $d) {
+            $districtOptions .= "<option value='" . e($d) . "'" . ($filters['district'] === $d ? ' selected' : '') . '>' . e($d) . '</option>';
+        }
+        $box = fn($name, $label, $value, $w) => "<input type='text' name='{$name}' value='" . e($value) . "' placeholder='{$label}' class='form-control' style='width:{$w}px;display:inline-block;margin-right:4px;'>";
+        $filterForm = "<form method='GET' action='" . route('admin.users.index') . "' style='clear:both;padding-top:8px;'>" . $hidden
+            . "<select name='f_district' class='form-control' style='width:150px;display:inline-block;margin-right:4px;'>{$districtOptions}</select>"
+            . $box('f_town', 'Town', $filters['town'], 120)
+            . $box('f_sect', 'Sect', $filters['sect'], 110)
+            . $box('f_unit', 'Activity Unit', $filters['unit'], 130)
+            . $box('f_member', 'Member ID', $filters['member_id'], 120)
+            . "<button type='submit' class='btn btn-primary' style='margin-right:4px;'>Filter</button>"
+            . "<a href='" . route('admin.users.index', $scanAccess ? ['scan_access' => $scanAccess] : []) . "' class='btn btn-default'>Reset</a></form>";
+
+        // Installation Report: month (from Sept 2026) + the filters above -> Excel download
+        $periods = '';
+        $tz = config('app.timezone');
+        $now = now($tz);
+        for ($d = \Carbon\Carbon::create(2026, 9, 1, 0, 0, 0, $tz); $d->lte($now); $d->addMonth()) {
+            $periods .= "<option value='" . $d->format('Y-m') . "'" . ($d->format('Y-m') === $now->format('Y-m') ? ' selected' : '') . '>' . $d->format('F Y') . '</option>';
+        }
+        $reportForm = "<form method='GET' action='" . route('admin.users.installation-report') . "' style='display:inline-block;'>"
+            . "<input type='hidden' name='f_district' value='" . e($filters['district']) . "'><input type='hidden' name='f_town' value='" . e($filters['town']) . "'>"
+            . "<input type='hidden' name='f_sect' value='" . e($filters['sect']) . "'><input type='hidden' name='f_unit' value='" . e($filters['unit']) . "'>"
+            . "<input type='hidden' name='f_member' value='" . e($filters['member_id']) . "'>"
+            . "<select name='period' class='form-control' style='width:150px;display:inline-block;'>{$periods}</select> "
+            . "<button type='submit' class='btn btn-warning'>Installation Report</button></form>";
+
         return view('components.table_ajax')->with([
+            'ajaxQuery' => http_build_query(array_filter([
+                'scan_access' => $scanAccess, 'f_district' => $filters['district'], 'f_town' => $filters['town'], 'f_sect' => $filters['sect'],
+                'f_unit' => $filters['unit'], 'f_member' => $filters['member_id'],
+            ], fn($v) => $v !== null && $v !== '')),
             'layout'    => 'layouts.cms',
             'pageTitle'	=> 'APP USERS',
             'table_title' => '',
             'slug'		=> 'Project',
             'headers'	=> ['id', 'Member ID', 'Name', 'Phone Number', 'Verified', 'Registration Date', 'Last Activity', 'Mobile', 'App version', 'District', 'Town', 'Sect', 'Sect Number', 'Position', 'Activity Unit', 'Civil Registry Unit', 'Scan Check-In', 'Action'],
             'action' => route('admin.users.index'),
-            'custom_btn' => "<a href='" . route('admin.users.export') ."' class='btn btn-success'>Export Users</a> &nbsp <a href='" . route('admin.users.import.create') ."' class='btn btn-primary'>Import Users</a> &nbsp <a href='" . route('admin.users.installation-report') ."' class='btn btn-warning'>Installation Report</a> &nbsp <a href='" . route('admin.users.login-limits') ."' class='btn btn-default'>Login Limits</a>",
+            'custom_btn' => "<a href='" . route('admin.users.export') ."' class='btn btn-success'>Export Users</a> &nbsp <a href='" . route('admin.users.import.create') ."' class='btn btn-primary'>Import Users</a> &nbsp " . $reportForm . " &nbsp <a href='" . route('admin.users.login-limits') ."' class='btn btn-default'>Login Limits</a>",
             'custom_btn1' => $filterBtn(null, 'All')
                 . $filterBtn('granted', 'Has Scan Access')
                 . $filterBtn('none', 'No Scan Access'),
+            'custom_btn2' => $filterForm,
             'scan_access' => $scanAccess,
 
             'columns' => json_encode([
@@ -258,60 +295,68 @@ class UsersController extends Controller
         return Excel::download(new AppUsersExport, 'verified_users.xlsx');
     }
 
-    // The Installation Report: pick a month + year (from Sept 2026, when app activity tracking began), filter, generate.
-    private function installationReportExport(Request $request): array
+    // The filters of the App Users table (district / town / sect / activity unit / member id). They read the member list
+    // (fpm_users), the same place the table's district, town, sect and unit columns come from.
+    private const FILTER_KEYS = ['f_district' => 'district', 'f_town' => 'town', 'f_sect' => 'sect', 'f_unit' => 'unit', 'f_member' => 'member_id'];
+
+    private function tableFilters(Request $request): array
+    {
+        $out = [];
+        foreach (self::FILTER_KEYS as $param => $key) {
+            $out[$key] = trim((string) $request->query($param, ''));
+        }
+
+        return $out;
+    }
+
+    private function applyTableFilters($query, array $f)
+    {
+        $like = fn($v) => '%' . str_replace(['%', '_'], ['\%', '\_'], $v) . '%';
+        if (array_filter($f, fn($v) => $v !== '')) {
+            $query->whereExists(function ($q) use ($f, $like) {
+                $q->select(\Illuminate\Support\Facades\DB::raw(1))->from('fpm_users')->whereColumn('fpm_users.MemberId', 'app_users.member_id');
+                if ($f['district'] !== '') {
+                    $q->where('fpm_users.district', $f['district']);
+                }
+                if ($f['town'] !== '') {
+                    $q->where('fpm_users.town', 'like', $like($f['town']));
+                }
+                if ($f['sect'] !== '') {
+                    $q->where('fpm_users.sect', 'like', $like($f['sect']));
+                }
+                if ($f['unit'] !== '') {
+                    $q->where('fpm_users.NashatUnit', 'like', $like($f['unit']));
+                }
+            });
+            if ($f['member_id'] !== '') {
+                $query->where('app_users.member_id', $f['member_id']);
+            }
+        }
+
+        return $query;
+    }
+
+    // The Installation Report is an Excel file: pick a month (from Sept 2026, when app activity tracking began) and download.
+    // The App Users filters, when set, narrow it too.
+    public function installationReport(Request $request)
     {
         $tz = config('app.timezone');
         $now = now($tz);
-        $year = (int) $request->query('year', $now->year);
-        $month = (int) $request->query('month', $now->month);
         $start = \Carbon\Carbon::create(2026, 9, 1, 0, 0, 0, $tz);
-        $picked = \Carbon\Carbon::create(max(2000, min(2100, $year)), max(1, min(12, $month)), 1, 0, 0, 0, $tz);
+        $period = (string) $request->query('period', $now->format('Y-m'));
+        try {
+            $picked = \Carbon\Carbon::createFromFormat('!Y-m', $period, $tz);
+        } catch (\Throwable $e) {
+            $picked = $now->copy()->startOfMonth();
+        }
         if ($picked->lt($start)) {
             $picked = $start->copy();
         }
         if ($picked->gt($now)) {
             $picked = $now->copy()->startOfMonth();
         }
-        $filters = [];
-        foreach (['district', 'town', 'sect', 'unit', 'member_id'] as $key) {
-            $filters[$key] = trim((string) $request->query($key, ''));
-        }
 
-        return [new AppInstallationReportExport($picked->year, $picked->month, $filters), $picked, $filters, $start, $now];
-    }
-
-    public function installationReport(Request $request)
-    {
-        [$export, $picked, $filters, $start, $now] = $this->installationReportExport($request);
-        $rows = collect($export->buildRows());
-
-        $months = [];
-        for ($d = $start->copy(); $d->lte($now); $d->addMonth()) {
-            $months[] = ['year' => $d->year, 'month' => $d->month, 'label' => $d->format('F Y')];
-        }
-
-        return view('cms.users.installation_report')->with([
-            'layout' => 'layouts.cms',
-            'picked' => $picked,
-            'months' => $months,
-            'filters' => $filters,
-            'districts' => AppInstallationReportExport::groupLabels(),
-            'byInstalled' => $rows->sortByDesc('total_installed')->values(),
-            'byMember' => $rows->sortByDesc('total_member')->values(),
-            'byPercentage' => $rows->sortByDesc('percentage')->values(),
-            'totals' => [
-                'installed' => $rows->sum('total_installed'),
-                'member' => $rows->sum('total_member'),
-                'active' => $rows->sum('total_active'),
-            ],
-            'trackingStart' => AppInstallationReportExport::TRACKING_START,
-        ]);
-    }
-
-    public function installationReportDownload(Request $request)
-    {
-        [$export, $picked] = $this->installationReportExport($request);
+        $export = new AppInstallationReportExport($picked->year, $picked->month, $this->tableFilters($request));
         $writer = new Xlsx($export->build());
         $filename = 'app_installation_report_' . $picked->format('Y-m') . '.xlsx';
 

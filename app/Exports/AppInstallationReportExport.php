@@ -88,6 +88,11 @@ class AppInstallationReportExport
                 $query->where($column, 'like', '%' . str_replace(['%', '_'], ['\%', '\_'], $f[$key]) . '%');
             }
         }
+        // the district as the member list spells it (the App Users filter), or one of the report's merged names
+        if (($f['district'] ?? '') !== '') {
+            $raws = self::GROUPS[$f['district']] ?? [$f['district']];
+            $query->whereIn('fpm_users.district', $raws);
+        }
         if (($f['member_id'] ?? '') !== '') {
             $query->where('fpm_users.MemberId', $f['member_id']);
         }
@@ -112,6 +117,8 @@ class AppInstallationReportExport
             ->join('fpm_users', 'app_users.member_id', '=', 'fpm_users.MemberId')
             ->whereNull('app_users.deleted_at')
             ->where('app_users.verified', 1)
+            // installs counted from the day tracking began (24 Sept 2026, Beirut time) up to the end of the chosen month
+            ->where('app_users.created_at', '>=', \Carbon\Carbon::parse(self::TRACKING_START, $tz)->startOfDay()->setTimezone('UTC'))
             ->where('app_users.created_at', '<=', $monthEnd->copy()->setTimezone('UTC'))
             ->whereNotNull('fpm_users.district')
             ->where('fpm_users.district', '!=', ''))
@@ -133,7 +140,7 @@ class AppInstallationReportExport
         $only = ($this->filters['district'] ?? '') !== '' ? $this->filters['district'] : null;
         $rows = [];
         foreach (self::GROUPS as $label => $rawDistricts) {
-            if ($only !== null && $label !== $only) {
+            if ($only !== null && $label !== $only && !in_array($only, $rawDistricts, true)) {
                 continue;
             }
             $totalMember = 0;
