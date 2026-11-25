@@ -544,3 +544,7 @@ Package cms_prod_appversion_20261125 (16 files): migration 2026_11_25_150000 ran
 - Add/Edit Poll has an optional Picture (stored in `polls.image`, files in `images/polls`, migration `2026_11_25_170000_add_image_to_polls`). `ApiRepository::getMedia()` sends it as `media` for POLL items; empty = no media, so the app keeps its default (the Home card icon drawn full size). No app release needed.
 - Production: applied 2026-11-25 by the 3-file package `cms_prod_pollimage_20261125.tar.gz` (sha256 b6f11ab2...bd17); backup `/root/pollimage_before_20261125.tar.gz`; migration ran DONE.
 - Not yet verified with a real upload (local storage points at the real S3 bucket, so tests fake it): the first real upload on production is the check.
+
+## 2026-11-25 - App Users list columns
+- CMS > App Users (`/admin/users`) has Last Activity (Beirut time, MAX of the activity log's created_at, refreshed on every API call), Mobile (stored device_model, else the member's latest vote phone; iPhone codes shown as names) and App version. One-file change (`UsersController`), no migration.
+- Production: applied 2026-11-25 with `cms_prod_userscols_20261125.tar.gz` (sha256 6d1a5c81...703e); backup `/root/userscols_before_20261125.tar.gz`. Staging: to be synced once the user confirms the columns look right.
