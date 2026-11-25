@@ -132,4 +132,18 @@ class InstallationReportTest extends CouncilTestCase
         $this->assertEqualsCanonicalizing([$a, $b], array_values(array_intersect([$a, $b], $ids('&f_district=' . urlencode('جبيل') . '&f_town=ZR Town'))));
         $this->assertSame([], array_values(array_intersect([$a, $b], $ids('&f_district=' . urlencode('كسروان') . '&f_town=ZR Town'))));
     }
+
+    public function test_beirut_first_and_second_are_one_beirut_row(): void
+    {
+        foreach ([[5900000741, 'بيروت الاولى'], [5900000742, 'بيروت الثانية']] as [$id, $district]) {
+            DB::table('fpm_users')->insert([
+                'MemberId' => $id, 'UserFullName' => 'ZR b' . $id, 'MobileNumber' => (string) $id, 'Email' => '', 'district' => $district, 'town' => 'ZR Beirut', 'sect' => '',
+                'NashatUnit' => '', 'LastUnitPosition' => '', 'member_status' => 1, 'BirthDate' => '1970-01-01', 'CanCreateEventRequest' => 0, 'CanCreateMeetings' => 0,
+                'ElectionState' => '', 'ElectionStateId' => 0, 'ElectionStateVoltersNumber' => 0, 'Role' => '', 'RoleId' => 0, 'PersonImage' => '', 'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
+
+        $rows = (new AppInstallationReportExport(2026, 11, ['town' => 'ZR Beirut']))->buildRows();
+        $this->assertSame(2, collect($rows)->firstWhere('kada', 'بيروت')['total_member']);
+    }
 }

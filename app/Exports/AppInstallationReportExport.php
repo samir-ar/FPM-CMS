@@ -36,7 +36,8 @@ class AppInstallationReportExport
         'البترون' => ['البترون'],
         'جزين' => ['جزين'],
         'زحلة' => ['زحلة'],
-        'بيروت' => ['بيروت'],
+        // the member list spells Beirut as "Beirut 1st" / "Beirut 2nd" (plain "Beirut" is rare), so all three are one row
+        'بيروت' => ['بيروت', 'بيروت الاولى', 'بيروت الثانية'],
         'صيدا' => ['صيدا'],
         'زغرتا' => ['زغرتا'],
         'مرجعيون - حاصبيا' => ['مرجعيون', 'حاصبيا'],
