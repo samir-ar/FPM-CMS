@@ -113,6 +113,7 @@ class UserPollsController extends Controller
                 ->addColumn('poll', fn($row) => $pollQuestion)
                 ->addColumn('option', fn($row) => $optionNames[$row->option_id] ?? '')
                 ->addColumn('user', fn($row) => $row->kind === 'Guest' ? 'Guest' : trim(($row->name ?? '') . ($row->phone ? '-' . $row->phone : '')))
+                ->editColumn('device_model', fn($row) => \App\Support\DeviceName::pretty($row->device_model))
                 ->rawColumns(['poll', 'option', 'user'])
                 ->make(true);
         }

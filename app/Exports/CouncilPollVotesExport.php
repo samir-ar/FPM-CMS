@@ -24,7 +24,7 @@ class CouncilPollVotesExport implements FromArray, WithHeadings
     {
         return array_map(fn($r) => [
             $r['voter'], $r['member_id'], $r['weight'], $r['question'], $r['candidate'], $r['voted_at'],
-            $r['device_model'] ?? '', $r['hardware'] ?? '', $r['device'], $r['device_members'] ?: '', $r['phone'],
+            \App\Support\DeviceName::pretty($r['device_model'] ?? ''), $r['hardware'] ?? '', $r['device'], $r['device_members'] ?: '', $r['phone'],
         ], $this->rows);
     }
 }

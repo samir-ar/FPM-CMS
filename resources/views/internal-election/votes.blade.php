@@ -76,7 +76,7 @@
                             <td>{{ $vote->user->member_id ?? '—' }}</td>
                             <td>{{ $vote->voted_at ? \Carbon\Carbon::parse($vote->voted_at)->format('Y-m-d H:i:s') : '—' }}</td>
                             <td>
-                                @if(!empty($vote->device_model))<strong>{{ $vote->device_model }}</strong><br>@endif
+                                @if(!empty($vote->device_model))<strong>{{ \App\Support\DeviceName::pretty($vote->device_model) }}</strong><br>@endif
                                 @if(!empty($vote->hardware_id))<span title="The phone's own id (survives a reinstall)">HW {{ $vote->hardware_id }}</span><br>@endif
                                 {{ $vote->device_id ?? '—' }}
                                 @if($isSuspicious)

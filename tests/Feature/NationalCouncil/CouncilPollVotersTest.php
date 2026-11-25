@@ -164,7 +164,7 @@ class CouncilPollVotersTest extends CouncilTestCase
             'errors' => new \Illuminate\Support\ViewErrorBag(),   // normally shared by the web middleware
         ])->render();
 
-        $this->assertStringContainsString('<strong>Apple iPhone14,5, iOS 17.2</strong>', $html);
+        $this->assertStringContainsString('<strong>Apple iPhone 13, iOS 17.2</strong>', $html);
         $this->assertStringContainsString('IE-DEVICE-AAAA-BBBB', $html);
         $this->assertStringContainsString('IE-HW-CCCC-DDDD', $html);
         $this->assertStringContainsString('class="danger"', $html, 'a phone (hardware id) that voted for several members is highlighted');
