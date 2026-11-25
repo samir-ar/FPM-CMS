@@ -258,12 +258,62 @@ class UsersController extends Controller
         return Excel::download(new AppUsersExport, 'verified_users.xlsx');
     }
 
-    public function installationReport()
+    // The Installation Report: pick a month + year (from Sept 2026, when app activity tracking began), filter, generate.
+    private function installationReportExport(Request $request): array
     {
-        $spreadsheet = (new AppInstallationReportExport())->build();
-        $writer = new Xlsx($spreadsheet);
+        $tz = config('app.timezone');
+        $now = now($tz);
+        $year = (int) $request->query('year', $now->year);
+        $month = (int) $request->query('month', $now->month);
+        $start = \Carbon\Carbon::create(2026, 9, 1, 0, 0, 0, $tz);
+        $picked = \Carbon\Carbon::create(max(2000, min(2100, $year)), max(1, min(12, $month)), 1, 0, 0, 0, $tz);
+        if ($picked->lt($start)) {
+            $picked = $start->copy();
+        }
+        if ($picked->gt($now)) {
+            $picked = $now->copy()->startOfMonth();
+        }
+        $filters = [];
+        foreach (['district', 'town', 'sect', 'unit', 'member_id'] as $key) {
+            $filters[$key] = trim((string) $request->query($key, ''));
+        }
 
-        $filename = 'app_installation_report_' . now()->format('Y-m-d') . '.xlsx';
+        return [new AppInstallationReportExport($picked->year, $picked->month, $filters), $picked, $filters, $start, $now];
+    }
+
+    public function installationReport(Request $request)
+    {
+        [$export, $picked, $filters, $start, $now] = $this->installationReportExport($request);
+        $rows = collect($export->buildRows());
+
+        $months = [];
+        for ($d = $start->copy(); $d->lte($now); $d->addMonth()) {
+            $months[] = ['year' => $d->year, 'month' => $d->month, 'label' => $d->format('F Y')];
+        }
+
+        return view('cms.users.installation_report')->with([
+            'layout' => 'layouts.cms',
+            'picked' => $picked,
+            'months' => $months,
+            'filters' => $filters,
+            'districts' => AppInstallationReportExport::groupLabels(),
+            'byInstalled' => $rows->sortByDesc('total_installed')->values(),
+            'byMember' => $rows->sortByDesc('total_member')->values(),
+            'byPercentage' => $rows->sortByDesc('percentage')->values(),
+            'totals' => [
+                'installed' => $rows->sum('total_installed'),
+                'member' => $rows->sum('total_member'),
+                'active' => $rows->sum('total_active'),
+            ],
+            'trackingStart' => AppInstallationReportExport::TRACKING_START,
+        ]);
+    }
+
+    public function installationReportDownload(Request $request)
+    {
+        [$export, $picked] = $this->installationReportExport($request);
+        $writer = new Xlsx($export->build());
+        $filename = 'app_installation_report_' . $picked->format('Y-m') . '.xlsx';
 
         return response()->streamDownload(function () use ($writer) {
             $writer->save('php://output');

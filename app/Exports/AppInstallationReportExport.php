@@ -50,36 +50,107 @@ class AppInstallationReportExport
         'المنية-الضنية' => ['المنية-الضنية'],
     ];
 
-    private function buildRows(): array
+    /** App activity is only recorded from this date (the activity log was created then). */
+    public const TRACKING_START = '2026-09-24';
+
+    private int $year;
+    private int $month;
+    private array $filters;
+
+    /**
+     * $filters (all optional): district (one of the GROUPS labels), town, sect, unit (Activity Unit), member_id.
+     * The month decides "installed by the end of that month" and "active during that month".
+     */
+    public function __construct(?int $year = null, ?int $month = null, array $filters = [])
     {
-        $memberCounts = FpmUser::whereNotNull('district')->where('district', '!=', '')
-            ->select('district', DB::raw('COUNT(*) as cnt'))
-            ->groupBy('district')
+        $now = now(config('app.timezone'));
+        $this->year = $year ?: (int) $now->year;
+        $this->month = $month ?: (int) $now->month;
+        $this->filters = array_map(fn($v) => trim((string) $v), $filters);
+    }
+
+    public function monthLabel(): string
+    {
+        return \Carbon\Carbon::create($this->year, $this->month, 1)->format('M Y');
+    }
+
+    public static function groupLabels(): array
+    {
+        return array_keys(self::GROUPS);
+    }
+
+    /** The filters that narrow the member list (the district filter picks the rows instead). */
+    private function applyFilters($query)
+    {
+        $f = $this->filters;
+        foreach (['town' => 'fpm_users.town', 'sect' => 'fpm_users.sect', 'unit' => 'fpm_users.NashatUnit'] as $key => $column) {
+            if (($f[$key] ?? '') !== '') {
+                $query->where($column, 'like', '%' . str_replace(['%', '_'], ['\%', '\_'], $f[$key]) . '%');
+            }
+        }
+        if (($f['member_id'] ?? '') !== '') {
+            $query->where('fpm_users.MemberId', $f['member_id']);
+        }
+
+        return $query;
+    }
+
+    /** Rows: kada, total_installed (by the end of the month), total_member, percentage, total_active (in the month), active_percentage. */
+    public function buildRows(): array
+    {
+        $tz = config('app.timezone');
+        $monthStart = \Carbon\Carbon::create($this->year, $this->month, 1, 0, 0, 0, $tz);
+        $monthEnd = $monthStart->copy()->endOfMonth();
+        $activeFrom = max($monthStart->toDateString(), self::TRACKING_START);
+
+        $memberCounts = $this->applyFilters(DB::table('fpm_users')->whereNotNull('fpm_users.district')->where('fpm_users.district', '!=', ''))
+            ->select('fpm_users.district', DB::raw('COUNT(*) as cnt'))
+            ->groupBy('fpm_users.district')
             ->pluck('cnt', 'district');
 
-        $installedCounts = DB::table('app_users')
+        $installedCounts = $this->applyFilters(DB::table('app_users')
             ->join('fpm_users', 'app_users.member_id', '=', 'fpm_users.MemberId')
             ->whereNull('app_users.deleted_at')
             ->where('app_users.verified', 1)
+            ->where('app_users.created_at', '<=', $monthEnd->copy()->setTimezone('UTC'))
             ->whereNotNull('fpm_users.district')
-            ->where('fpm_users.district', '!=', '')
+            ->where('fpm_users.district', '!=', ''))
             ->select('fpm_users.district', DB::raw('COUNT(DISTINCT app_users.member_id) as cnt'))
             ->groupBy('fpm_users.district')
             ->pluck('cnt', 'district');
 
+        // active = opened the app at least one day of the month (an account replaced later still counts for its member)
+        $activeCounts = $activeFrom > $monthEnd->toDateString() ? collect() : $this->applyFilters(DB::table('user_activity_logs')
+            ->join('app_users', 'app_users.id', '=', 'user_activity_logs.app_user_id')
+            ->join('fpm_users', 'app_users.member_id', '=', 'fpm_users.MemberId')
+            ->whereBetween('user_activity_logs.activity_date', [$activeFrom, $monthEnd->toDateString()])
+            ->whereNotNull('fpm_users.district')
+            ->where('fpm_users.district', '!=', ''))
+            ->select('fpm_users.district', DB::raw('COUNT(DISTINCT app_users.member_id) as cnt'))
+            ->groupBy('fpm_users.district')
+            ->pluck('cnt', 'district');
+
+        $only = ($this->filters['district'] ?? '') !== '' ? $this->filters['district'] : null;
         $rows = [];
         foreach (self::GROUPS as $label => $rawDistricts) {
+            if ($only !== null && $label !== $only) {
+                continue;
+            }
             $totalMember = 0;
             $totalInstalled = 0;
+            $totalActive = 0;
             foreach ($rawDistricts as $raw) {
                 $totalMember += (int) ($memberCounts[$raw] ?? 0);
                 $totalInstalled += (int) ($installedCounts[$raw] ?? 0);
+                $totalActive += (int) ($activeCounts[$raw] ?? 0);
             }
             $rows[] = [
                 'kada' => $label,
                 'total_installed' => $totalInstalled,
                 'total_member' => $totalMember,
                 'percentage' => $totalMember > 0 ? round($totalInstalled / $totalMember * 100, 2) : 0,
+                'total_active' => $totalActive,
+                'active_percentage' => $totalMember > 0 ? round($totalActive / $totalMember * 100, 2) : 0,
             ];
         }
 
@@ -89,7 +160,7 @@ class AppInstallationReportExport
     public function build(): Spreadsheet
     {
         $rows = $this->buildRows();
-        $date = now()->format('j-M-y');
+        $date = $this->monthLabel();
 
         $byInstalled = collect($rows)->sortByDesc('total_installed')->values()->all();
         $byMember = collect($rows)->sortByDesc('total_member')->values()->all();
@@ -98,28 +169,30 @@ class AppInstallationReportExport
         $totalInstalled = array_sum(array_column($rows, 'total_installed'));
         $totalMember = array_sum(array_column($rows, 'total_member'));
         $totalPercentage = $totalMember > 0 ? round($totalInstalled / $totalMember * 100, 2) : 0;
+        $totalActive = array_sum(array_column($rows, 'total_active'));
+        $totalActivePercentage = $totalMember > 0 ? round($totalActive / $totalMember * 100, 2) : 0;
 
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
 
         $tables = [
             ['startCol' => 1, 'title' => 'Table Number 1', 'subtitle' => 'Total App installed per casaa', 'sortLabel' => 'Mobile app updates', 'data' => $byInstalled, 'sortField' => 'total_installed'],
-            ['startCol' => 6, 'title' => 'Table Number 2', 'subtitle' => 'Total ID FPM per casaa', 'sortLabel' => 'Total Members - Descending', 'data' => $byMember, 'sortField' => 'total_member'],
-            ['startCol' => 11, 'title' => 'Table Number 3', 'subtitle' => 'Total Percentage Nm. ID/App installed', 'sortLabel' => 'Percentage Descending', 'data' => $byPercentage, 'sortField' => 'percentage'],
+            ['startCol' => 8, 'title' => 'Table Number 2', 'subtitle' => 'Total ID FPM per casaa', 'sortLabel' => 'Total Members - Descending', 'data' => $byMember, 'sortField' => 'total_member'],
+            ['startCol' => 15, 'title' => 'Table Number 3', 'subtitle' => 'Total Percentage Nm. ID/App installed', 'sortLabel' => 'Percentage Descending', 'data' => $byPercentage, 'sortField' => 'percentage'],
         ];
 
         foreach ($tables as $table) {
-            $this->writeTable($sheet, $table, $date, $totalInstalled, $totalMember, $totalPercentage);
+            $this->writeTable($sheet, $table, $date, $totalInstalled, $totalMember, $totalPercentage, $totalActive, $totalActivePercentage);
         }
 
-        foreach (range('A', 'N') as $col) {
+        foreach (range('A', 'T') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 
         return $spreadsheet;
     }
 
-    private function writeTable($sheet, array $table, string $date, int $totalInstalled, int $totalMember, float $totalPercentage): void
+    private function writeTable($sheet, array $table, string $date, int $totalInstalled, int $totalMember, float $totalPercentage, int $totalActive = 0, float $totalActivePercentage = 0): void
     {
         $c0 = $table['startCol'];
         $c1 = $c0 + 1;
@@ -129,6 +202,8 @@ class AppInstallationReportExport
         $col1 = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($c1);
         $col2 = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($c2);
         $col3 = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($c3);
+        $col4 = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($c0 + 4);
+        $col5 = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($c0 + 5);
 
         $headerFill = [
             'fillType' => Fill::FILL_SOLID,
@@ -145,26 +220,29 @@ class AppInstallationReportExport
             'total_installed' => $col1,
             'total_member' => $col2,
             'percentage' => $col3,
+            'total_active' => $col4,
         };
 
         // Row 1-3: title / subtitle / sort-label + date
         $sheet->setCellValue("{$col0}1", $table['title']);
-        $sheet->mergeCells("{$col0}1:{$col3}1");
+        $sheet->mergeCells("{$col0}1:{$col5}1");
         $sheet->setCellValue("{$col0}2", $table['subtitle']);
-        $sheet->mergeCells("{$col0}2:{$col3}2");
+        $sheet->mergeCells("{$col0}2:{$col5}2");
         $sheet->setCellValue("{$col0}3", $table['sortLabel']);
         $sheet->setCellValue("{$col1}3", $date);
-        $sheet->mergeCells("{$col1}3:{$col3}3");
-        $sheet->getStyle("{$col0}1:{$col3}3")->applyFromArray($centerBold);
-        $sheet->getStyle("{$col0}1:{$col3}3")->applyFromArray($thinBorder);
+        $sheet->mergeCells("{$col1}3:{$col5}3");
+        $sheet->getStyle("{$col0}1:{$col5}3")->applyFromArray($centerBold);
+        $sheet->getStyle("{$col0}1:{$col5}3")->applyFromArray($thinBorder);
 
         // Row 4: headers
         $sheet->setCellValue("{$col0}4", 'Kada2');
         $sheet->setCellValue("{$col1}4", 'total_installed');
         $sheet->setCellValue("{$col2}4", 'total_member');
         $sheet->setCellValue("{$col3}4", 'total_installed_percentage');
-        $sheet->getStyle("{$col0}4:{$col3}4")->applyFromArray($centerBold);
-        $sheet->getStyle("{$col0}4:{$col3}4")->applyFromArray($thinBorder);
+        $sheet->setCellValue("{$col4}4", 'total_active');
+        $sheet->setCellValue("{$col5}4", 'total_active_percentage');
+        $sheet->getStyle("{$col0}4:{$col5}4")->applyFromArray($centerBold);
+        $sheet->getStyle("{$col0}4:{$col5}4")->applyFromArray($thinBorder);
 
         // Data rows
         $row = 5;
@@ -173,8 +251,10 @@ class AppInstallationReportExport
             $sheet->setCellValue("{$col1}{$row}", $r['total_installed']);
             $sheet->setCellValue("{$col2}{$row}", $r['total_member']);
             $sheet->setCellValue("{$col3}{$row}", $r['percentage']);
+            $sheet->setCellValue("{$col4}{$row}", $r['total_active']);
+            $sheet->setCellValue("{$col5}{$row}", $r['active_percentage']);
             $sheet->getStyle("{$sortCol}{$row}")->applyFromArray(['fill' => $headerFill]);
-            $sheet->getStyle("{$col0}{$row}:{$col3}{$row}")->applyFromArray($thinBorder);
+            $sheet->getStyle("{$col0}{$row}:{$col5}{$row}")->applyFromArray($thinBorder);
             $row++;
         }
 
@@ -183,8 +263,10 @@ class AppInstallationReportExport
         $sheet->setCellValue("{$col1}{$row}", $totalInstalled);
         $sheet->setCellValue("{$col2}{$row}", $totalMember);
         $sheet->setCellValue("{$col3}{$row}", $totalPercentage);
-        $sheet->getStyle("{$col0}{$row}:{$col3}{$row}")->applyFromArray($centerBold);
+        $sheet->setCellValue("{$col4}{$row}", $totalActive);
+        $sheet->setCellValue("{$col5}{$row}", $totalActivePercentage);
+        $sheet->getStyle("{$col0}{$row}:{$col5}{$row}")->applyFromArray($centerBold);
         $sheet->getStyle("{$sortCol}{$row}")->applyFromArray(['fill' => $headerFill]);
-        $sheet->getStyle("{$col0}{$row}:{$col3}{$row}")->applyFromArray($thinBorder);
+        $sheet->getStyle("{$col0}{$row}:{$col5}{$row}")->applyFromArray($thinBorder);
     }
 }
