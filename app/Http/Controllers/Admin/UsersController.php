@@ -56,6 +56,23 @@ class UsersController extends Controller
                 ->addColumn('verified', function($row){
                     return $row->verified ? 'true' : 'false';
                 })
+                // last time this account was active in the app (the activity log is refreshed on every call; stored in UTC)
+                ->addColumn('last_activity', function($row){
+                    $last = \Illuminate\Support\Facades\DB::table('user_activity_logs')->where('app_user_id', $row->id)->max('created_at');
+
+                    return $last ? \Carbon\Carbon::parse($last, 'UTC')->setTimezone(config('app.timezone'))->format('Y-m-d H:i') : '';
+                })
+                ->addColumn('mobile', function($row){
+                    if ((string) $row->device_model !== '') {
+                        return \App\Support\DeviceName::pretty($row->device_model);
+                    }
+
+                    // no phone stored on this account yet: the one from the member's latest vote, when there is one
+                    return \App\Support\MemberApp::forMembers([(string) $row->member_id])[(string) $row->member_id]['model'] ?? '';
+                })
+                ->addColumn('app_version', function($row){
+                    return \App\Support\MemberApp::versionLabel($row->app_build);
+                })
                 ->addColumn('scan_checkin', function($row){
                     return "<a href='" . route('admin.users.toggle-scan-checkin', $row->id) . "' class='btn btn-xs " . ($row->can_scan_checkin ? 'btn-warning' : 'btn-success') . "'>" .
                         ($row->can_scan_checkin ? 'Revoke Scan Access' : 'Grant Scan Access') . "</a>";
@@ -104,7 +121,7 @@ class UsersController extends Controller
             'pageTitle'	=> 'APP USERS',
             'table_title' => '',
             'slug'		=> 'Project',
-            'headers'	=> ['id', 'Member ID', 'Name', 'Phone Number', 'Verified', 'Registration Date', 'District', 'Town', 'Sect', 'Sect Number', 'Position', 'Activity Unit', 'Civil Registry Unit', 'Scan Check-In', 'Action'],
+            'headers'	=> ['id', 'Member ID', 'Name', 'Phone Number', 'Verified', 'Registration Date', 'Last Activity', 'Mobile', 'App version', 'District', 'Town', 'Sect', 'Sect Number', 'Position', 'Activity Unit', 'Civil Registry Unit', 'Scan Check-In', 'Action'],
             'action' => route('admin.users.index'),
             'custom_btn' => "<a href='" . route('admin.users.export') ."' class='btn btn-success'>Export Users</a> &nbsp <a href='" . route('admin.users.import.create') ."' class='btn btn-primary'>Import Users</a> &nbsp <a href='" . route('admin.users.installation-report') ."' class='btn btn-warning'>Installation Report</a> &nbsp <a href='" . route('admin.users.login-limits') ."' class='btn btn-default'>Login Limits</a>",
             'custom_btn1' => $filterBtn(null, 'All')
@@ -119,6 +136,9 @@ class UsersController extends Controller
                 ['data' => 'phone_number', 'name' => 'phone_number'],
                 ['data' => 'verified', 'name' => 'verified'],
                 ['data' => 'created_at', 'name' => 'created_at'],
+                ['data' => 'last_activity', 'name' => 'last_activity', 'searchable' => false, 'sortable' => false],
+                ['data' => 'mobile', 'name' => 'mobile', 'searchable' => false, 'sortable' => false],
+                ['data' => 'app_version', 'name' => 'app_version', 'searchable' => false, 'sortable' => false],
                 ['data' => 'district', 'name' => 'district', 'searchable' => false, 'sortable' => false],
                 ['data' => 'town', 'name' => 'town', 'searchable' => false, 'sortable' => false],
                 ['data' => 'sect', 'name' => 'sect', 'searchable' => false, 'sortable' => false],
