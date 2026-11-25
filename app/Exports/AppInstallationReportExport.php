@@ -53,6 +53,7 @@ class AppInstallationReportExport
 
     /** App activity is only recorded from this date (the activity log was created then). */
     public const TRACKING_START = '2026-09-24';
+    public const OTHER_LABEL = 'Not in any district';
 
     private int $year;
     private int $month;
@@ -86,7 +87,7 @@ class AppInstallationReportExport
         $f = $this->filters;
         foreach (['town' => 'fpm_users.town', 'sect' => 'fpm_users.sect', 'unit' => 'fpm_users.NashatUnit'] as $key => $column) {
             if (($f[$key] ?? '') !== '') {
-                $query->where($column, 'like', '%' . str_replace(['%', '_'], ['\%', '\_'], $f[$key]) . '%');
+                $query->where($column, $f[$key]);
             }
         }
         // the district as the member list spells it (the App Users filter), or one of the report's merged names
@@ -109,38 +110,50 @@ class AppInstallationReportExport
         $monthEnd = $monthStart->copy()->endOfMonth();
         $activeFrom = max($monthStart->toDateString(), self::TRACKING_START);
 
-        $memberCounts = $this->applyFilters(DB::table('fpm_users')->whereNotNull('fpm_users.district')->where('fpm_users.district', '!=', ''))
-            ->select('fpm_users.district', DB::raw('COUNT(*) as cnt'))
-            ->groupBy('fpm_users.district')
-            ->pluck('cnt', 'district');
+        // Every member is counted once, in the district of the member list. Members the list does not place (no entry, blank
+        // district, or a district outside the report's rows) go to the last row "Not in any district", so the TOTAL always
+        // equals the User Activity dashboard (distinct members with a live account that opened the app).
+        $memberCounts = $this->applyFilters(DB::table('fpm_users'))
+            ->select(DB::raw("COALESCE(fpm_users.district, '') as d"), DB::raw('COUNT(*) as cnt'))
+            ->groupBy('d')
+            ->pluck('cnt', 'd');
 
         $installedCounts = $this->applyFilters(DB::table('app_users')
-            ->join('fpm_users', 'app_users.member_id', '=', 'fpm_users.MemberId')
+            ->leftJoin('fpm_users', 'app_users.member_id', '=', 'fpm_users.MemberId')
             ->whereNull('app_users.deleted_at')
             ->where('app_users.verified', 1)
             // installs counted from the day tracking began (24 Sept 2026, Beirut time) up to the end of the chosen month
             ->where('app_users.created_at', '>=', \Carbon\Carbon::parse(self::TRACKING_START, $tz)->startOfDay()->setTimezone('UTC'))
-            ->where('app_users.created_at', '<=', $monthEnd->copy()->setTimezone('UTC'))
-            ->whereNotNull('fpm_users.district')
-            ->where('fpm_users.district', '!=', ''))
-            ->select('fpm_users.district', DB::raw('COUNT(DISTINCT app_users.member_id) as cnt'))
-            ->groupBy('fpm_users.district')
-            ->pluck('cnt', 'district');
+            ->where('app_users.created_at', '<=', $monthEnd->copy()->setTimezone('UTC')))
+            ->select(DB::raw("COALESCE(fpm_users.district, '') as d"), DB::raw('COUNT(DISTINCT app_users.member_id) as cnt'))
+            ->groupBy('d')
+            ->pluck('cnt', 'd');
 
-        // active = opened the app at least one day of the month (an account replaced later still counts for its member)
+        // active = opened the app at least one day of the month; same rule as the dashboard (live accounts, distinct members)
         $activeCounts = $activeFrom > $monthEnd->toDateString() ? collect() : $this->applyFilters(DB::table('user_activity_logs')
             ->join('app_users', 'app_users.id', '=', 'user_activity_logs.app_user_id')
-            ->join('fpm_users', 'app_users.member_id', '=', 'fpm_users.MemberId')
-            ->whereBetween('user_activity_logs.activity_date', [$activeFrom, $monthEnd->toDateString()])
-            ->whereNotNull('fpm_users.district')
-            ->where('fpm_users.district', '!=', ''))
-            ->select('fpm_users.district', DB::raw('COUNT(DISTINCT app_users.member_id) as cnt'))
-            ->groupBy('fpm_users.district')
-            ->pluck('cnt', 'district');
+            ->leftJoin('fpm_users', 'app_users.member_id', '=', 'fpm_users.MemberId')
+            ->whereNull('app_users.deleted_at')
+            ->whereBetween('user_activity_logs.activity_date', [$activeFrom, $monthEnd->toDateString()]))
+            ->select(DB::raw("COALESCE(fpm_users.district, '') as d"), DB::raw('COUNT(DISTINCT app_users.member_id) as cnt'))
+            ->groupBy('d')
+            ->pluck('cnt', 'd');
 
         $only = ($this->filters['district'] ?? '') !== '' ? $this->filters['district'] : null;
         $rows = [];
+        $placed = [];
+        $make = function (string $label, int $member, int $installed, int $active) {
+            return [
+                'kada' => $label,
+                'total_installed' => $installed,
+                'total_member' => $member,
+                'percentage' => $member > 0 ? round($installed / $member * 100, 2) : 0,
+                'total_active' => $active,
+                'active_percentage' => $member > 0 ? round($active / $member * 100, 2) : 0,
+            ];
+        };
         foreach (self::GROUPS as $label => $rawDistricts) {
+            $placed = array_merge($placed, $rawDistricts);
             if ($only !== null && $label !== $only && !in_array($only, $rawDistricts, true)) {
                 continue;
             }
@@ -152,14 +165,13 @@ class AppInstallationReportExport
                 $totalInstalled += (int) ($installedCounts[$raw] ?? 0);
                 $totalActive += (int) ($activeCounts[$raw] ?? 0);
             }
-            $rows[] = [
-                'kada' => $label,
-                'total_installed' => $totalInstalled,
-                'total_member' => $totalMember,
-                'percentage' => $totalMember > 0 ? round($totalInstalled / $totalMember * 100, 2) : 0,
-                'total_active' => $totalActive,
-                'active_percentage' => $totalMember > 0 ? round($totalActive / $totalMember * 100, 2) : 0,
-            ];
+            $rows[] = $make($label, $totalMember, $totalInstalled, $totalActive);
+        }
+
+        // everyone the rows above do not hold (only when no single district was asked for)
+        if ($only === null) {
+            $rest = fn($counts) => (int) collect($counts)->reject(fn($v, $d) => in_array($d, $placed, true))->sum();
+            $rows[] = $make(self::OTHER_LABEL, $rest($memberCounts), $rest($installedCounts), $rest($activeCounts));
         }
 
         return $rows;

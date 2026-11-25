@@ -27,11 +27,11 @@ class InstallationReportTest extends CouncilTestCase
 
     public function test_installed_by_the_end_of_the_month_and_active_in_the_month(): void
     {
-        $this->member(5900000701, 'ZR Town A', 'ZR Sect A', 'ZR Unit A');
-        $this->member(5900000702, 'ZR Town A', 'ZR Sect B', 'ZR Unit B');
-        $this->member(5900000703, 'ZR Town B', 'ZR Sect A', 'ZR Unit A');
+        $this->member(5900000701, 'ZR Town', 'ZR Sect A', 'ZR Unit A');
+        $this->member(5900000702, 'ZR Town', 'ZR Sect B', 'ZR Unit B');
+        $this->member(5900000703, 'ZR Town', 'ZR Sect A', 'ZR Unit A');
         // 704 installed BEFORE tracking began (24 Sept): not counted as an install of this report
-        $this->member(5900000704, 'ZR Town B', 'ZR Sect B', 'ZR Unit B');
+        $this->member(5900000704, 'ZR Town', 'ZR Sect B', 'ZR Unit B');
         $u4 = $this->makeAppUser('ZR 704', '5900000704', ['verified' => 1]);
         DB::table('app_users')->where('id', $u4)->update(['created_at' => '2026-09-10 08:00:00']);
 
@@ -61,11 +61,11 @@ class InstallationReportTest extends CouncilTestCase
         $this->member(5900000711, 'ZR Town A', 'ZR Sect A', 'ZR Unit A');
         $this->member(5900000712, 'ZR Town B', 'ZR Sect B', 'ZR Unit B');
 
-        $base = ['district' => '', 'town' => 'ZR Town', 'sect' => '', 'unit' => '', 'member_id' => ''];
+        $base = ['district' => '', 'town' => '', 'sect' => '', 'unit' => '', 'member_id' => ''];
         $count = fn(array $f) => $this->row((new AppInstallationReportExport(2026, 11, array_merge($base, $f)))->buildRows())['total_member'];
 
-        $this->assertSame(2, $count([]));
         $this->assertSame(1, $count(['town' => 'ZR Town B']));
+        $this->assertSame(0, $count(['town' => 'ZR Town']), 'a drop-down value matches exactly, not partly');
         $this->assertSame(1, $count(['sect' => 'ZR Sect A']));
         $this->assertSame(1, $count(['unit' => 'ZR Unit B']));
         $this->assertSame(1, $count(['member_id' => '5900000711']));
@@ -73,7 +73,7 @@ class InstallationReportTest extends CouncilTestCase
 
         // the district filter keeps only that district's row
         $rows = (new AppInstallationReportExport(2026, 11, array_merge($base, ['district' => 'جبيل'])))->buildRows();
-        $this->assertCount(1, $rows);
+        $this->assertCount(1, $rows, 'one district asked for = one row, no "Not in any district" row');
     }
 
     public function test_the_page_and_the_excel_download(): void
@@ -124,13 +124,13 @@ class InstallationReportTest extends CouncilTestCase
             return collect($this->getJson($url, ['X-Requested-With' => 'XMLHttpRequest'])->assertOk()->json('data'))->pluck('id')->all();
         };
 
-        $this->assertEqualsCanonicalizing([$a, $b], array_intersect([$a, $b], $ids('&f_town=ZR Town')));
-        $this->assertSame([$a], array_values(array_intersect([$a, $b], $ids('&f_town=Town A'))));
-        $this->assertSame([$b], array_values(array_intersect([$a, $b], $ids('&f_sect=Sect B'))));
-        $this->assertSame([$b], array_values(array_intersect([$a, $b], $ids('&f_unit=Unit B'))));
+        $this->assertEqualsCanonicalizing([$a, $b], array_intersect([$a, $b], $ids('&f_district=' . urlencode('جبيل'))));
+        $this->assertSame([$a], array_values(array_intersect([$a, $b], $ids('&f_town=ZR Town A'))));
+        $this->assertSame([$b], array_values(array_intersect([$a, $b], $ids('&f_sect=ZR Sect B'))));
+        $this->assertSame([$b], array_values(array_intersect([$a, $b], $ids('&f_unit=ZR Unit B'))));
         $this->assertSame([$a], array_values(array_intersect([$a, $b], $ids('&f_member=5900000731'))));
-        $this->assertEqualsCanonicalizing([$a, $b], array_values(array_intersect([$a, $b], $ids('&f_district=' . urlencode('جبيل') . '&f_town=ZR Town'))));
-        $this->assertSame([], array_values(array_intersect([$a, $b], $ids('&f_district=' . urlencode('كسروان') . '&f_town=ZR Town'))));
+        $this->assertSame([$a], array_values(array_intersect([$a, $b], $ids('&f_district=' . urlencode('جبيل') . '&f_sect=ZR Sect A'))));
+        $this->assertSame([], array_values(array_intersect([$a, $b], $ids('&f_district=' . urlencode('كسروان') . '&f_sect=ZR Sect A'))));
     }
 
     public function test_beirut_first_and_second_are_one_beirut_row(): void
@@ -145,5 +145,30 @@ class InstallationReportTest extends CouncilTestCase
 
         $rows = (new AppInstallationReportExport(2026, 11, ['town' => 'ZR Beirut']))->buildRows();
         $this->assertSame(2, collect($rows)->firstWhere('kada', 'بيروت')['total_member']);
+    }
+
+    public function test_the_report_total_equals_the_dashboard_active_count(): void
+    {
+        // an active member the member list does not know, and one with a blank district: both must still be in the total
+        $ghost = $this->makeAppUser('ZR ghost', '5900000751', ['verified' => 1]);
+        DB::table('user_activity_logs')->insert(['app_user_id' => $ghost, 'activity_date' => now(config('app.timezone'))->toDateString(), 'created_at' => now()]);
+        $this->member(5900000752, 'ZR Town', 'ZR Sect', 'ZR Unit');
+        DB::table('fpm_users')->where('MemberId', 5900000752)->update(['district' => '']);
+        $blank = $this->makeAppUser('ZR blank', '5900000752', ['verified' => 1]);
+        DB::table('user_activity_logs')->insert(['app_user_id' => $blank, 'activity_date' => now(config('app.timezone'))->toDateString(), 'created_at' => now()]);
+
+        $now = now(config('app.timezone'));
+        $monthStart = $now->copy()->startOfMonth()->toDateString();
+        // exactly how the User Activity dashboard counts "Active This Month"
+        $dashboard = DB::table('user_activity_logs')
+            ->join('app_users', 'app_users.id', '=', 'user_activity_logs.app_user_id')
+            ->whereNull('app_users.deleted_at')
+            ->where('user_activity_logs.activity_date', '>=', $monthStart)
+            ->distinct('app_users.member_id')
+            ->count('app_users.member_id');
+
+        $rows = collect((new AppInstallationReportExport($now->year, $now->month, []))->buildRows());
+        $this->assertSame($dashboard, (int) $rows->sum('total_active'), 'report total = dashboard');
+        $this->assertGreaterThanOrEqual(2, $rows->firstWhere('kada', AppInstallationReportExport::OTHER_LABEL)['total_active']);
     }
 }

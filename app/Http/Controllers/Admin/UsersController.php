@@ -120,17 +120,22 @@ class UsersController extends Controller
         // the filters (kept in the page address, so a reload or the Excel button keeps them)
         $filters = $this->tableFilters($request);
         $hidden = ($scanAccess ? "<input type='hidden' name='scan_access' value='" . e($scanAccess) . "'>" : '');
-        $districtOptions = "<option value=''>All districts</option>";
-        foreach (\Illuminate\Support\Facades\DB::table('fpm_users')->whereNotNull('district')->where('district', '!=', '')->distinct()->orderBy('district')->pluck('district') as $d) {
-            $districtOptions .= "<option value='" . e($d) . "'" . ($filters['district'] === $d ? ' selected' : '') . '>' . e($d) . '</option>';
-        }
-        $box = fn($name, $label, $value, $w) => "<input type='text' name='{$name}' value='" . e($value) . "' placeholder='{$label}' class='form-control' style='width:{$w}px;display:inline-block;margin-right:4px;'>";
+        // every filter except the member id is a drop-down (searchable: type to find a value) of the values in the member list
+        $dropdown = function ($name, $allLabel, $column, $current, $w) {
+            $html = "<option value=''>{$allLabel}</option>";
+            $values = \Illuminate\Support\Facades\DB::table('fpm_users')->whereNotNull($column)->where($column, '!=', '')->distinct()->orderBy($column)->pluck($column);
+            foreach ($values as $v) {
+                $html .= "<option value='" . e($v) . "'" . ($current === (string) $v ? ' selected' : '') . '>' . e($v) . '</option>';
+            }
+
+            return "<select name='{$name}' class='form-control select2' style='width:{$w}px;margin-right:4px;'>{$html}</select> ";
+        };
         $filterForm = "<form method='GET' action='" . route('admin.users.index') . "' style='clear:both;padding-top:8px;'>" . $hidden
-            . "<select name='f_district' class='form-control' style='width:150px;display:inline-block;margin-right:4px;'>{$districtOptions}</select>"
-            . $box('f_town', 'Town', $filters['town'], 120)
-            . $box('f_sect', 'Sect', $filters['sect'], 110)
-            . $box('f_unit', 'Activity Unit', $filters['unit'], 130)
-            . $box('f_member', 'Member ID', $filters['member_id'], 120)
+            . $dropdown('f_district', 'All districts', 'district', $filters['district'], 170)
+            . $dropdown('f_town', 'All towns', 'town', $filters['town'], 170)
+            . $dropdown('f_sect', 'All sects', 'sect', $filters['sect'], 150)
+            . $dropdown('f_unit', 'All activity units', 'NashatUnit', $filters['unit'], 200)
+            . "<input type='text' name='f_member' value='" . e($filters['member_id']) . "' placeholder='Member ID' class='form-control' style='width:130px;display:inline-block;margin-right:4px;'>"
             . "<button type='submit' class='btn btn-primary' style='margin-right:4px;'>Filter</button>"
             . "<a href='" . route('admin.users.index', $scanAccess ? ['scan_access' => $scanAccess] : []) . "' class='btn btn-default'>Reset</a></form>";
 
@@ -311,21 +316,20 @@ class UsersController extends Controller
 
     private function applyTableFilters($query, array $f)
     {
-        $like = fn($v) => '%' . str_replace(['%', '_'], ['\%', '\_'], $v) . '%';
         if (array_filter($f, fn($v) => $v !== '')) {
-            $query->whereExists(function ($q) use ($f, $like) {
+            $query->whereExists(function ($q) use ($f) {
                 $q->select(\Illuminate\Support\Facades\DB::raw(1))->from('fpm_users')->whereColumn('fpm_users.MemberId', 'app_users.member_id');
                 if ($f['district'] !== '') {
                     $q->where('fpm_users.district', $f['district']);
                 }
                 if ($f['town'] !== '') {
-                    $q->where('fpm_users.town', 'like', $like($f['town']));
+                    $q->where('fpm_users.town', $f['town']);
                 }
                 if ($f['sect'] !== '') {
-                    $q->where('fpm_users.sect', 'like', $like($f['sect']));
+                    $q->where('fpm_users.sect', $f['sect']);
                 }
                 if ($f['unit'] !== '') {
-                    $q->where('fpm_users.NashatUnit', 'like', $like($f['unit']));
+                    $q->where('fpm_users.NashatUnit', $f['unit']);
                 }
             });
             if ($f['member_id'] !== '') {
