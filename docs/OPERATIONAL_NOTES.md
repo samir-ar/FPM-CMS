@@ -548,3 +548,8 @@ Package cms_prod_appversion_20261125 (16 files): migration 2026_11_25_150000 ran
 ## 2026-11-25 - App Users list columns
 - CMS > App Users (`/admin/users`) has Last Activity (Beirut time, MAX of the activity log's created_at, refreshed on every API call), Mobile (stored device_model, else the member's latest vote phone; iPhone codes shown as names) and App version. One-file change (`UsersController`), no migration.
 - Production: applied 2026-11-25 with `cms_prod_userscols_20261125.tar.gz` (sha256 6d1a5c81...703e); backup `/root/userscols_before_20261125.tar.gz`. Staging: to be synced once the user confirms the columns look right.
+
+## 2026-11-25 - Installation Report by month (+ filters, active counts)
+- App Users > Installation Report opens `/admin/users/installation-report`: month + year picker (Sept 2026 onward), filters district / town / sect / activity unit (NashatUnit) / member id, on-page three tables (same layout as the old Excel) with total_active and total_active_percentage, and `users/installation-report/download` for the Excel. Installed = verified app account created by the end of the month (deleted accounts excluded); active = distinct members with a user_activity_logs row in the month (tracking began 2026-09-24).
+- The Excel layout changed: 6 columns per table, tables start at columns A, H, O (before: 4 columns at A, F, K).
+- Production: applied 2026-11-25 with `cms_prod_instreport_20261125.tar.gz` (4 files: AppInstallationReportExport, UsersController, routes/web.php (whole file, +1 route), new view cms/users/installation_report); sha256 0b2785da...7305; backup `/root/instreport_before_20261125.tar.gz`. Staging not yet synced (routes/web.php is a whole file: checksum staging's copy first).
