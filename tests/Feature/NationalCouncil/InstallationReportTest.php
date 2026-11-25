@@ -116,6 +116,42 @@ class InstallationReportTest extends CouncilTestCase
         $this->assertStringContainsString('f_town=ZR', $html, 'the table asks for the filtered rows');
     }
 
+    public function test_each_drop_down_only_offers_what_is_under_the_ones_before_it(): void
+    {
+        $this->member(5900000761, 'ZR Town Jbeil', 'ZR Sect J', 'ZR Unit J');      // district جبيل
+        $this->member(5900000762, 'ZR Town Other', 'ZR Sect O', 'ZR Unit O');
+        DB::table('fpm_users')->where('MemberId', 5900000762)->update(['district' => 'كسروان']);
+        $this->member(5900000763, 'ZR Town Jbeil', 'ZR Sect J2', 'ZR Unit J2');    // same town, another sect
+
+        $this->actingAs($this->adminUser(), 'admin');
+
+        // nothing chosen: everything is offered
+        $all = $this->get('/admin/users')->assertOk()->getContent();
+        foreach (['ZR Town Jbeil', 'ZR Town Other', 'ZR Sect J', 'ZR Sect O', 'ZR Unit J', 'ZR Unit O'] as $v) {
+            $this->assertStringContainsString("value='$v'", $all);
+        }
+
+        // district chosen: only its towns, sects and units
+        $d = $this->get('/admin/users?f_district=' . urlencode('جبيل'))->assertOk()->getContent();
+        $this->assertStringContainsString("value='ZR Town Jbeil'", $d);
+        $this->assertStringNotContainsString("value='ZR Town Other'", $d);
+        $this->assertStringNotContainsString("value='ZR Sect O'", $d);
+
+        // district + town: only that town's sects and units
+        $t = $this->get('/admin/users?f_district=' . urlencode('جبيل') . '&f_town=' . urlencode('ZR Town Jbeil'))->assertOk()->getContent();
+        $this->assertStringContainsString("value='ZR Sect J'", $t);
+        $this->assertStringContainsString("value='ZR Sect J2'", $t);
+        $this->assertStringNotContainsString("value='ZR Sect O'", $t);
+
+        // district + town + sect: only that sect's units
+        $s = $this->get('/admin/users?f_district=' . urlencode('جبيل') . '&f_town=' . urlencode('ZR Town Jbeil') . '&f_sect=' . urlencode('ZR Sect J'))->assertOk()->getContent();
+        $this->assertStringContainsString("value='ZR Unit J'", $s);
+        $this->assertStringNotContainsString("value='ZR Unit J2'", $s);
+
+        // picking one reloads with the deeper ones cleared
+        $this->assertStringContainsString("jQuery(\"select[name='\" + name + \"']\").on('change'", $all);
+    }
+
     public function test_the_app_users_table_is_filtered(): void
     {
         $this->member(5900000731, 'ZR Town A', 'ZR Sect A', 'ZR Unit A');

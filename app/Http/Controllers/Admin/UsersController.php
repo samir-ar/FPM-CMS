@@ -121,9 +121,16 @@ class UsersController extends Controller
         $filters = $this->tableFilters($request);
         $hidden = ($scanAccess ? "<input type='hidden' name='scan_access' value='" . e($scanAccess) . "'>" : '');
         // every filter except the member id is a drop-down (searchable: type to find a value) of the values in the member list
-        $dropdown = function ($name, $allLabel, $column, $current, $w) {
+        // each drop-down only offers what exists under the ones before it: district -> its towns -> their sects -> their activity units
+        $dropdown = function ($name, $allLabel, $column, $current, $w, array $parents = []) {
             $html = "<option value=''>{$allLabel}</option>";
-            $values = \Illuminate\Support\Facades\DB::table('fpm_users')->whereNotNull($column)->where($column, '!=', '')->distinct()->orderBy($column)->pluck($column);
+            $query = \Illuminate\Support\Facades\DB::table('fpm_users')->whereNotNull($column)->where($column, '!=', '');
+            foreach ($parents as $parentColumn => $parentValue) {
+                if ($parentValue !== '') {
+                    $query->where($parentColumn, $parentValue);
+                }
+            }
+            $values = $query->distinct()->orderBy($column)->pluck($column);
             foreach ($values as $v) {
                 $html .= "<option value='" . e($v) . "'" . ($current === (string) $v ? ' selected' : '') . '>' . e($v) . '</option>';
             }
@@ -132,12 +139,20 @@ class UsersController extends Controller
         };
         $filterForm = "<form method='GET' action='" . route('admin.users.index') . "' style='clear:both;padding-top:8px;'>" . $hidden
             . $dropdown('f_district', 'All districts', 'district', $filters['district'], 170)
-            . $dropdown('f_town', 'All towns', 'town', $filters['town'], 170)
-            . $dropdown('f_sect', 'All sects', 'sect', $filters['sect'], 150)
-            . $dropdown('f_unit', 'All activity units', 'NashatUnit', $filters['unit'], 200)
+            . $dropdown('f_town', 'All towns', 'town', $filters['town'], 170, ['district' => $filters['district']])
+            . $dropdown('f_sect', 'All sects', 'sect', $filters['sect'], 150, ['district' => $filters['district'], 'town' => $filters['town']])
+            . $dropdown('f_unit', 'All activity units', 'NashatUnit', $filters['unit'], 200, ['district' => $filters['district'], 'town' => $filters['town'], 'sect' => $filters['sect']])
             . "<input type='text' name='f_member' value='" . e($filters['member_id']) . "' placeholder='Member ID' class='form-control' style='width:130px;display:inline-block;margin-right:4px;'>"
             . "<button type='submit' class='btn btn-primary' style='margin-right:4px;'>Filter</button>"
-            . "<a href='" . route('admin.users.index', $scanAccess ? ['scan_access' => $scanAccess] : []) . "' class='btn btn-default'>Reset</a></form>";
+            . "<a href='" . route('admin.users.index', $scanAccess ? ['scan_access' => $scanAccess] : []) . "' class='btn btn-default'>Reset</a></form>"
+            // picking a district / town / sect clears the drop-downs after it and reloads, so the next list shows only its values
+            . "<script>window.addEventListener('load', function () {"
+            . "var order = ['f_district', 'f_town', 'f_sect', 'f_unit'];"
+            . "order.slice(0, 3).forEach(function (name, i) {"
+            . "jQuery(\"select[name='\" + name + \"']\").on('change', function () {"
+            . "order.slice(i + 1).forEach(function (deeper) { jQuery(\"select[name='\" + deeper + \"']\").val(''); });"
+            . "this.form.submit();"
+            . "});});});</script>";
 
         // Installation Report: month (from Sept 2026) + the filters above -> Excel download
         $periods = '';
