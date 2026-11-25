@@ -285,8 +285,12 @@ class UserActivityController extends Controller
             ->pluck('member_id')
             ->flip();
 
+        $apps = \App\Support\MemberApp::forMembers($members->pluck('member_id')->map(fn($i) => (string) $i)->all());
+
         // last_active is stored in UTC (see TracksUserActivityTrait) - convert to Beirut time for display.
-        $members->each(function ($m) use ($newMemberIds) {
+        $members->each(function ($m) use ($newMemberIds, $apps) {
+            $m->mobile = $apps[(string) $m->member_id]['model'] ?? '';
+            $m->app_version = $apps[(string) $m->member_id]['version'] ?? '';
             if ($m->last_active) {
                 $m->last_active = Carbon::parse($m->last_active, 'UTC')
                     ->setTimezone(config('app.timezone'))
@@ -317,11 +321,11 @@ class UserActivityController extends Controller
         }
 
         $rows = $members->map(fn($m) => [
-            (string) $m->member_id, (string) $m->name, (string) $m->district, (string) $m->town, (string) $m->last_active, $m->is_new ? 'Yes' : 'No',
+            (string) $m->member_id, (string) $m->name, (string) $m->district, (string) $m->town, (string) $m->mobile, (string) $m->app_version, (string) $m->last_active, $m->is_new ? 'Yes' : 'No',
         ])->values()->all();
 
         return Excel::download(
-            new CouncilRowsExport(['Member ID', 'Name', 'District', 'Town', 'Last Activity', 'New'], $rows),
+            new CouncilRowsExport(['Member ID', 'Name', 'District', 'Town', 'Mobile', 'App version', 'Last Activity', 'New'], $rows),
             $fileName . '-' . Carbon::now(config('app.timezone'))->format('Ymd-His') . '.xlsx'
         );
     }

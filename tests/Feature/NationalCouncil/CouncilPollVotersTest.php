@@ -119,6 +119,22 @@ class CouncilPollVotersTest extends CouncilTestCase
         $this->assertSame(3, substr_count($html, 'class="dev"'), 'one row per vote');
     }
 
+    public function test_the_report_has_an_app_version_column_and_its_excel_too()
+    {
+        DB::table('app_users')->where('name', 'T voter 0')->update(['app_build' => 230040143, 'app_build_seen_at' => now()]);
+        $this->actingAs($this->adminUser(), 'admin')->withSession(['ie_results_otp_verified_until' => now()->addMinutes(5)]);
+
+        $html = $this->get(route('admin.national-council-poll.votes-report', $this->poll, false))->assertOk()->getContent();
+        $this->assertStringContainsString('<th>App version</th>', $html);
+        $this->assertSame(1, substr_count($html, '<td>4.4.24 (230040143)</td>'), 'only the voter whose app reported a build shows one');
+
+        $file = $this->get(route('admin.national-council-poll.votes-report.export', $this->poll, false))->assertOk()->baseResponse->getFile()->getPathname();
+        $rows = \PhpOffice\PhpSpreadsheet\IOFactory::load($file)->getActiveSheet()->toArray();
+        $col = array_search('App version', $rows[0], true);
+        $this->assertNotFalse($col);
+        $this->assertContains('4.4.24 (230040143)', array_column($rows, $col));
+    }
+
     public function test_the_report_filters_by_candidate_and_exports_when_unlocked()
     {
         $this->actingAs($this->adminUser(), 'admin')->withSession(['ie_results_otp_verified_until' => now()->addMinutes(5)]);

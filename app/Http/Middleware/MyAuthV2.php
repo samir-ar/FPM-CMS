@@ -56,6 +56,7 @@ class MyAuthV2
         $request->merge(['user' => $user]);
 
         $this->recordUserActivity($user->id);
+        $this->recordAppInfo($user, $request);
 
         return $next($request);
     }

@@ -32,7 +32,7 @@
         <p class="text-muted">{{ $votes->total() }} of {{ $total }} vote{{ $total === 1 ? '' : 's' }}.</p>
         <table class="table table-bordered table-striped">
             <thead>
-                <tr><th>Voter</th><th>Member ID</th><th>Weight</th><th>Question</th><th>Voted for</th><th>Voted at</th><th>Phone used</th><th>Phone of the app account</th></tr>
+                <tr><th>Voter</th><th>Member ID</th><th>Weight</th><th>Question</th><th>Voted for</th><th>Voted at</th><th>Phone used</th><th>App version</th><th>Phone of the app account</th></tr>
             </thead>
             <tbody>
             @forelse($votes as $v)
@@ -47,10 +47,11 @@
                         @include('cms.national_council_poll._phone_cell', ['model' => $v['device_model'], 'hardware' => $v['hardware'], 'device' => $v['device']])
                         @if($v['device_members'] > 1)<br><span class="label label-warning" style="display:inline-block;margin-top:4px;" title="The same phone voted for {{ $v['device_members'] }} members">shared by {{ $v['device_members'] }}</span>@endif
                     </td>
+                    <td>{{ $v['app_version'] ?: '—' }}</td>
                     <td>{{ $v['phone'] }}</td>
                 </tr>
             @empty
-                <tr><td colspan="8" class="text-center">No votes match.</td></tr>
+                <tr><td colspan="9" class="text-center">No votes match.</td></tr>
             @endforelse
             </tbody>
         </table>

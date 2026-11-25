@@ -233,6 +233,9 @@
                             <span class="text-danger">✖ not logged in yet</span>
                             @if(isset($hasAccount[$m->member_id]))<div class="text-muted" style="font-size:11px;">old account only</div>@endif
                         @endif
+                        @php($app = $appInfo[(string) $m->member_id] ?? null)
+                        @if($app && $app['version'] !== '')<div style="font-size:11px;">App {{ $app['version'] }}</div>@endif
+                        @if($app && $app['model'] !== '')<div class="text-muted" style="font-size:11px;">{{ $app['model'] }}</div>@endif
                     </td>
                     <td style="white-space:nowrap;">
                         <button type="button" class="btn btn-xs btn-primary save-row">Save</button>

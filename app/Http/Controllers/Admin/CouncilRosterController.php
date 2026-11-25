@@ -34,6 +34,7 @@ class CouncilRosterController extends Controller
             'members' => $members,
             'details' => $details,
             'loggedIn' => $loggedIn,
+            'appInfo' => \App\Support\MemberApp::forMembers($members->pluck('member_id')->map(fn($i) => (string) $i)->all()),
             'hasAccount' => $accounts,
             'trackingSince' => $activity['since'],
             'memberCount' => $active->count(),

@@ -41,4 +41,29 @@ trait TracksUserActivityTrait
             Log::info('Failed to record user activity for app_user ' . $appUserId . ': ' . $e->getMessage());
         }
     }
+
+    /**
+     * Keeps the app version (and the phone, when the app sends it) next to the member's account, for the CMS lists.
+     * Only writes when the value changed, so a normal request costs nothing extra. Never fails the request.
+     */
+    protected function recordAppInfo($appUser, $request): void
+    {
+        try {
+            $build = (int) $request->input('build_number', 0);
+            $model = trim((string) $request->input('device_model', ''));
+            $changes = [];
+            if ($build > 0 && $build < 2000000000 && (int) $appUser->app_build !== $build) {
+                $changes['app_build'] = $build;
+                $changes['app_build_seen_at'] = Carbon::now('UTC');
+            }
+            if ($model !== '' && $model !== (string) $appUser->device_model) {
+                $changes['device_model'] = mb_substr($model, 0, 191);
+            }
+            if ($changes) {
+                DB::table('app_users')->where('id', $appUser->id)->update($changes);
+            }
+        } catch (Throwable $e) {
+            Log::info('Failed to record app info for app_user ' . $appUser->id . ': ' . $e->getMessage());
+        }
+    }
 }

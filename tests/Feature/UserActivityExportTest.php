@@ -79,7 +79,7 @@ class UserActivityExportTest extends CouncilTestCase
 
         foreach (['today', 'week', 'month', 'year', 'decade'] as $period) {
             $rows = $this->sheetRows($this->get('/admin/user-activity/members/' . $period . '/export')->assertOk());
-            $this->assertSame(['Member ID', 'Name', 'District', 'Town', 'Last Activity', 'New'], $rows[0], "headings of $period");
+            $this->assertSame(['Member ID', 'Name', 'District', 'Town', 'Mobile', 'App version', 'Last Activity', 'New'], $rows[0], "headings of $period");
             $names = collect($rows)->pluck(1);
             $this->assertTrue($names->contains('ZQ A new today'), "$period lists A");
             $this->assertTrue($names->contains('ZQ B old member'), "$period lists B");

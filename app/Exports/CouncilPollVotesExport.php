@@ -17,14 +17,14 @@ class CouncilPollVotesExport implements FromArray, WithHeadings
 
     public function headings(): array
     {
-        return ['Voter', 'Member ID', 'Weight', 'Question', 'Voted for', 'Voted at', 'Phone model', 'Hardware ID', 'App install ID', 'Members who voted from this phone', 'Phone of the app account'];
+        return ['Voter', 'Member ID', 'Weight', 'Question', 'Voted for', 'Voted at', 'Phone model', 'Hardware ID', 'App install ID', 'Members who voted from this phone', 'App version', 'Phone of the app account'];
     }
 
     public function array(): array
     {
         return array_map(fn($r) => [
             $r['voter'], $r['member_id'], $r['weight'], $r['question'], $r['candidate'], $r['voted_at'],
-            \App\Support\DeviceName::pretty($r['device_model'] ?? ''), $r['hardware'] ?? '', $r['device'], $r['device_members'] ?: '', $r['phone'],
+            \App\Support\DeviceName::pretty($r['device_model'] ?? ''), $r['hardware'] ?? '', $r['device'], $r['device_members'] ?: '', $r['app_version'] ?? '', $r['phone'],
         ], $this->rows);
     }
 }

@@ -98,11 +98,13 @@
                                 <th>Name</th>
                                 <th>District</th>
                                 <th>Town</th>
+                                <th>Mobile</th>
+                                <th>App version</th>
                                 <th>Last Activity</th>
                             </tr>
                         </thead>
                         <tbody id="activityMembersModalBody">
-                            <tr><td colspan="5" class="text-center text-muted">Loading...</td></tr>
+                            <tr><td colspan="7" class="text-center text-muted">Loading...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -238,7 +240,7 @@
             members.length === 1 ? '1 member' : members.length + ' members'
         );
         if (!members.length) {
-            $('#activityMembersModalBody').html('<tr><td colspan="5" class="text-center text-muted">No members found.</td></tr>');
+            $('#activityMembersModalBody').html('<tr><td colspan="7" class="text-center text-muted">No members found.</td></tr>');
             return;
         }
         var rows = members.map(function (m) {
@@ -249,6 +251,8 @@
                 '<td>' + nameCell + '</td>' +
                 '<td>' + escapeHtml(m.district || '—') + '</td>' +
                 '<td>' + escapeHtml(m.town || '—') + '</td>' +
+                '<td>' + escapeHtml(m.mobile || '—') + '</td>' +
+                '<td>' + escapeHtml(m.app_version || '—') + '</td>' +
                 '<td>' + escapeHtml(m.last_active || '—') + '</td>' +
                 '</tr>';
         }).join('');

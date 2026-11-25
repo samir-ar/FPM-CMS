@@ -167,12 +167,13 @@ class NationalCouncilPollVotersController extends Controller
             ->where('v.poll_id', $poll->id)
             ->orderByDesc('v.voted_at')
             ->get(['v.member_id', 'v.weight', 'v.device_id', 'v.device_model', 'v.hardware_id', 'v.voted_at', 'v.question_id', 'v.answer_id',
-                'q.question as question', 'a.answer as candidate', 'u.phone_number as phone']);
+                'q.question as question', 'a.answer as candidate', 'u.phone_number as phone', 'u.app_build as app_build']);
 
         $details = CouncilMemberLookup::detailsFor($votes->pluck('member_id')->map(fn($i) => (string) $i)->unique()->values()->all());
         // one PHONE = its hardware id (survives a reinstall); for votes without one, the installation id
         $keyOf = fn($v) => $v->hardware_id ?: $v->device_id;
         $deviceMembers = $votes->filter(fn($v) => $keyOf($v))->groupBy($keyOf)->map(fn($g) => $g->pluck('member_id')->unique()->count());
+        $apps = \App\Support\MemberApp::forMembers($votes->pluck('member_id')->map(fn($i) => (string) $i)->unique()->values()->all());
 
         return $votes->map(fn($v) => [
             'voter' => $details[(string) $v->member_id]->UserFullName ?? '',
@@ -188,6 +189,8 @@ class NationalCouncilPollVotersController extends Controller
             'device_model' => (string) $v->device_model,
             'device_members' => $keyOf($v) ? (int) $deviceMembers[$keyOf($v)] : 0,
             'phone' => (string) $v->phone,
+            // the account that cast the vote first; the member's current account when that one never reported a build
+            'app_version' => \App\Support\MemberApp::versionLabel($v->app_build) ?: ($apps[(string) $v->member_id]['version'] ?? ''),
         ]);
     }
 
