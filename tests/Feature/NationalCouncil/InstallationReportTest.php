@@ -41,19 +41,25 @@ class InstallationReportTest extends CouncilTestCase
         DB::table('user_activity_logs')->insert(['app_user_id' => $u1, 'activity_date' => '2026-11-05', 'created_at' => '2026-11-05 09:00:00']);
         $u2 = $this->makeAppUser('ZR 702', '5900000702', ['verified' => 1]);
         DB::table('app_users')->where('id', $u2)->update(['created_at' => '2026-11-12 08:00:00']);
+        // 702 opened the app once, on 26 September (before it was replaced by a newer account in November)
+        DB::table('user_activity_logs')->insert(['app_user_id' => $u2, 'activity_date' => '2026-09-26', 'created_at' => '2026-09-26 09:00:00']);
 
         $filter = ['town' => 'ZR Town', 'sect' => '', 'unit' => '', 'member_id' => ''];
+
+        $sep = $this->row((new AppInstallationReportExport(2026, 9, $filter))->buildRows());
+        $this->assertSame(1, $sep['total_active'], 'September counts from the 24th: 702 opened the app on the 26th');
+        $this->assertSame(0, $sep['total_installed']);
 
         $oct = $this->row((new AppInstallationReportExport(2026, 10, $filter))->buildRows());
         $this->assertSame(4, $oct['total_member']);
         $this->assertSame(1, $oct['total_installed'], 'only 701 is an install since 24 Sept by the end of October (704 is older)');
-        $this->assertSame(0, $oct['total_active'], 'nobody opened the app in October');
+        $this->assertSame(1, $oct['total_active'], 'a running total from 24 Sept: 702 (opened in September) still counts in October');
 
         $nov = $this->row((new AppInstallationReportExport(2026, 11, $filter))->buildRows());
         $this->assertSame(2, $nov['total_installed']);
-        $this->assertSame(1, $nov['total_active']);
+        $this->assertSame(2, $nov['total_active'], '702 (September) and 701 (November), each member once');
         $this->assertEquals(50, $nov['percentage']);
-        $this->assertEquals(25, $nov['active_percentage']);
+        $this->assertEquals(50, $nov['active_percentage']);
     }
 
     public function test_the_filters_narrow_the_members(): void
@@ -92,7 +98,7 @@ class InstallationReportTest extends CouncilTestCase
         file_put_contents($tmp, $response->streamedContent());
         $sheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($tmp)->getActiveSheet();
         @unlink($tmp);
-        $this->assertSame('Nov 2026', $sheet->getCell('B3')->getValue());
+        $this->assertSame('24 Sep - 30 Nov 2026', $sheet->getCell('B3')->getValue());
         $this->assertSame('total_active', $sheet->getCell('E4')->getValue());
         $this->assertSame('total_active_percentage', $sheet->getCell('F4')->getValue());
         $this->assertSame('Table Number 2', $sheet->getCell('H1')->getValue(), 'the second table starts after the first one');
@@ -158,8 +164,8 @@ class InstallationReportTest extends CouncilTestCase
         DB::table('user_activity_logs')->insert(['app_user_id' => $blank, 'activity_date' => now(config('app.timezone'))->toDateString(), 'created_at' => now()]);
 
         $now = now(config('app.timezone'));
-        $monthStart = $now->copy()->startOfMonth()->toDateString();
-        // exactly how the User Activity dashboard counts "Active This Month"
+        $monthStart = AppInstallationReportExport::TRACKING_START;
+        // exactly how the User Activity dashboard counts "Active This Year" (tracking is under a year old: since 24 Sept)
         $dashboard = DB::table('user_activity_logs')
             ->join('app_users', 'app_users.id', '=', 'user_activity_logs.app_user_id')
             ->whereNull('app_users.deleted_at')

@@ -71,9 +71,12 @@ class AppInstallationReportExport
         $this->filters = array_map(fn($v) => trim((string) $v), $filters);
     }
 
+    /** The period the numbers cover: from the day tracking began up to the end of the chosen month. */
     public function monthLabel(): string
     {
-        return \Carbon\Carbon::create($this->year, $this->month, 1)->format('M Y');
+        $end = \Carbon\Carbon::create($this->year, $this->month, 1)->endOfMonth();
+
+        return \Carbon\Carbon::parse(self::TRACKING_START)->format('j M') . ' - ' . $end->format('j M Y');
     }
 
     public static function groupLabels(): array
@@ -108,7 +111,8 @@ class AppInstallationReportExport
         $tz = config('app.timezone');
         $monthStart = \Carbon\Carbon::create($this->year, $this->month, 1, 0, 0, 0, $tz);
         $monthEnd = $monthStart->copy()->endOfMonth();
-        $activeFrom = max($monthStart->toDateString(), self::TRACKING_START);
+        // installed and active both run from the day tracking began (24 Sept 2026) to the end of the chosen month
+        $activeFrom = self::TRACKING_START;
 
         // Every member is counted once, in the district of the member list. Members the list does not place (no entry, blank
         // district, or a district outside the report's rows) go to the last row "Not in any district", so the TOTAL always
@@ -129,7 +133,8 @@ class AppInstallationReportExport
             ->groupBy('d')
             ->pluck('cnt', 'd');
 
-        // active = opened the app at least one day of the month; same rule as the dashboard (live accounts, distinct members)
+        // active = opened the app at least one day from 24 Sept to the end of the month; same rule as the dashboard's
+        // "Active This Year" (live accounts, distinct members), which is the same number while tracking is under a year old
         $activeCounts = $activeFrom > $monthEnd->toDateString() ? collect() : $this->applyFilters(DB::table('user_activity_logs')
             ->join('app_users', 'app_users.id', '=', 'user_activity_logs.app_user_id')
             ->leftJoin('fpm_users', 'app_users.member_id', '=', 'fpm_users.MemberId')
