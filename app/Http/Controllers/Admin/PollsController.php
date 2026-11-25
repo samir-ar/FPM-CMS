@@ -152,6 +152,7 @@ class PollsController extends Controller
                         */
 
 
+                        $this->drawHtml('image', 'Picture (optional - shown under the options; empty = the default poll picture)', 'image', null, null, '', 'col-md-12'),
                         $this->drawHtml('checkbox', 'Show', 'show', true, null, '', 'col-md-12'),
                         $this->drawHtml('checkbox', 'Allow Guests to See & Vote', 'show_for_guest', false, null, '', 'col-md-12'),
                     ],
@@ -202,7 +203,8 @@ class PollsController extends Controller
             //'details' => 'required',
             'groups' => 'required_without:all_groups',
             'options' => 'required|array',
-            'details_notification' => 'required_with:name_notification'
+            'details_notification' => 'required_with:name_notification',
+            'image' => 'nullable|image|max:10240',
         ]);
 
         // two options are needed, except when one of them lets the member write his own text (one is enough then)
@@ -231,6 +233,9 @@ class PollsController extends Controller
             $poll->show = request('show') ? true : false;
             $poll->show_for_guest = request('show_for_guest') ? true : false;
             $poll->expiry_date = Carbon::parse(request('expiry_date'))->toDateTimeString();
+            if ($request->hasFile('image')) {
+                $poll->image = $this->moveFile($request->file('image'), 'images/polls');
+            }
 
             $poll->save();
 
@@ -327,6 +332,7 @@ class PollsController extends Controller
                         $this->drawHtml('text', 'Details(Arabic)', 'details_ar', $poll->getTranslation('details', 'ar'), null, '', 'col-md-12 no-ck right-to-left required'),
                         */
                         $this->drawHtml('date-time-picker', 'Expiry Date', 'expiry_date', $poll->expiry_date, null, '', 'col-md-12 required'),
+                        $this->drawHtml('image', 'Picture (optional - shown under the options; empty = the default poll picture)', 'image', $poll->image ? 'images/polls/' . $poll->image : null, null, '', 'col-md-12'),
                         $this->drawHtml('checkbox', 'Show', 'show', $poll->show, null, '', 'col-md-12'),
                         $this->drawHtml('checkbox', 'Allow Guests to See & Vote', 'show_for_guest', $poll->show_for_guest, null, '', 'col-md-12'),
                     ],
@@ -362,6 +368,7 @@ class PollsController extends Controller
             'expiry_date'=> 'required|date',
             //'details' => 'required',
             'groups' => 'required_without:all_groups',
+            'image' => 'nullable|image|max:10240',
         ]);
 
         foreach (array_values((array) request('options', [])) as $i => $opt) {
@@ -389,6 +396,13 @@ class PollsController extends Controller
             $poll->show_for_guest = request('show_for_guest') ? true : false;
             $poll->expiry_date = Carbon::parse(request('expiry_date'))->toDateTimeString();
             $poll->strict_lang = request('strict_lang') ?: ($poll->strict_lang ?: 'ar');
+            if ($request->hasFile('image')) {
+                $oldImage = $poll->image;
+                $poll->image = $this->moveFile($request->file('image'), 'images/polls');
+                if ($oldImage) {
+                    $this->removeFile('images/polls/' . $oldImage);
+                }
+            }
 
             $poll->save();
 

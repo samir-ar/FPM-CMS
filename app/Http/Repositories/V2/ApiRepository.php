@@ -632,6 +632,14 @@ class ApiRepository
                 return $this->getNewsMedia($element, $placeholder);
             case "EVENT":
                 return $this->getEventsMedia($element);
+            case "POLL":
+                // the poll's own picture; without one the app draws the default poll picture (the Home card icon)
+                if (empty($element->image)) {
+                    return [];
+                }
+                $url = Storage::disk('s3')->url(config('app.aws_bucket_project_name') . '/' . 'storage/' . 'images/polls/' . $element->image);
+
+                return [["type" => 'image', "thumbnail" => $url, "link" => $url]];
             default:
                 return [];
         }

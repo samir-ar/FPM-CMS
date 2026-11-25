@@ -6,6 +6,7 @@ All notable changes to the FPM-CMS (Laravel backend) are documented in this file
 
 ### Added
 
+- **Poll picture (2026-11-25):** Add/Edit Poll has an optional 'Picture' upload, shown under the options on the Home card; empty = the app keeps drawing the default poll picture (the Home card icon). Stored in `polls.image` (migration `2026_11_25_170000`, files in `images/polls`), sent as `media` for POLL items by `ApiRepository::getMedia()`; no app release needed (the app already draws any `media` image). Tests `PollImageTest`. On production + staging.
 - **My municipality / My mukhtar cards no longer empty for ~6,000 members (2026-11-23):** the app asks for "قضاء " + the profile district but the tables store 5 of them differently (المتن الشمالي = قضاء المتن, بيروت الاولى/الثانية/بيروت = بيروت, المنية-الضنية without the prefix). `ApiController::qadaVariants()` adds the stored spelling for municipalities, municipality-members, mukhtar-villages and mukhtars (server side; the app also has the same mapping since 4.4.23). Tests `QadaNameAliasTest`. On production.
 - **Landing page phone picture changeable from the CMS (2026-11-23):** CMS > App Versions > 'Landing page (fpmmobile.com) - phone picture' (upload PNG/JPG/WEBP up to 5 MB, or tick to go back to the built-in picture); stored in `settings.landing_phone_image` (migration `2026_11_23_220000`), shown by `Setting::landingPhoneUrl()`; the picture is also a bit bigger (100% of its column). Tests `LandingPhoneImageTest` (fake s3 disk). On production.
 - **User Activity dashboard: 'Show only new members' + 'Export to Excel' in every tile popup (2026-11-23):** Today / This Week / This Month / This Year / Last 10 Years and the chart-day popup; the Excel file holds exactly what the popup shows (new / district / town filters). 'New' = first ever logged activity inside the tile's own period (the green highlight on Week/Month/Year/10Y now follows the same meaning). Routes `user-activity/members/{period}/export` and `user-activity/members-by-date/{date}/export`. Tests `UserActivityExportTest`. On production.
@@ -396,3 +397,9 @@ First production release after completing the Critical UI redesign, accessibilit
 ### Fixed
 
 - QR code generation, which previously failed silently (Imagick missing) and left members with no scannable QR code at all.
+
+## 2026-11-25 - Release 4.4.24+230040143
+Talent: screen order, centered message boxes, CMS grey line, CMS-driven form; Events month scroll fix (iPhone); Memos whole row opens; Political statements open in app. Server: member_note + talent_form_items on production.
+
+## 2026-11-25 - App version and phone in the CMS
+Council roster, council votes report and User Activity popups (and their Excel files) show the app version; User Activity also shows the mobile. Server records build_number per account.
