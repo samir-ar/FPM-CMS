@@ -136,8 +136,13 @@ class CouncilPollVotersTest extends CouncilTestCase
         $url = route('admin.national-council-poll.votes-report', $this->poll, false);
 
         $forA = $this->get($url . '?answer_id=' . $this->answerA)->assertOk()->getContent();
-        $this->assertStringContainsString('2 of 3 votes', $forA);
+        $this->assertSame(2, substr_count($forA, 'class="dev" style='), 'two of the three vote rows');
         $this->assertStringNotContainsString('<strong>مرشحة باء</strong>', $forA);
+        // the page shows only the table and Back: no export button, no warning, no filters
+        $this->assertStringNotContainsString('Export to Excel', $forA);
+        $this->assertStringNotContainsString('name="shared"', $forA);
+        $this->assertStringNotContainsString('callout-warning', $forA);
+        $this->assertStringContainsString('>Back</a>', $forA);
 
         $this->get(route('admin.national-council-poll.votes-report.export', $this->poll, false) . '?answer_id=' . $this->answerB)->assertOk()
             ->assertHeader('content-disposition');

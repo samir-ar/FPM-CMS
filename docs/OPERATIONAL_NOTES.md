@@ -628,3 +628,10 @@ Package cms_prod_appversion_20261125 (16 files): migration 2026_11_25_150000 ran
 - Package `cms_prod_votesreport_nocode_20261126.tar.gz` (17832 bytes, sha256 c4752d3c...3f105, 3 files). Step 1 matched; Step 2 printed VOTESREPORT-APPLIED, fingerprints 5a3318ec / 9a337276 / aa0977bb, /tmp upload deleted.
 - Rollback / lock again: `/root/votesreport_nocode_before_20261126.tar.gz` on production (restores these 3 files as they were before this change; only safe while nothing newer changed them). The user wants to turn the code back on later.
 - Still on staging only and not committed: big winner pictures on the results board.
+
+## 2026-11-26 (19:30) - Council votes report: table and Back only (LOCAL, awaiting approval)
+- Only `votes_report.blade.php` + `CouncilPollVotersTest` (9 tests pass). Not on staging, production or GitHub.
+
+## 2026-11-26 (19:35) - Votes report table-only: approved, staging + GitHub, production package ready
+- Staging view fingerprint aa0977bb -> 73c6f191, backup `/root/votesreport_tableonly_before_20261126.tar.gz`.
+- Production package on the Desktop `cms_prod_votesreport_tableonly_20261126.tar.gz` (1096 bytes, sha256 01df0c2c...3d8a, 1 file; production should show aa0977bb before). NOT yet applied on production.

@@ -8,28 +8,8 @@
     <div class="box-header with-border">
         <h3 class="box-title" dir="auto">{{ $poll->title }} <small>&mdash; who voted for whom (restricted)</small></h3>
         <a href="{{ route('admin.national-council-poll.index') }}" class="btn btn-default pull-right" style="margin-left:4px;">Back</a>
-        <a href="{{ route('admin.national-council-poll.votes-report.export', array_merge(['id' => $poll->id], request()->query())) }}" class="btn btn-success pull-right" style="margin-left:4px;">Export to Excel</a>
     </div>
     <div class="box-body">
-        <div class="callout callout-warning">
-            This report shows <strong>how each person voted</strong>. Treat it as confidential. It is not linked from any menu.
-        </div>
-
-        <form method="GET" class="form-inline" style="margin-bottom:12px;">
-            <select name="question_id" class="form-control" style="max-width:300px;">
-                <option value="">All questions</option>
-                @foreach($questions as $q)<option value="{{ $q['id'] }}" @if($selectedQuestion === $q['id']) selected @endif>{{ $q['text'] }}</option>@endforeach
-            </select>
-            <select name="answer_id" class="form-control" style="max-width:300px;">
-                <option value="">Everyone voted for</option>
-                @foreach($candidates as $c)<option value="{{ $c['id'] }}" @if($selectedAnswer === $c['id']) selected @endif>{{ $c['text'] }}</option>@endforeach
-            </select>
-            <label style="margin:0 8px;font-weight:normal;"><input type="checkbox" name="shared" value="1" @if($onlyShared) checked @endif> only shared devices</label>
-            <button class="btn btn-primary">Filter</button>
-            <a href="{{ route('admin.national-council-poll.votes-report', $poll->id) }}" class="btn btn-default">Clear</a>
-        </form>
-
-        <p class="text-muted">{{ $votes->total() }} of {{ $total }} vote{{ $total === 1 ? '' : 's' }}.</p>
         <table class="table table-bordered table-striped">
             <thead>
                 <tr><th>Voter</th><th>Member ID</th><th>Weight</th><th>Question</th><th>Voted for</th><th>Voted at</th><th>Phone used</th><th>App version</th><th>Phone of the app account</th></tr>
