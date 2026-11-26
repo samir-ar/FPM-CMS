@@ -6,7 +6,7 @@ All notable changes to the FPM-CMS (Laravel backend) are documented in this file
 
 ### Added
 
-- **"Screens" page for a display account (2026-11-26, local, awaiting the user's OK):** new top-level menu line with its own permission (migration `2026_11_26_150000_add_council_screens_page`, Super Admin gets it). An account with only "Screens: View" sees one page listing the live attendance boards, the live voting TV screens and the results board, and nothing else; the screens' Back buttons return there. The six screen/data/photo routes and the results board accept the usual permission or Screens. Test `CouncilScreensAccountTest`.
+- **"Screens" page for a display account (2026-11-26, on production and staging, backup `/root/screens_before_20261126.tar.gz`):** new top-level menu line with its own permission (migration `2026_11_26_150000_add_council_screens_page`, Super Admin gets it). An account with only "Screens: View" sees one page listing the live attendance boards, the live voting TV screens and the results board, and nothing else; the screens' Back buttons return there. The six screen/data/photo routes and the results board accept the usual permission or Screens. Test `CouncilScreensAccountTest`.
 
 - **CMS login with a username (2026-11-26, on production and staging, backup `/root/userlogin_before_20261126.tar.gz`):** the sign-in field accepts a username or an e-mail address (before: e-mail format only); account forms say "Username or Email" and refuse a name already used. Stored in `users.email` as before, no migration. Tests `CmsUsernameLoginTest`, `DisplayOnlyProfileTest` (profile for a display-only account: National Council + National Council Poll + Who Voted + Council Poll Results, all View).
 

@@ -611,3 +611,8 @@ Package cms_prod_appversion_20261125 (16 files): migration 2026_11_25_150000 ran
 
 ## 2026-11-26 (14:30) - Ways of working written down
 - `docs/DEPLOY_PLAYBOOK.md` (server updates) and `fpm-flutter/docs/RELEASE_PLAYBOOK.md` (Google Play + App Store) added, with `CLAUDE.md` files so new sessions read them first. Keep them current.
+
+## 2026-11-26 (14:29) - Screens page for the display account
+- Production + staging + GitHub (76feb8b). Package `cms_prod_screens_20261126.tar.gz` (sha256 5405a8c2...80c2, 8 files incl. migration 2026_11_26_150000 which ran DONE on both); backup `/root/screens_before_20261126.tar.gz`.
+- The display account needs only "Screens: View"; its other four permissions go back to None.
+- Still OPEN (user has not approved): `admin/profile/{id}/edit|update` lets any signed-in admin, including this display account, change another administrator; no limit on wrong sign-in passwords.
