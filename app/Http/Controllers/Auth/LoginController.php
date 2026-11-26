@@ -47,12 +47,13 @@ class LoginController extends Controller
 
     public function login(Request $request)
     {
+        // the "email" field holds the account's sign-in name: an e-mail address or a plain username
         $this->validate($request, [
-            'email'     => 'required|email',
+            'email'     => 'required|string|max:191',
             'password'  => 'required|min:6'
         ]);
 
-        if (Auth::guard('admin')->attempt(['email' => $request->email, 'password' => $request->password], $request->get('remember'))) {
+        if (Auth::guard('admin')->attempt(['email' => trim($request->email), 'password' => $request->password], $request->get('remember'))) {
             $admin = Auth::guard('admin')->user();
 
             // Profiles without Dashboard access (page id 0) shouldn't land

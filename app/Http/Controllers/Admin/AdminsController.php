@@ -26,7 +26,7 @@ class AdminsController extends Controller
             'pageTitle'	=> 'Reports',
             'table_title' => 'Administrators',
             'slug'		=> 'admin',
-            'headers'	=> ['id', 'Name', 'Email', 'Action'],
+            'headers'	=> ['id', 'Name', 'Username / Email', 'Action'],
             'custom_btn' => "<a href='" . route('admin.admins.create') ."' class='btn btn-primary'>Add Admin</a>",
             'rows'		=> User::all()->map(function($r){
                 return[
@@ -130,7 +130,7 @@ class AdminsController extends Controller
                     'class' => 'box-default',
                     'box-header' => 'Actions',
                     'form_fields' => [
-                        $this->drawHtml('small_text', 'Email', 'email', $admin->email , null, '', 'col-md-12 '),
+                        $this->drawHtml('small_text', 'Username or Email', 'email', $admin->email , null, '', 'col-md-12 '),
                         $this->drawHtml('small_text', 'Name', 'name', $admin->name, null, null, 'col-md-12'),
                         $this->drawHtml('small_text', 'New Password', 'password', '' , null, '', 'col-md-12 '),
                         $this->drawHtml('small_text', 'Confirm New Password', 'password_confirmation', '', null, null, 'col-md-12'),
@@ -150,7 +150,7 @@ class AdminsController extends Controller
     {
         $this->validate($request,[
             'name' => '',
-            'email' => 'required',
+            'email' => 'required|max:191|unique:users,email,' . (int) $id,
             'password' => 'confirmed',
         ]);
 
@@ -159,7 +159,7 @@ class AdminsController extends Controller
         if(request('password'))
             $admin->password = Hash::make(request('password'));
 
-        $admin->email = request('email');
+        $admin->email = trim(request('email'));
         $admin->name = request('name');
         $admin->profile_id = request('profile_id') ?: null;
 
@@ -182,7 +182,7 @@ class AdminsController extends Controller
                     'class' => 'box-default',
                     'box-header' => 'Actions',
                     'form_fields' => [
-                        $this->drawHtml('small_text', 'Email', 'email', $request->old('email') , null, '', 'col-md-12 '),
+                        $this->drawHtml('small_text', 'Username or Email', 'email', $request->old('email') , null, '', 'col-md-12 '),
                         $this->drawHtml('small_text', 'Name', 'name', $request->old('name'), null, null, 'col-md-12'),
                         $this->drawHtml('small_text', 'New Password', 'password', '' , null, '', 'col-md-12 '),
                         $this->drawHtml('small_text', 'Confirm New Password', 'password_confirmation', '', null, null, 'col-md-12'),
@@ -199,7 +199,7 @@ class AdminsController extends Controller
     {
         $this->validate($request,[
             'name' => '',
-            'email' => 'required',
+            'email' => 'required|max:191|unique:users,email',
             'password' => 'required|confirmed',
         ]);
 
@@ -207,7 +207,7 @@ class AdminsController extends Controller
 
         $admin->password = Hash::make(request('password'));
 
-        $admin->email = request('email');
+        $admin->email = trim(request('email'));
         $admin->name = request('name');
         $admin->profile_id = request('profile_id') ?: null;
         $admin->save();

@@ -147,7 +147,7 @@ class ProfileController extends Controller
                     'box-header' => 'Info',
                     'form_fields' => [
                         $this->drawHtml('small_text', 'Name', 'name', null , null, '', 'col-md-12 '),
-                        $this->drawHtml('small_text', 'Email', 'email', null , null, '', 'col-md-12 '),
+                        $this->drawHtml('small_text', 'Username or Email', 'email', null , null, '', 'col-md-12 '),
                         $this->drawHtml('small_text', 'New Password', 'password', '' , null, '', 'col-md-12 '),
                         $this->drawHtml('small_text', 'Confirm New Password', 'password_confirmation', '', null, null, 'col-md-12'),
                         $this->drawHtml('select-box', 'Profile', 'profile_id', null,
