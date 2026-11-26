@@ -594,3 +594,12 @@ Package cms_prod_appversion_20261125 (16 files): migration 2026_11_25_150000 ran
 - Production: applied 2026-11-26 with `cms_prod_birthday_20261126.tar.gz` (sha256 c354b589...1b59); backup `/root/birthday_before_20261126.tar.gz`. Staging not synced.
 - Checked 2026-11-26: no `schedule:run` cron anywhere on the production server (/etc/crontab, /etc/cron.d, /var/spool/cron), so `birthdays:send-wishes` (09:00 Beirut, the only scheduled command) never runs by itself; that day's wishes went out at 12:08 (button or manual). Asked the user whether to turn it on.
 - OPEN (user, 2026-11-26: "do it later"): turn on the 09:00 birthday send. Needs one cron line on production, as www-data, e.g. /etc/cron.d file `* * * * * www-data cd /home/fpm/public_html && php8.2 artisan schedule:run >> /dev/null 2>&1`. Confirm with the user first; it starts automatic pushes.
+
+## 2026-11-26 (13:10) - Pushed to GitHub, staging brought level
+- CMS commit 163fdf4 and app notes commit a54b401 pushed (`feature/national-council-session`).
+- Staging: 12 files by tar+scp, backup `/root/stg_before_20261126.tar.gz`; all 819 tracked code files then matched local; no pending migrations. Read-only check on staging (MySQL 8.0): every App Users sort + filter and the voting screen data ran without errors (district sort took 6 s on that box, others under 3 s).
+- Production: voting TV screen + hidden Results column still to apply (`cms_prod_tvscreen_20261126.tar.gz`, 5 files; replaces the unapplied `cms_prod_pollresults_20261126`).
+
+## 2026-11-26 (14:00) - Voting TV screen + hidden Results column on production
+- Applied with `cms_prod_tvscreen_20261126.tar.gz` (sha256 29811b1c...b9f8: both council poll controllers, live_board + progress views, routes/web.php); 3 new routes listed; backup `/root/tvscreen_before_20261126.tar.gz`. Production, staging, local and GitHub now carry the same code.
+- User's check on the TV: pending. Local council list is empty, so the screen was previewed with sample members.
