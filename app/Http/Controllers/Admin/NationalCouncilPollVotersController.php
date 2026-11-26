@@ -16,8 +16,8 @@ use Maatwebsite\Excel\Facades\Excel;
 // Two reports for a National Council poll, modelled on the Internal Election:
 //  - the VOTERS page (progress): who may vote, who already has, when, and from which device. It never shows
 //    what anybody voted, so it can be opened freely by whoever may view the polls;
-//  - the hidden VOTES REPORT: who voted for whom. Unlinked, and only for admins with its own page permission.
-//    The SMS code is switched off for now (2026-11-26); see routes/web.php to lock it again.
+//  - the hidden VOTES REPORT: who voted for whom. Unlinked, and behind the same one-time-code lock the
+//    Internal Election's "who voted for whom" report uses.
 class NationalCouncilPollVotersController extends Controller
 {
     // One row per permitted voter: did he vote, when, from which device and phone account.

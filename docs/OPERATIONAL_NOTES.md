@@ -649,3 +649,12 @@ Package cms_prod_appversion_20261125 (16 files): migration 2026_11_25_150000 ran
 - Package `cms_prod_votesreport_columns_20261126.tar.gz` (745 bytes, sha256 87daf713...88b9). Step 1 matched, Step 2 printed COLUMNS-APPLIED, view fingerprint afc93b43, /tmp upload deleted. Backup `/root/votesreport_columns_before_20261126.tar.gz` (page with Phone used and App version).
 - Production, staging and GitHub match for the votes report. SMS code still off (temporary). Big winner pictures: still staging only.
 
+## 2026-11-26 (19:50) - Votes report put back as it was: local + staging (production pending)
+- User: "return all as it was". routes/web.php, NationalCouncilPollVotersController.php, votes_report.blade.php and CouncilPollVotersTest back to commit 7f05d30 (SMS code ON, Export, warning, filters, all columns). 9 tests pass.
+- Staging restored from `/root/novotesotp_before_20261126.tar.gz` (fingerprints d4bcd06e / 6dcd5356 / 98aa4bad); previous state saved in `/root/votesreport_restore_before_20261126.tar.gz`.
+- Production: to be restored from its own `/root/votesreport_nocode_before_20261126.tar.gz` (no upload needed).
+
+## 2026-11-26 (19:58) - Votes report put back as it was: PRODUCTION too
+- Restored from `/root/votesreport_nocode_before_20261126.tar.gz` (no upload). Output VOTESREPORT-RESTORED, fingerprints d4bcd06e / 6dcd5356 / 98aa4bad. State just before: `/root/votesreport_restore_before_20261126.tar.gz`.
+- Production, staging, local and GitHub match: SMS code ON again, nothing left to lock. Four `/root/votesreport_*` backups on production stay until the user says.
+- Still staging only, uncommitted: big winner pictures on the results board.

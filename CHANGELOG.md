@@ -6,6 +6,8 @@ All notable changes to the FPM-CMS (Laravel backend) are documented in this file
 
 ### Added
 
+- **National Council votes report put back as it was (2026-11-26 evening, on production and staging):** the three changes below (SMS code off, table and Back only, hidden columns) are all REVERTED at the user's request: the page and its Excel export ask for the SMS code again and show the export button, warning, filters and all columns. Files equal commit 7f05d30. Production state just before the restore is in `/root/votesreport_restore_before_20261126.tar.gz`.
+
 - **National Council votes report: "Phone used" column (model, hardware id, app id, shared label) and App version column hidden (2026-11-26, on production and staging, backup `/root/votesreport_columns_before_20261126.tar.gz` on each):** only on this page; the account phone stays. The Who Voted page and the Excel file are unchanged.
 
 - **National Council votes report shows only the table and Back (2026-11-26, on production and staging, backup `/root/votesreport_tableonly_before_20261126.tar.gz` on each):** Export to Excel button, confidential warning, filters (incl. "only shared devices") and the vote count line removed from `votes_report.blade.php`; page links and the "shared by N" label in rows stay. The export and filter addresses still work, only the controls are gone (restore from commit c07a400).
