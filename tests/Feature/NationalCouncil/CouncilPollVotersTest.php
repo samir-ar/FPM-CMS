@@ -99,19 +99,14 @@ class CouncilPollVotersTest extends CouncilTestCase
             ->assertHeader('content-disposition');
     }
 
-    public function test_who_voted_for_whom_is_locked_behind_the_one_time_code()
+    public function test_who_voted_for_whom_opens_without_a_code_while_the_sms_lock_is_off()
     {
         $this->actingAs($this->adminUser(), 'admin');
         $url = route('admin.national-council-poll.votes-report', $this->poll, false);
+        $this->get(route('admin.national-council-poll.votes-report.export', $this->poll, false))->assertOk()
+            ->assertHeader('content-disposition');
 
-        // no code yet: sent to the code page, nothing is shown
-        $res = $this->get($url);
-        $res->assertRedirect();
-        $this->assertStringContainsString('results-otp', $res->headers->get('Location'));
-        $this->get(route('admin.national-council-poll.votes-report.export', $this->poll, false))->assertRedirect();
-
-        // with the code verified: the report opens
-        $html = $this->withSession(['ie_results_otp_verified_until' => now()->addMinutes(5)])->get($url)->assertOk()->getContent();
+        $html = $this->get($url)->assertOk()->getContent();
         $this->assertStringContainsString('مرشحة الف', $html);
         $this->assertStringContainsString('مرشحة باء', $html);
         $this->assertStringContainsString('shared by 2', $html);

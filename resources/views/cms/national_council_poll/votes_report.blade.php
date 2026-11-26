@@ -12,7 +12,7 @@
     </div>
     <div class="box-body">
         <div class="callout callout-warning">
-            This report shows <strong>how each person voted</strong>. Treat it as confidential. It is not linked from any menu, and it only opens after the one-time code.
+            This report shows <strong>how each person voted</strong>. Treat it as confidential. It is not linked from any menu.
         </div>
 
         <form method="GET" class="form-inline" style="margin-bottom:12px;">

@@ -616,3 +616,15 @@ Package cms_prod_appversion_20261125 (16 files): migration 2026_11_25_150000 ran
 - Production + staging + GitHub (76feb8b). Package `cms_prod_screens_20261126.tar.gz` (sha256 5405a8c2...80c2, 8 files incl. migration 2026_11_26_150000 which ran DONE on both); backup `/root/screens_before_20261126.tar.gz`.
 - The display account needs only "Screens: View"; its other four permissions go back to None.
 - Still OPEN (user has not approved): `admin/profile/{id}/edit|update` lets any signed-in admin, including this display account, change another administrator; no limit on wrong sign-in passwords.
+
+## 2026-11-26 (19:05) - Council votes report without SMS code (TEMPORARY): STAGING only
+- User's decision ("i will add again after"). Replaces, for now, the 2026-11-19 note that this page stays behind the phone code.
+- Files: `routes/web.php`, `NationalCouncilPollVotersController.php` (comment), `votes_report.blade.php` (warning text). Staging fingerprints after: 5a3318ec, 9a337276, aa0977bb. Before (= commit 7f05d30): d4bcd06e, 6dcd5356, 98aa4bad. Backup `/root/novotesotp_before_20261126.tar.gz`.
+- To lock it again: restore `'ie-results-otp'` on both council votes-report routes (and the test `test_who_voted_for_whom_is_locked_behind_the_one_time_code`).
+- Anyone with the page permission can now see each member's vote: keep "Council Poll - Votes Report" at None for other profiles and the display account.
+- 250 council tests pass (1 skipped). Production unchanged, GitHub not pushed.
+
+## 2026-11-26 (19:15) - Council votes report without SMS code: now on PRODUCTION
+- Package `cms_prod_votesreport_nocode_20261126.tar.gz` (17832 bytes, sha256 c4752d3c...3f105, 3 files). Step 1 matched; Step 2 printed VOTESREPORT-APPLIED, fingerprints 5a3318ec / 9a337276 / aa0977bb, /tmp upload deleted.
+- Rollback / lock again: `/root/votesreport_nocode_before_20261126.tar.gz` on production (restores these 3 files as they were before this change; only safe while nothing newer changed them). The user wants to turn the code back on later.
+- Still on staging only and not committed: big winner pictures on the results board.
