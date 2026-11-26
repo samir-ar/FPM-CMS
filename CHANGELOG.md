@@ -6,7 +6,7 @@ All notable changes to the FPM-CMS (Laravel backend) are documented in this file
 
 ### Added
 
-- **CMS login with a username (2026-11-26, local):** the sign-in field accepts a username or an e-mail address (before: e-mail format only); account forms say "Username or Email" and refuse a name already used. Stored in `users.email` as before, no migration. Tests `CmsUsernameLoginTest`, `DisplayOnlyProfileTest` (profile for a display-only account: National Council + National Council Poll + Who Voted + Council Poll Results, all View).
+- **CMS login with a username (2026-11-26, on production and staging, backup `/root/userlogin_before_20261126.tar.gz`):** the sign-in field accepts a username or an e-mail address (before: e-mail format only); account forms say "Username or Email" and refuse a name already used. Stored in `users.email` as before, no migration. Tests `CmsUsernameLoginTest`, `DisplayOnlyProfileTest` (profile for a display-only account: National Council + National Council Poll + Who Voted + Council Poll Results, all View).
 
 - **National Council: live voting TV screen (2026-11-26, on production and staging, backup `/root/tvscreen_before_20261126.tar.gz`):** "TV screen" button on a poll's Who Voted page opens `national-council-poll/{id}/voters/screen` (same permission as Who Voted), full screen in the style of the live attendance board for an 80" TV: turnout circle, voted / still to vote / weight turnout / closing countdown, voting by role, photo seat map (lit = voted), latest voters; refreshes every 4 s. Never shows what anybody voted, no member ids, phones or devices. View `live_board.blade.php` (derived from the attendance board, which is unchanged). Test `CouncilVotingScreenTest`.
 

@@ -603,3 +603,8 @@ Package cms_prod_appversion_20261125 (16 files): migration 2026_11_25_150000 ran
 ## 2026-11-26 (14:00) - Voting TV screen + hidden Results column on production
 - Applied with `cms_prod_tvscreen_20261126.tar.gz` (sha256 29811b1c...b9f8: both council poll controllers, live_board + progress views, routes/web.php); 3 new routes listed; backup `/root/tvscreen_before_20261126.tar.gz`. Production, staging, local and GitHub now carry the same code.
 - User's check on the TV: pending. Local council list is empty, so the screen was previewed with sample members.
+
+## 2026-11-26 (14:13) - CMS sign-in with a username
+- Production + staging + GitHub (7699551). Package `cms_prod_userlogin_20261126.tar.gz` (sha256 7d59b9c2...3386: LoginController, AdminsController, ProfileController, auth/login view); backup `/root/userlogin_before_20261126.tar.gz`.
+- Display-only CMS account (user asked): profile with National Council, National Council Poll, Council Poll - Who Voted, Council Poll Results = View; everything else None.
+- OPEN security items (told the user, NOT fixed, ask before changing): (1) `admin/profile/{id}/edit|update` has no ownership or permission check, so any signed-in CMS user can change another administrator's email/name/picture (ProfileController@edit/update); (2) the CMS sign-in has no limit on wrong password attempts.
