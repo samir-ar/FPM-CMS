@@ -586,6 +586,7 @@ HTML;
             // first paint comes with the page; after that the page asks resultsOverviewData() every few seconds
             'initial' => $this->resultsPayload($chosen->all(), $top),
             'dataUrl' => route('admin.national-council-poll.results-overview.data'),
+            'backUrl' => CouncilScreensController::backUrl('admin.national-council-poll.index', route('admin.national-council-poll.index')),
         ]);
     }
 

@@ -110,7 +110,7 @@ class CouncilMeetingsController extends Controller
             'meeting' => $meeting,
             'payload' => $this->boardPayload($meeting),
             'dataUrl' => route('admin.council-meetings.board-data', $meeting->id),
-            'backUrl' => route('admin.council-meetings.show', $meeting->id),
+            'backUrl' => CouncilScreensController::backUrl('admin.council-meetings.index', route('admin.council-meetings.show', $meeting->id)),
         ]);
     }
 

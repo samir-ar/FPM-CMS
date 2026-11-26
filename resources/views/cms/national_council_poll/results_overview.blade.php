@@ -270,7 +270,7 @@
         <button class="btn" id="changeBtn" type="button" style="display:none">Change poll</button>
         <button class="btn go" id="revealBtn" type="button">Start reveal</button>
         <button class="btn" id="fs" type="button">Full screen</button>
-        <a class="btn" href="{{ route('admin.national-council-poll.index') }}">Back</a>
+        <a class="btn" href="{{ $backUrl }}">Back</a>
     </div>
 </header>
 

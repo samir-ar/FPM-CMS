@@ -159,7 +159,7 @@ class NationalCouncilPollVotersController extends Controller
             'poll' => $poll,
             'payload' => $this->boardPayload($poll),
             'dataUrl' => route('admin.national-council-poll.board-data', $poll->id),
-            'backUrl' => route('admin.national-council-poll.progress', $poll->id),
+            'backUrl' => CouncilScreensController::backUrl('admin.national-council-poll.progress', route('admin.national-council-poll.progress', $poll->id)),
         ]);
     }
 

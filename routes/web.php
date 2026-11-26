@@ -286,13 +286,15 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::put('council-roster/{id}', 'CouncilRosterController@update')->name('council-roster.update')->middleware(pagePermByUrl('admin.council-meetings.index', 'full'));
     Route::delete('council-roster/{id}', 'CouncilRosterController@destroy')->name('council-roster.destroy')->middleware(pagePermByUrl('admin.council-meetings.index', 'full'));
 
+    // the only page of a display account: links to the live attendance, live voting and results screens
+    Route::get('council-screens', 'CouncilScreensController@index')->name('council-screens.index')->middleware(pagePermByUrl('admin.council-screens.index', 'view'));
     Route::get('council-meetings', 'CouncilMeetingsController@index')->name('council-meetings.index')->middleware(pagePermByUrl('admin.council-meetings.index', 'view'));
     Route::get('council-meetings/create', 'CouncilMeetingsController@create')->name('council-meetings.create')->middleware(pagePermByUrl('admin.council-meetings.index', 'full'));
     Route::post('council-meetings', 'CouncilMeetingsController@store')->name('council-meetings.store')->middleware(pagePermByUrl('admin.council-meetings.index', 'full'));
     Route::get('council-meetings/{id}', 'CouncilMeetingsController@show')->name('council-meetings.show')->middleware(pagePermByUrl('admin.council-meetings.index', 'view'));
-    Route::get('council-meetings/{id}/board', 'CouncilMeetingsController@board')->name('council-meetings.board')->middleware(pagePermByUrl('admin.council-meetings.index', 'view'));
-    Route::get('council-meetings/{id}/photo/{memberId}', 'CouncilMeetingsController@photo')->name('council-meetings.photo')->middleware(pagePermByUrl('admin.council-meetings.index', 'view'));
-    Route::get('council-meetings/{id}/board-data','CouncilMeetingsController@boardData')->name('council-meetings.board-data')->middleware(pagePermByUrl('admin.council-meetings.index', 'view'));
+    Route::get('council-meetings/{id}/board', 'CouncilMeetingsController@board')->name('council-meetings.board')->middleware(pagePermByUrls(['admin.council-meetings.index', 'admin.council-screens.index'], 'view'));
+    Route::get('council-meetings/{id}/photo/{memberId}', 'CouncilMeetingsController@photo')->name('council-meetings.photo')->middleware(pagePermByUrls(['admin.council-meetings.index', 'admin.council-screens.index'], 'view'));
+    Route::get('council-meetings/{id}/board-data','CouncilMeetingsController@boardData')->name('council-meetings.board-data')->middleware(pagePermByUrls(['admin.council-meetings.index', 'admin.council-screens.index'], 'view'));
     Route::get('council-meetings/{id}/stats', 'CouncilMeetingsController@stats')->name('council-meetings.stats')->middleware(pagePermByUrl('admin.council-meetings.index', 'view'));
     Route::get('council-meetings/{id}/search', 'CouncilMeetingsController@searchMembers')->name('council-meetings.search')->middleware(pagePermByUrl('admin.council-meetings.index', 'action:attendance.store'));
     Route::post('council-meetings/{id}/attendance', 'CouncilMeetingsController@storeAttendance')->name('council-meetings.attendance.store')->middleware(pagePermByUrl('admin.council-meetings.index', 'action:attendance.store'));
@@ -671,16 +673,16 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::post('national-council-poll/{id}/show-in-results', 'NationalCouncilPollController@updateShowInResults')->name('national-council-poll.show-in-results')->middleware('page-perm:58,full');
     // who voted + from which device (never WHAT they voted)
     Route::get('national-council-poll/{id}/voters', 'NationalCouncilPollVotersController@progress')->name('national-council-poll.progress')->middleware(pagePermByUrl('admin.national-council-poll.progress', 'view'));
-    Route::get('national-council-poll/{id}/voters/screen', 'NationalCouncilPollVotersController@board')->name('national-council-poll.board')->middleware(pagePermByUrl('admin.national-council-poll.progress', 'view'));
-    Route::get('national-council-poll/{id}/voters/screen-data', 'NationalCouncilPollVotersController@boardData')->name('national-council-poll.board-data')->middleware(pagePermByUrl('admin.national-council-poll.progress', 'view'));
-    Route::get('national-council-poll/{id}/voters/screen-photo/{memberId}', 'NationalCouncilPollVotersController@boardPhoto')->name('national-council-poll.board-photo')->middleware(pagePermByUrl('admin.national-council-poll.progress', 'view'));
+    Route::get('national-council-poll/{id}/voters/screen', 'NationalCouncilPollVotersController@board')->name('national-council-poll.board')->middleware(pagePermByUrls(['admin.national-council-poll.progress', 'admin.council-screens.index'], 'view'));
+    Route::get('national-council-poll/{id}/voters/screen-data', 'NationalCouncilPollVotersController@boardData')->name('national-council-poll.board-data')->middleware(pagePermByUrls(['admin.national-council-poll.progress', 'admin.council-screens.index'], 'view'));
+    Route::get('national-council-poll/{id}/voters/screen-photo/{memberId}', 'NationalCouncilPollVotersController@boardPhoto')->name('national-council-poll.board-photo')->middleware(pagePermByUrls(['admin.national-council-poll.progress', 'admin.council-screens.index'], 'view'));
     Route::get('national-council-poll/{id}/voters/export', 'NationalCouncilPollVotersController@progressExport')->name('national-council-poll.progress.export')->middleware(pagePermByUrl('admin.national-council-poll.progress', 'view'));
     // HIDDEN (no link anywhere): who voted for whom. Same one-time-code lock as the Internal Election's report.
     Route::get('national-council-poll/{id}/votes-report', 'NationalCouncilPollVotersController@votesReport')->name('national-council-poll.votes-report')->middleware([pagePermByUrl('admin.national-council-poll.votes-report', 'view'), 'ie-results-otp']);
     Route::get('national-council-poll/{id}/votes-report/export', 'NationalCouncilPollVotersController@votesReportExport')->name('national-council-poll.votes-report.export')->middleware([pagePermByUrl('admin.national-council-poll.votes-report', 'view'), 'ie-results-otp']);
     Route::get('national-council-poll/{id}/toggle-publish','NationalCouncilPollController@togglePublish')->name('national-council-poll.toggle-publish')->middleware('page-perm:58,full');
-    Route::get('national-council-poll-results/data','NationalCouncilPollController@resultsOverviewData')->name('national-council-poll.results-overview.data')->middleware(pagePermByUrl('admin.national-council-poll.results-overview', 'view'));
-    Route::get('national-council-poll-results','NationalCouncilPollController@resultsOverview')->name('national-council-poll.results-overview')->middleware(pagePermByUrl('admin.national-council-poll.results-overview', 'view'));
+    Route::get('national-council-poll-results/data','NationalCouncilPollController@resultsOverviewData')->name('national-council-poll.results-overview.data')->middleware(pagePermByUrls(['admin.national-council-poll.results-overview', 'admin.council-screens.index'], 'view'));
+    Route::get('national-council-poll-results','NationalCouncilPollController@resultsOverview')->name('national-council-poll.results-overview')->middleware(pagePermByUrls(['admin.national-council-poll.results-overview', 'admin.council-screens.index'], 'view'));
     Route::get('national-council-poll/{id}/results','NationalCouncilPollController@results')->name('national-council-poll.results')->middleware(pagePermByUrl('admin.national-council-poll.results-overview', 'view'));
     Route::get('national-council-poll-voters-template', 'NationalCouncilPollController@downloadVotersTemplate')->name('national-council-poll.voters-template')->middleware('page-perm:58,view');
     Route::get('national-council-poll/{id}/candidates/search', 'NationalCouncilPollQuestionsController@searchCandidates')->name('national-council-poll.candidates.search')->middleware('page-perm:58,full');
