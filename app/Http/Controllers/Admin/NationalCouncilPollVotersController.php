@@ -148,6 +148,100 @@ class NationalCouncilPollVotersController extends Controller
         ]);
     }
 
+    // The voting TV screen: the voters page for the hall, in the style of the live attendance board. It starts with the
+    // data inside the page and then refreshes itself from boardData(). Like the voters page it never shows what anybody
+    // voted; it also leaves out member ids, phones and devices.
+    public function board($id)
+    {
+        $poll = CouncilNationalPoll::findOrFail($id);
+
+        return view('cms.national_council_poll.live_board')->with([
+            'poll' => $poll,
+            'payload' => $this->boardPayload($poll),
+            'dataUrl' => route('admin.national-council-poll.board-data', $poll->id),
+            'backUrl' => route('admin.national-council-poll.progress', $poll->id),
+        ]);
+    }
+
+    public function boardData($id)
+    {
+        return response()->json($this->boardPayload(CouncilNationalPoll::findOrFail($id)));
+    }
+
+    // A voter's photo for the TV screen: only people on this poll's voter list.
+    public function boardPhoto($id, $memberId)
+    {
+        abort_unless(DB::table('council_national_poll_permissions')->where('poll_id', $id)->where('member_id', $memberId)->exists(), 404);
+
+        return CouncilMemberLookup::photoResponse($memberId);
+    }
+
+    private function boardPayload(CouncilNationalPoll $poll): array
+    {
+        $voters = collect($this->voterRows($poll)['rows'])->where('permitted', true)->values();
+        $withPhoto = array_flip(CouncilMemberLookup::idsWithPhoto($voters->pluck('member_id')->all()));
+        $photoOf = fn($memberId) => isset($withPhoto[$memberId])
+            ? route('admin.national-council-poll.board-photo', [$poll->id, $memberId], false) : null;
+        $time = fn($at) => $at ? \Carbon\Carbon::parse($at)->format('H:i:s') : null;
+
+        $members = $voters->map(fn($r) => [
+            'id' => $r['member_id'],
+            'photo' => $photoOf($r['member_id']),
+            'name' => $r['name'] ?: $r['member_id'],
+            'role' => trim($r['role']),
+            'sector' => trim($r['role']) ?: 'Other',
+            'weight' => $r['weight'],
+            'present' => $r['voted'],   // the board's word for "lit"
+            'at' => $time($r['voted_at']),
+        ]);
+
+        $groups = $members->groupBy('sector')->map(fn($g, $name) => [
+            'name' => $name,
+            'members' => $g->count(),
+            'present' => $g->where('present', true)->count(),
+            'weight' => (int) $g->sum('weight'),
+            'weight_present' => (int) $g->where('present', true)->sum('weight'),
+        ])->sort(function ($a, $b) {
+            $rank = fn($g) => ['الرئيس' => 0, 'نائب' => 1, 'عضو' => 2][$g['name']] ?? 3;
+
+            return [$rank($a), -$a['weight']] <=> [$rank($b), -$b['weight']];
+        })->values();
+
+        $recent = $voters->where('voted', true)->sortByDesc('voted_at')->take(10)->map(fn($r) => [
+            'id' => $r['member_id'],
+            'photo' => $photoOf($r['member_id']),
+            'name' => $r['name'] ?: $r['member_id'],
+            'role' => trim($r['role']),
+            'at' => $time($r['voted_at']),
+        ])->values();
+
+        $closes = $poll->closes_at ? \Carbon\Carbon::parse($poll->closes_at) : null;
+        $closed = $closes && $closes->isPast();
+        $open = $poll->is_published && !$closed;
+        $voted = $members->where('present', true);
+
+        return [
+            'meeting' => [
+                'title' => $poll->title,
+                'is_active' => (bool) $open,
+                'state' => $open ? 'LIVE' : ($closed ? 'CLOSED' : 'NOT OPEN'),
+                'closes_at' => $closes ? $closes->format('H:i') : null,
+                'seconds_left' => $closes ? max(0, $closes->getTimestamp() - now()->getTimestamp()) : null,
+            ],
+            'stats' => [
+                'member_count' => $members->count(),
+                'present_count' => $voted->count(),
+                'absent_count' => $members->count() - $voted->count(),
+                'total_weight' => (int) $members->sum('weight'),
+                'present_weight' => (int) $voted->sum('weight'),
+            ],
+            'members' => $members->values(),
+            'groups' => $groups,
+            'recent' => $recent,
+            'server_time' => now()->format('H:i:s'),
+        ];
+    }
+
     public function progressExport($id)
     {
         $poll = CouncilNationalPoll::findOrFail($id);

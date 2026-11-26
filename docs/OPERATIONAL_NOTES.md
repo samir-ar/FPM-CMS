@@ -563,3 +563,34 @@ Package cms_prod_appversion_20261125 (16 files): migration 2026_11_25_150000 ran
 - Beirut 1st / 2nd / plain "Beirut" are one row (the member list spells Beirut as "Beirut 1st/2nd"; the row was 0 before). A last row "Not in any district" holds members the list does not place (no entry, blank district, district outside the 23 rows; about 63 members, 3 active in November). Active = distinct members with a LIVE app account and an activity row in the month, the exact rule of the User Activity dashboard, so the TOTAL active equals "Active This Month" (user confirmed 8068 = 8068 on production).
 - App Users filters district / town / sect / activity unit are searchable drop-downs (exact match, values from fpm_users); member id is typed. They also narrow the Excel; with one district chosen the "Not in any district" row is left out.
 - Production: `cms_prod_instreport3_20261125.tar.gz` (sha256 ed4b6e02...95a4: AppInstallationReportExport + UsersController); backup `/root/instreport3_before_20261125.tar.gz`. Staging still not synced.
+
+## 2026-11-26 - Running-total active + cascading drop-downs (instreport5), then sorting on every App Users column
+- Installation Report: ACTIVE is a running total from 24 Sept to the end of the chosen month (this replaces the "activity row in the month" rule above); header shows the period; the November TOTAL should equal the dashboard's "Active This Year" while tracking is younger than a year.
+- Filters cascade: district -> its towns -> their sects -> their activity units (picking one reloads, deeper ones cleared).
+- Production: `cms_prod_instreport5_20261125.tar.gz` was applied (proved 2026-11-26 by the Step 1 fingerprints 360efc03 export / ae0026e6 controller); backup `/root/instreport5_before_20261125.tar.gz`.
+- Sorting on every column except Action (UsersController `sortExpressions` / `sortByExpression`): sorts by the value shown, blanks last both ways, ties newest first; Mobile orders by the stored phone code (+ vote fallbacks). 0.3-2.2 s per sort on 35k local accounts. Test `AppUsersSortingTest` (note: tests that call a DataTables list twice must `forgetInstance('datatables.request')`, else the first request is reused).
+- Production: applied 2026-11-26 with `cms_prod_userssort_20261126.tar.gz` (sha256 e949d4f6...cb4f: AppInstallationReportExport + UsersController); backup `/root/userssort_before_20261126.tar.gz`. Browser check by the user: pending. Staging still not synced (Users columns, filters, report, sorting).
+
+## 2026-11-26 - App Users page: App version filter + new layout
+- The page now has its own view `resources/views/cms/users/index.blade.php` (UsersController::pageData); `table_ajax` is no longer used by it.
+- `f_build` (build number or `none`) filters the table and narrows installed/active in the Installation Report.
+- Production: applied 2026-11-26 with `cms_prod_usersui_20261126.tar.gz` (sha256 1cec2ea7...81c4: export, UsersController, new view); backup `/root/usersui_before_20261126.tar.gz` (rollback = restore it; the new view can stay, nothing else uses it). Browser check by the user: pending. Staging not synced.
+- Open (told the user, not changed): the report compares app_users.created_at (stored in Beirut time) with UTC bounds, so install cut-offs are off by 2-3 hours.
+
+## 2026-11-26 - App Users: Activity filter, New registrations tick box, New mark
+- `f_activity` yes/no = has / has no user_activity_logs row since 24 Sept; `f_new=1` = account created since 24 Sept (Beirut time as stored). Table only, not the Installation Report. "New" mark beside the Registration Date.
+- Production: applied 2026-11-26 with `cms_prod_oldnew_20261126.tar.gz` (sha256 11b5c3ae...2439: UsersController + index view); backup `/root/oldnew_before_20261126.tar.gz`. Browser check by the user: pending. Staging not synced.
+
+## 2026-11-26 (noon) - App Users tick box corrected
+- The user meant by "new since September": everyone who opened the app from 24 Sept to today (about 8,315), not accounts created since then. `f_new=1` now applies the activity rule; the page opens with all accounts; "New" mark unchanged (registered since 24 Sept).
+- Production: applied 2026-11-26 with `cms_prod_since24_20261126.tar.gz` (sha256 4c92c3f2...d907: UsersController + index view); backup `/root/since24_before_20261126.tar.gz`. User's check of the total: pending. Staging not synced.
+
+## 2026-11-26 - Push Notification list broken picture icon
+- The list drew an <img> even when the notification has no picture (birthday wishes). Empty cell now.
+- Production: applied 2026-11-26 with `cms_prod_notifimg_20261126.tar.gz` (sha256 b51a777d...552b: NotificationController); backup `/root/notifimg_before_20261126.tar.gz`. Staging not synced.
+
+## 2026-11-26 - Birthday wishes: only accounts in use; the 09:00 schedule is NOT active on production
+- `BirthdayWishesTrait` wishes only accounts with an activity row since 24 Sept (daily send and button). Before: 52 wished that day, 15 of them in use.
+- Production: applied 2026-11-26 with `cms_prod_birthday_20261126.tar.gz` (sha256 c354b589...1b59); backup `/root/birthday_before_20261126.tar.gz`. Staging not synced.
+- Checked 2026-11-26: no `schedule:run` cron anywhere on the production server (/etc/crontab, /etc/cron.d, /var/spool/cron), so `birthdays:send-wishes` (09:00 Beirut, the only scheduled command) never runs by itself; that day's wishes went out at 12:08 (button or manual). Asked the user whether to turn it on.
+- OPEN (user, 2026-11-26: "do it later"): turn on the 09:00 birthday send. Needs one cron line on production, as www-data, e.g. /etc/cron.d file `* * * * * www-data cd /home/fpm/public_html && php8.2 artisan schedule:run >> /dev/null 2>&1`. Confirm with the user first; it starts automatic pushes.

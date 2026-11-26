@@ -15,6 +15,7 @@
         <h3 class="box-title" dir="auto">{{ $poll->title }} <small>&mdash; who voted</small></h3>
         <a href="{{ route('admin.national-council-poll.index') }}" class="btn btn-default pull-right" style="margin-left:4px;">Back</a>
         <a href="{{ route('admin.national-council-poll.progress.export', $poll->id) }}" class="btn btn-success pull-right" style="margin-left:4px;">Export to Excel</a>
+        <a href="{{ route('admin.national-council-poll.board', $poll->id) }}" target="_blank" class="btn btn-warning pull-right" style="margin-left:4px;"><i class="fa fa-television"></i> TV screen</a>
     </div>
     <div class="box-body">
         <div style="margin-bottom:8px;">

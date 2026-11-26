@@ -13,8 +13,8 @@ trait BirthdayWishesTrait
 
     /**
      * Sends a personalized "Happy Birthday" push + in-app notification to every
-     * member whose date_of_birth matches today's month/day and who hasn't
-     * already been wished this calendar year. Returns the number wished.
+     * member whose date_of_birth matches today's month/day, who has used the
+     * app since 24 Sept 2026 and hasn't already been wished this calendar year. Returns the number wished.
      */
     public function sendTodaysBirthdayWishes(?string $date = null): int
     {
@@ -23,6 +23,13 @@ trait BirthdayWishesTrait
         $users = AppUser::whereNotNull('date_of_birth')
             ->whereMonth('date_of_birth', $today->month)
             ->whereDay('date_of_birth', $today->day)
+            // only accounts in use: opened the app at least one day since activity tracking began (24 Sept 2026),
+            // the same rule as CMS > App Users "since 24 Sept". Old, unused installations get no wish.
+            ->whereExists(function ($q) {
+                $q->selectRaw('1')->from('user_activity_logs')
+                    ->whereColumn('user_activity_logs.app_user_id', 'app_users.id')
+                    ->where('user_activity_logs.activity_date', '>=', \App\Exports\AppInstallationReportExport::TRACKING_START);
+            })
             ->where(function ($q) use ($today) {
                 $q->whereNull('last_birthday_wish_sent_at')
                     ->orWhereYear('last_birthday_wish_sent_at', '<>', $today->year);

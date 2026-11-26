@@ -108,10 +108,10 @@ class InstallationReportTest extends CouncilTestCase
     {
         $this->actingAs($this->adminUser(), 'admin');
         $html = $this->get('/admin/users?f_town=ZR')->assertOk()->getContent();
-        $this->assertStringContainsString("name='period'", $html);
+        $this->assertStringContainsString('name="period"', $html);
         $this->assertStringContainsString('September 2026', $html);
         foreach (['f_district', 'f_town', 'f_sect', 'f_unit', 'f_member'] as $name) {
-            $this->assertStringContainsString("name='$name'", $html);
+            $this->assertStringContainsString("name=\"$name\"", $html);
         }
         $this->assertStringContainsString('f_town=ZR', $html, 'the table asks for the filtered rows');
     }
@@ -128,28 +128,28 @@ class InstallationReportTest extends CouncilTestCase
         // nothing chosen: everything is offered
         $all = $this->get('/admin/users')->assertOk()->getContent();
         foreach (['ZR Town Jbeil', 'ZR Town Other', 'ZR Sect J', 'ZR Sect O', 'ZR Unit J', 'ZR Unit O'] as $v) {
-            $this->assertStringContainsString("value='$v'", $all);
+            $this->assertStringContainsString("value=\"$v\"", $all);
         }
 
         // district chosen: only its towns, sects and units
         $d = $this->get('/admin/users?f_district=' . urlencode('جبيل'))->assertOk()->getContent();
-        $this->assertStringContainsString("value='ZR Town Jbeil'", $d);
-        $this->assertStringNotContainsString("value='ZR Town Other'", $d);
-        $this->assertStringNotContainsString("value='ZR Sect O'", $d);
+        $this->assertStringContainsString('value="ZR Town Jbeil"', $d);
+        $this->assertStringNotContainsString('value="ZR Town Other"', $d);
+        $this->assertStringNotContainsString('value="ZR Sect O"', $d);
 
         // district + town: only that town's sects and units
         $t = $this->get('/admin/users?f_district=' . urlencode('جبيل') . '&f_town=' . urlencode('ZR Town Jbeil'))->assertOk()->getContent();
-        $this->assertStringContainsString("value='ZR Sect J'", $t);
-        $this->assertStringContainsString("value='ZR Sect J2'", $t);
-        $this->assertStringNotContainsString("value='ZR Sect O'", $t);
+        $this->assertStringContainsString('value="ZR Sect J"', $t);
+        $this->assertStringContainsString('value="ZR Sect J2"', $t);
+        $this->assertStringNotContainsString('value="ZR Sect O"', $t);
 
         // district + town + sect: only that sect's units
         $s = $this->get('/admin/users?f_district=' . urlencode('جبيل') . '&f_town=' . urlencode('ZR Town Jbeil') . '&f_sect=' . urlencode('ZR Sect J'))->assertOk()->getContent();
-        $this->assertStringContainsString("value='ZR Unit J'", $s);
-        $this->assertStringNotContainsString("value='ZR Unit J2'", $s);
+        $this->assertStringContainsString('value="ZR Unit J"', $s);
+        $this->assertStringNotContainsString('value="ZR Unit J2"', $s);
 
         // picking one reloads with the deeper ones cleared
-        $this->assertStringContainsString("jQuery(\"select[name='\" + name + \"']\").on('change'", $all);
+        $this->assertStringContainsString('order.slice(i + 1)', $all);
     }
 
     public function test_the_app_users_table_is_filtered(): void

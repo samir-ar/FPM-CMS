@@ -35,7 +35,8 @@ class NotificationController extends Controller
                 return DataTables::of($data)
 
                     ->addColumn('image', function($row){
-                        return $this->drawImage('images/notifications_images/' . $row->image, '100');
+                        // many notifications (birthday wishes, ...) have no picture: leave the cell empty, not a broken icon
+                        return (string) $row->image === '' ? '' : $this->drawImage('images/notifications_images/' . $row->image, '100');
                     })
 
                   /*   ->addColumn('action', function($row){

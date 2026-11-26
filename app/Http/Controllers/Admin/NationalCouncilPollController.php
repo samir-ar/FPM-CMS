@@ -78,10 +78,6 @@ class NationalCouncilPollController extends Controller
                     return "<a href='".route('admin.national-council-poll.questions.index',$row)."' class='text-success'>Questions</a>";
                 })
 
-                ->addColumn('results', function($row){
-                    return "<a href='".route('admin.national-council-poll.results',$row->id)."' class='text-success'>النتائج</a>";
-                })
-
                 ->addColumn('action', function($row){
                     return "<a class='edit-link' href='" . route('admin.national-council-poll.edit', $row->id) . "'>".
                         '<i class="fa fa-edit" aria-hidden="true"></i></a>'.
@@ -93,7 +89,7 @@ class NationalCouncilPollController extends Controller
                     // wiped a poll's votes); the page itself is not linked from here any more
                 })
 
-                ->rawColumns(['is_published','closes','action','questions','results','show_in_results'])
+                ->rawColumns(['is_published','closes','action','questions','show_in_results'])
 
                 ->make(true);
         }
@@ -105,7 +101,7 @@ class NationalCouncilPollController extends Controller
             'table_title' => '',
             'slug'		=> 'national-council-poll',
             'custom_btn' => "<a href='" . route('admin.national-council-poll.create') ."' class='btn btn-primary'>Add National Council Poll</a> <a href='" . route('admin.national-council-poll.results-overview') ."' class='btn btn-default' style='margin-left:6px;'>Results of several polls</a>",
-            'headers'	=> ['id', 'Title', 'Publish','Closes at','Results','Show on results page','questions','Creation Date','Action'],
+            'headers'	=> ['id', 'Title', 'Publish','Closes at','Show on results page','questions','Creation Date','Action'],
             // the version number makes browsers fetch the new script after a change instead of keeping an old cached copy
             'scripts' => ['/js/council-poll-list.js?v=' . (filemtime(public_path('js/council-poll-list.js')) ?: 1)],
             'action' => route('admin.national-council-poll.index'),
@@ -114,7 +110,6 @@ class NationalCouncilPollController extends Controller
                 ['data' => 'title', 'name' => 'title'],
                 ['data' => 'is_published', 'name' => 'is_published'],
                 ['data' => 'closes', 'name' => 'closes', 'searchable' => false, 'sortable' => false],
-                ['data' => 'results', 'name' => 'results'],
                 ['data' => 'show_in_results', 'name' => 'show_in_results', 'searchable' => false, 'sortable' => false],
                 ['data' => 'questions', 'name' => 'questions'],
                 ['data' => 'created_at', 'name' => 'created_at'],

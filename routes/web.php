@@ -671,6 +671,9 @@ Route::group(['middleware' => 'auth:admin', 'namespace' => 'Admin', 'prefix' => 
     Route::post('national-council-poll/{id}/show-in-results', 'NationalCouncilPollController@updateShowInResults')->name('national-council-poll.show-in-results')->middleware('page-perm:58,full');
     // who voted + from which device (never WHAT they voted)
     Route::get('national-council-poll/{id}/voters', 'NationalCouncilPollVotersController@progress')->name('national-council-poll.progress')->middleware(pagePermByUrl('admin.national-council-poll.progress', 'view'));
+    Route::get('national-council-poll/{id}/voters/screen', 'NationalCouncilPollVotersController@board')->name('national-council-poll.board')->middleware(pagePermByUrl('admin.national-council-poll.progress', 'view'));
+    Route::get('national-council-poll/{id}/voters/screen-data', 'NationalCouncilPollVotersController@boardData')->name('national-council-poll.board-data')->middleware(pagePermByUrl('admin.national-council-poll.progress', 'view'));
+    Route::get('national-council-poll/{id}/voters/screen-photo/{memberId}', 'NationalCouncilPollVotersController@boardPhoto')->name('national-council-poll.board-photo')->middleware(pagePermByUrl('admin.national-council-poll.progress', 'view'));
     Route::get('national-council-poll/{id}/voters/export', 'NationalCouncilPollVotersController@progressExport')->name('national-council-poll.progress.export')->middleware(pagePermByUrl('admin.national-council-poll.progress', 'view'));
     // HIDDEN (no link anywhere): who voted for whom. Same one-time-code lock as the Internal Election's report.
     Route::get('national-council-poll/{id}/votes-report', 'NationalCouncilPollVotersController@votesReport')->name('national-council-poll.votes-report')->middleware([pagePermByUrl('admin.national-council-poll.votes-report', 'view'), 'ie-results-otp']);

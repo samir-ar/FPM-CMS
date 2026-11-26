@@ -46,16 +46,29 @@ class UsersController extends Controller
             }
             $this->applyTableFilters($data, $this->tableFilters($request));
 
-            return DataTables::of($data)
+            $table = DataTables::of($data);
+            foreach ($this->sortExpressions() as $column => $expression) {
+                $table->orderColumn($column, function ($query, $direction) use ($column, $expression) {
+                    $this->sortByExpression($query, $column, $expression, $direction);
+                });
+            }
+
+            return $table
                 ->filterColumn('phone_number', function($query, $keyword){
                     $normalized = ltrim($keyword, '+');
                     $query->whereRaw("TRIM(LEADING '+' FROM phone_number) LIKE ?", ["%{$normalized}%"]);
                 })
-                ->addColumn('date', function($row){
-                    return $row->created_at?->toDateTimeString() ?? '';
+                // Beirut time, like Last Activity; accounts registered since tracking began carry a "New" mark
+                ->editColumn('created_at', function($row){
+                    if (!$row->created_at) {
+                        return '';
+                    }
+                    $new = $row->created_at->format('Y-m-d') >= AppInstallationReportExport::TRACKING_START;
+
+                    return $row->created_at->format('Y-m-d H:i') . ($new ? " <span class='label label-info' title='Registered since 24 September'>&#10003; New</span>" : '');
                 })
                 ->addColumn('verified', function($row){
-                    return $row->verified ? 'true' : 'false';
+                    return $row->verified ? "<span class='label label-success'>Yes</span>" : "<span class='label label-default'>No</span>";
                 })
                 // last time this account was active in the app (the activity log is refreshed on every call; stored in UTC)
                 ->addColumn('last_activity', function($row){
@@ -103,89 +116,103 @@ class UsersController extends Controller
                     return //"<a class='edit-link' href='" . route('admin.users.show', $row->id) . "'>".
                         //'<i class="fa fa-eye" aria-hidden="true"></i></a>'.
                         "<a data-toggle='modal' class='delete-link' href='#deleteModal' id='" .route('admin.users.destroy', $row->id) . "'>".
-                        "<i class='fa fa-trash' style='color: red;' aria-hidden='true'></i>";
+                        "<i class='fa fa-trash' style='color: red;' aria-hidden='true'></i></a>";
                 })
-                ->rawColumns(['date', 'scan_checkin', 'action'])
+                ->rawColumns(['created_at', 'verified', 'scan_checkin', 'action'])
                 ->make(true);
         }
 
 
-        $scanAccess = $request->get('scan_access');
-        $filterBtn = function($value, $label) use ($scanAccess) {
-            $active = $scanAccess === $value;
-            $url = $value ? route('admin.users.index', ['scan_access' => $value]) : route('admin.users.index');
-            return "<a href='{$url}' class='btn " . ($active ? 'btn-primary' : 'btn-default') . "' style='margin-right:4px'>{$label}</a>";
-        };
+        return view('cms.users.index', $this->pageData($request));
+    }
 
-        // the filters (kept in the page address, so a reload or the Excel button keeps them)
+    // Everything the App Users page shows around the table (the filters are kept in the page address).
+    private function pageData(Request $request): array
+    {
+        $scanAccess = (string) $request->get('scan_access');
         $filters = $this->tableFilters($request);
-        $hidden = ($scanAccess ? "<input type='hidden' name='scan_access' value='" . e($scanAccess) . "'>" : '');
-        // every filter except the member id is a drop-down (searchable: type to find a value) of the values in the member list
-        // each drop-down only offers what exists under the ones before it: district -> its towns -> their sects -> their activity units
-        $dropdown = function ($name, $allLabel, $column, $current, $w, array $parents = []) {
-            $html = "<option value=''>{$allLabel}</option>";
+
+        // the page address parameters currently in use
+        $params = array_filter(['scan_access' => $scanAccess], fn($v) => $v !== '');
+        foreach (self::FILTER_KEYS as $param => $key) {
+            if ($filters[$key] !== '') {
+                $params[$param] = $filters[$key];
+            }
+        }
+
+        $scanTabs = [];
+        foreach (['' => 'All', 'granted' => 'Has Scan Access', 'none' => 'No Scan Access'] as $value => $label) {
+            $with = array_filter(['scan_access' => $value] + $params, fn($v) => $v !== '');
+            $scanTabs[] = ['label' => $label, 'active' => $scanAccess === $value, 'url' => route('admin.users.index', $with)];
+        }
+
+        // each list only offers what exists under the ones before it: district -> its towns -> their sects -> their activity units
+        $values = function (string $column, array $parents = []) {
             $query = \Illuminate\Support\Facades\DB::table('fpm_users')->whereNotNull($column)->where($column, '!=', '');
             foreach ($parents as $parentColumn => $parentValue) {
                 if ($parentValue !== '') {
                     $query->where($parentColumn, $parentValue);
                 }
             }
-            $values = $query->distinct()->orderBy($column)->pluck($column);
-            foreach ($values as $v) {
-                $html .= "<option value='" . e($v) . "'" . ($current === (string) $v ? ' selected' : '') . '>' . e($v) . '</option>';
-            }
+            $list = $query->distinct()->orderBy($column)->pluck($column)->all();
 
-            return "<select name='{$name}' class='form-control select2' style='width:{$w}px;margin-right:4px;'>{$html}</select> ";
+            return array_combine($list, $list);
         };
-        $filterForm = "<form method='GET' action='" . route('admin.users.index') . "' style='clear:both;padding-top:8px;'>" . $hidden
-            . $dropdown('f_district', 'All districts', 'district', $filters['district'], 170)
-            . $dropdown('f_town', 'All towns', 'town', $filters['town'], 170, ['district' => $filters['district']])
-            . $dropdown('f_sect', 'All sects', 'sect', $filters['sect'], 150, ['district' => $filters['district'], 'town' => $filters['town']])
-            . $dropdown('f_unit', 'All activity units', 'NashatUnit', $filters['unit'], 200, ['district' => $filters['district'], 'town' => $filters['town'], 'sect' => $filters['sect']])
-            . "<input type='text' name='f_member' value='" . e($filters['member_id']) . "' placeholder='Member ID' class='form-control' style='width:130px;display:inline-block;margin-right:4px;'>"
-            . "<button type='submit' class='btn btn-primary' style='margin-right:4px;'>Filter</button>"
-            . "<a href='" . route('admin.users.index', $scanAccess ? ['scan_access' => $scanAccess] : []) . "' class='btn btn-default'>Reset</a></form>"
-            // picking a district / town / sect clears the drop-downs after it and reloads, so the next list shows only its values
-            . "<script>window.addEventListener('load', function () {"
-            . "var order = ['f_district', 'f_town', 'f_sect', 'f_unit'];"
-            . "order.slice(0, 3).forEach(function (name, i) {"
-            . "jQuery(\"select[name='\" + name + \"']\").on('change', function () {"
-            . "order.slice(i + 1).forEach(function (deeper) { jQuery(\"select[name='\" + deeper + \"']\").val(''); });"
-            . "this.form.submit();"
-            . "});});});</script>";
+        $under = ['district' => $filters['district'], 'town' => $filters['town'], 'sect' => $filters['sect']];
+        $dropdowns = [
+            ['name' => 'f_district', 'label' => 'District', 'all' => 'All districts', 'current' => $filters['district'], 'options' => $values('district')],
+            ['name' => 'f_town', 'label' => 'Town', 'all' => 'All towns', 'current' => $filters['town'], 'options' => $values('town', array_slice($under, 0, 1))],
+            ['name' => 'f_sect', 'label' => 'Sect', 'all' => 'All sects', 'current' => $filters['sect'], 'options' => $values('sect', array_slice($under, 0, 2))],
+            ['name' => 'f_unit', 'label' => 'Activity unit', 'all' => 'All activity units', 'current' => $filters['unit'], 'options' => $values('NashatUnit', $under)],
+            ['name' => 'f_build', 'label' => 'App version', 'all' => 'All versions', 'current' => $filters['app_build'], 'options' => $this->versionOptions($filters)],
+        ];
 
-        // Installation Report: month (from Sept 2026) + the filters above -> Excel download
-        $periods = '';
+        $labels = ['f_district' => 'District', 'f_town' => 'Town', 'f_sect' => 'Sect', 'f_unit' => 'Activity unit', 'f_build' => 'App version', 'f_member' => 'Member ID', 'f_activity' => 'Activity', 'f_new' => 'Since 24 Sept'];
+        $activityLabels = ['yes' => 'Opened since 24 Sept', 'no' => 'Not opened since 24 Sept'];
+        $cascade = ['f_district', 'f_town', 'f_sect', 'f_unit'];
+        $chips = [];
+        foreach ($labels as $param => $label) {
+            if (!isset($params[$param])) {
+                continue;
+            }
+            // removing a district / town / sect also removes what was chosen under it
+            $position = array_search($param, $cascade, true);
+            $drop = $position === false ? [$param] : array_slice($cascade, $position);
+            $value = $params[$param];
+            if ($param === 'f_build') {
+                $value = $value === 'none' ? 'Not known yet' : \App\Support\MemberApp::versionLabel($value);
+            } elseif ($param === 'f_activity') {
+                $value = $activityLabels[$value];
+            } elseif ($param === 'f_new') {
+                $value = 'Opened the app';
+            }
+            $chips[] = ['label' => $label, 'value' => $value, 'remove' => route('admin.users.index', array_diff_key($params, array_flip($drop)))];
+        }
+
+        // Installation Report: a month from Sept 2026 + the filters above -> Excel download
+        $periods = [];
         $tz = config('app.timezone');
         $now = now($tz);
         for ($d = \Carbon\Carbon::create(2026, 9, 1, 0, 0, 0, $tz); $d->lte($now); $d->addMonth()) {
-            $periods .= "<option value='" . $d->format('Y-m') . "'" . ($d->format('Y-m') === $now->format('Y-m') ? ' selected' : '') . '>' . $d->format('F Y') . '</option>';
+            $periods[$d->format('Y-m')] = $d->format('F Y');
         }
-        $reportForm = "<form method='GET' action='" . route('admin.users.installation-report') . "' style='display:inline-block;'>"
-            . "<input type='hidden' name='f_district' value='" . e($filters['district']) . "'><input type='hidden' name='f_town' value='" . e($filters['town']) . "'>"
-            . "<input type='hidden' name='f_sect' value='" . e($filters['sect']) . "'><input type='hidden' name='f_unit' value='" . e($filters['unit']) . "'>"
-            . "<input type='hidden' name='f_member' value='" . e($filters['member_id']) . "'>"
-            . "<select name='period' class='form-control' style='width:150px;display:inline-block;'>{$periods}</select> "
-            . "<button type='submit' class='btn btn-warning'>Installation Report</button></form>";
 
-        return view('components.table_ajax')->with([
-            'ajaxQuery' => http_build_query(array_filter([
-                'scan_access' => $scanAccess, 'f_district' => $filters['district'], 'f_town' => $filters['town'], 'f_sect' => $filters['sect'],
-                'f_unit' => $filters['unit'], 'f_member' => $filters['member_id'],
-            ], fn($v) => $v !== null && $v !== '')),
-            'layout'    => 'layouts.cms',
-            'pageTitle'	=> 'APP USERS',
-            'table_title' => '',
-            'slug'		=> 'Project',
-            'headers'	=> ['id', 'Member ID', 'Name', 'Phone Number', 'Verified', 'Registration Date', 'Last Activity', 'Mobile', 'App version', 'District', 'Town', 'Sect', 'Sect Number', 'Position', 'Activity Unit', 'Civil Registry Unit', 'Scan Check-In', 'Action'],
-            'action' => route('admin.users.index'),
-            'custom_btn' => "<a href='" . route('admin.users.export') ."' class='btn btn-success'>Export Users</a> &nbsp <a href='" . route('admin.users.import.create') ."' class='btn btn-primary'>Import Users</a> &nbsp " . $reportForm . " &nbsp <a href='" . route('admin.users.login-limits') ."' class='btn btn-default'>Login Limits</a>",
-            'custom_btn1' => $filterBtn(null, 'All')
-                . $filterBtn('granted', 'Has Scan Access')
-                . $filterBtn('none', 'No Scan Access'),
-            'custom_btn2' => $filterForm,
-            'scan_access' => $scanAccess,
-
+        return [
+            'pageTitle' => 'APP USERS',
+            'scanAccess' => $scanAccess,
+            'scanTabs' => $scanTabs,
+            'filters' => $filters,
+            'dropdowns' => $dropdowns,
+            'chips' => $chips,
+            'clearUrl' => route('admin.users.index', $scanAccess !== '' ? ['scan_access' => $scanAccess] : []),
+            'periods' => $periods,
+            'currentPeriod' => $now->format('Y-m'),
+            // Activity and the since-24-Sept tick are table-only: the report already counts installed and active by these rules
+            'reportParams' => array_diff_key($params, ['scan_access' => 1, 'f_activity' => 1, 'f_new' => 1]),
+            'tableOnlyFiltered' => isset($params['f_activity']) || isset($params['f_new']),
+            'activityOptions' => $this->activityOptions($filters, $activityLabels),
+            'ajaxUrl' => route('admin.users.index', $params),
+            'headers' => ['id', 'Member ID', 'Name', 'Phone Number', 'Verified', 'Registration Date', 'Last Activity', 'Mobile', 'App version', 'District', 'Town', 'Sect', 'Sect Number', 'Position', 'Activity Unit', 'Civil Registry Unit', 'Scan Check-In', 'Action'],
             'columns' => json_encode([
                 ['data' => 'id', 'name' => 'id'],
                 ['data' => 'member_id', 'name' => 'member_id'],
@@ -193,21 +220,53 @@ class UsersController extends Controller
                 ['data' => 'phone_number', 'name' => 'phone_number'],
                 ['data' => 'verified', 'name' => 'verified'],
                 ['data' => 'created_at', 'name' => 'created_at'],
-                ['data' => 'last_activity', 'name' => 'last_activity', 'searchable' => false, 'sortable' => false],
-                ['data' => 'mobile', 'name' => 'mobile', 'searchable' => false, 'sortable' => false],
-                ['data' => 'app_version', 'name' => 'app_version', 'searchable' => false, 'sortable' => false],
-                ['data' => 'district', 'name' => 'district', 'searchable' => false, 'sortable' => false],
-                ['data' => 'town', 'name' => 'town', 'searchable' => false, 'sortable' => false],
-                ['data' => 'sect', 'name' => 'sect', 'searchable' => false, 'sortable' => false],
-                ['data' => 'sect_number', 'name' => 'sect_number', 'searchable' => false, 'sortable' => false],
-                ['data' => 'last_unit_position', 'name' => 'last_unit_position', 'searchable' => false, 'sortable' => false],
-                ['data' => 'nashat_unit', 'name' => 'nashat_unit', 'searchable' => false, 'sortable' => false],
-                ['data' => 'noufous_unit', 'name' => 'noufous_unit', 'searchable' => false, 'sortable' => false],
-                ['data' => 'scan_checkin', 'name' => 'scan_checkin', 'searchable' => false, 'sortable' => false],
+                ['data' => 'last_activity', 'name' => 'last_activity', 'searchable' => false],
+                ['data' => 'mobile', 'name' => 'mobile', 'searchable' => false],
+                ['data' => 'app_version', 'name' => 'app_version', 'searchable' => false],
+                ['data' => 'district', 'name' => 'district', 'searchable' => false],
+                ['data' => 'town', 'name' => 'town', 'searchable' => false],
+                ['data' => 'sect', 'name' => 'sect', 'searchable' => false],
+                ['data' => 'sect_number', 'name' => 'sect_number', 'searchable' => false],
+                ['data' => 'last_unit_position', 'name' => 'last_unit_position', 'searchable' => false],
+                ['data' => 'nashat_unit', 'name' => 'nashat_unit', 'searchable' => false],
+                ['data' => 'noufous_unit', 'name' => 'noufous_unit', 'searchable' => false],
+                ['data' => 'scan_checkin', 'name' => 'scan_checkin', 'searchable' => false],
                 ['data' => 'action', 'name' => 'action', 'searchable' => false, 'sortable' => false],
             ]),
+        ];
+    }
 
-        ]);
+    // The versions in use among the accounts the other filters keep, newest first, with how many accounts are on each.
+    private function versionOptions(array $filters): array
+    {
+        $query = $this->applyTableFilters(AppUser::query(), ['app_build' => ''] + $filters);
+        $counts = $query->selectRaw('COALESCE(app_users.app_build, 0) AS build, COUNT(*) AS accounts')->groupBy('build')->orderByDesc('build')->pluck('accounts', 'build');
+
+        $label = fn($build) => $build === 'none' ? 'Not known yet' : \App\Support\MemberApp::versionLabel($build);
+        $options = [];
+        foreach ($counts as $build => $accounts) {
+            $key = $build ?: 'none';
+            $options[$key] = $label($key) . ' - ' . number_format($accounts);
+        }
+        // keep the chosen one listed even when no account matches it with the other filters
+        $chosen = $filters['app_build'];
+        if ($chosen !== '' && !isset($options[$chosen])) {
+            $options[$chosen] = $label($chosen) . ' - 0';
+        }
+
+        return $options;
+    }
+
+    // How many of the accounts the other filters keep opened the app since tracking began, and how many did not.
+    private function activityOptions(array $filters, array $labels): array
+    {
+        $options = [];
+        foreach ($labels as $value => $label) {
+            $count = $this->applyTableFilters(AppUser::query(), ['activity' => $value] + $filters)->count();
+            $options[$value] = $label . ' - ' . number_format($count);
+        }
+
+        return $options;
     }
 
 
@@ -315,9 +374,52 @@ class UsersController extends Controller
         return Excel::download(new AppUsersExport, 'verified_users.xlsx');
     }
 
-    // The filters of the App Users table (district / town / sect / activity unit / member id). They read the member list
-    // (fpm_users), the same place the table's district, town, sect and unit columns come from.
-    private const FILTER_KEYS = ['f_district' => 'district', 'f_town' => 'town', 'f_sect' => 'sect', 'f_unit' => 'unit', 'f_member' => 'member_id'];
+    // Sorting for the columns that are not plain app_users columns: each one is sorted by the same value the cell shows.
+    private function sortExpressions(): array
+    {
+        // the member list value; $fallback is what the cell shows when the member is not in that list
+        $member = function (string $column, ?string $fallback = null) {
+            $sub = "(SELECT fpm_users.{$column} FROM fpm_users WHERE fpm_users.MemberId = app_users.member_id LIMIT 1)";
+
+            return $fallback ? "COALESCE({$sub}, app_users.{$fallback})" : $sub;
+        };
+
+        return [
+            'last_activity' => '(SELECT MAX(l.created_at) FROM user_activity_logs l WHERE l.app_user_id = app_users.id)',
+            // own phone, else the one from the member's council vote, else from this account's poll vote (as in the cell)
+            'mobile' => "COALESCE(NULLIF(app_users.device_model, ''), vote_phone.vote_model, "
+                . "(SELECT p.device_model FROM users_polls p WHERE p.app_user_id = app_users.id AND p.device_model <> '' ORDER BY p.id DESC LIMIT 1))",
+            'app_version' => 'NULLIF(app_users.app_build, 0)',
+            'district' => $member('district', 'district'),
+            'town' => $member('town', 'town'),
+            'sect' => $member('sect', 'sect'),
+            'sect_number' => 'CAST(NULLIF(' . $member('sect_number', 'sect_number') . ", '') AS UNSIGNED)",
+            'last_unit_position' => $member('LastUnitPosition'),
+            'nashat_unit' => $member('NashatUnit'),
+            'noufous_unit' => $member('NoufousUnit'),
+            'scan_checkin' => 'app_users.can_scan_checkin',
+        ];
+    }
+
+    // Empty cells always go to the bottom, in both directions; equal values keep newest first so pages do not shuffle.
+    private function sortByExpression($query, string $column, string $expression, string $direction): void
+    {
+        if ($column === 'mobile') {
+            $votes = \Illuminate\Support\Facades\DB::table('council_national_poll_votes')
+                ->selectRaw('member_id AS vote_member, MAX(device_model) AS vote_model')
+                ->where('device_model', '<>', '')->groupBy('member_id');
+            $query->leftJoinSub($votes, 'vote_phone', 'vote_phone.vote_member', '=', 'app_users.member_id');
+        }
+        $direction = $direction === 'asc' ? 'asc' : 'desc';
+        $query->select('app_users.*')->selectRaw("{$expression} AS sort_value")
+            ->orderByRaw("(sort_value IS NULL OR CAST(sort_value AS CHAR) = '') ASC")
+            ->orderByRaw("sort_value {$direction}")
+            ->orderBy('app_users.id', 'desc');
+    }
+
+    // The filters of the App Users table. District / town / sect / activity unit read the member list (fpm_users), the same
+    // place those columns come from; app version (a build number, or 'none') and member id read the account itself.
+    private const FILTER_KEYS = ['f_district' => 'district', 'f_town' => 'town', 'f_sect' => 'sect', 'f_unit' => 'unit', 'f_build' => 'app_build', 'f_member' => 'member_id', 'f_activity' => 'activity', 'f_new' => 'new'];
 
     private function tableFilters(Request $request): array
     {
@@ -326,33 +428,58 @@ class UsersController extends Controller
             $out[$key] = trim((string) $request->query($param, ''));
         }
 
+        if ($out['app_build'] !== 'none' && !ctype_digit($out['app_build'])) {
+            $out['app_build'] = '';
+        }
+        if (!in_array($out['activity'], ['yes', 'no'], true)) {
+            $out['activity'] = '';
+        }
+        if ($out['new'] !== '1') {
+            $out['new'] = '';
+        }
+
         return $out;
     }
 
     private function applyTableFilters($query, array $f)
     {
-        if (array_filter($f, fn($v) => $v !== '')) {
-            $query->whereExists(function ($q) use ($f) {
+        $columns = ['district' => 'district', 'town' => 'town', 'sect' => 'sect', 'unit' => 'NashatUnit'];
+        $wanted = array_filter(array_intersect_key($f, $columns), fn($v) => $v !== '');
+        if ($wanted) {
+            $query->whereExists(function ($q) use ($wanted, $columns) {
                 $q->select(\Illuminate\Support\Facades\DB::raw(1))->from('fpm_users')->whereColumn('fpm_users.MemberId', 'app_users.member_id');
-                if ($f['district'] !== '') {
-                    $q->where('fpm_users.district', $f['district']);
-                }
-                if ($f['town'] !== '') {
-                    $q->where('fpm_users.town', $f['town']);
-                }
-                if ($f['sect'] !== '') {
-                    $q->where('fpm_users.sect', $f['sect']);
-                }
-                if ($f['unit'] !== '') {
-                    $q->where('fpm_users.NashatUnit', $f['unit']);
+                foreach ($wanted as $key => $value) {
+                    $q->where('fpm_users.' . $columns[$key], $value);
                 }
             });
-            if ($f['member_id'] !== '') {
-                $query->where('app_users.member_id', $f['member_id']);
-            }
+        }
+        if (($f['member_id'] ?? '') !== '') {
+            $query->where('app_users.member_id', $f['member_id']);
+        }
+        if (($f['app_build'] ?? '') === 'none') {
+            $query->where(fn($q) => $q->whereNull('app_users.app_build')->orWhere('app_users.app_build', 0));
+        } elseif (($f['app_build'] ?? '') !== '') {
+            $query->where('app_users.app_build', (int) $f['app_build']);
+        }
+        // opened the app at least one day since tracking began (the dashboard's rule), or not at all
+        if (($f['activity'] ?? '') !== '') {
+            $this->openedSinceTracking($query, $f['activity'] === 'yes');
+        }
+        // the "since 24 September" tick box: everyone seen since that day, old and newly registered accounts alike
+        if (($f['new'] ?? '') === '1') {
+            $this->openedSinceTracking($query, true);
         }
 
         return $query;
+    }
+
+    private function openedSinceTracking($query, bool $opened): void
+    {
+        $query->{$opened ? 'whereExists' : 'whereNotExists'}(function ($q) {
+            $q->select(\Illuminate\Support\Facades\DB::raw(1))->from('user_activity_logs')
+                ->whereColumn('user_activity_logs.app_user_id', 'app_users.id')
+                ->where('user_activity_logs.activity_date', '>=', AppInstallationReportExport::TRACKING_START);
+        });
     }
 
     // The Installation Report is an Excel file: pick a month (from Sept 2026, when app activity tracking began) and download.

@@ -60,7 +60,8 @@ class AppInstallationReportExport
     private array $filters;
 
     /**
-     * $filters (all optional): district (one of the GROUPS labels), town, sect, unit (Activity Unit), member_id.
+     * $filters (all optional): district (one of the GROUPS labels), town, sect, unit (Activity Unit), member_id,
+     * app_build (a build number or 'none': narrows installed and active to accounts on that version; total_member stays).
      * The month decides "installed by the end of that month" and "active during that month".
      */
     public function __construct(?int $year = null, ?int $month = null, array $filters = [])
@@ -105,6 +106,19 @@ class AppInstallationReportExport
         return $query;
     }
 
+    /** Only for queries that read app_users. */
+    private function applyVersionFilter($query)
+    {
+        $build = $this->filters['app_build'] ?? '';
+        if ($build === 'none') {
+            $query->where(fn($q) => $q->whereNull('app_users.app_build')->orWhere('app_users.app_build', 0));
+        } elseif ($build !== '') {
+            $query->where('app_users.app_build', (int) $build);
+        }
+
+        return $query;
+    }
+
     /** Rows: kada, total_installed (by the end of the month), total_member, percentage, total_active (in the month), active_percentage. */
     public function buildRows(): array
     {
@@ -129,6 +143,7 @@ class AppInstallationReportExport
             // installs counted from the day tracking began (24 Sept 2026, Beirut time) up to the end of the chosen month
             ->where('app_users.created_at', '>=', \Carbon\Carbon::parse(self::TRACKING_START, $tz)->startOfDay()->setTimezone('UTC'))
             ->where('app_users.created_at', '<=', $monthEnd->copy()->setTimezone('UTC')))
+            ->tap(fn($q) => $this->applyVersionFilter($q))
             ->select(DB::raw("COALESCE(fpm_users.district, '') as d"), DB::raw('COUNT(DISTINCT app_users.member_id) as cnt'))
             ->groupBy('d')
             ->pluck('cnt', 'd');
@@ -140,6 +155,7 @@ class AppInstallationReportExport
             ->leftJoin('fpm_users', 'app_users.member_id', '=', 'fpm_users.MemberId')
             ->whereNull('app_users.deleted_at')
             ->whereBetween('user_activity_logs.activity_date', [$activeFrom, $monthEnd->toDateString()]))
+            ->tap(fn($q) => $this->applyVersionFilter($q))
             ->select(DB::raw("COALESCE(fpm_users.district, '') as d"), DB::raw('COUNT(DISTINCT app_users.member_id) as cnt'))
             ->groupBy('d')
             ->pluck('cnt', 'd');
