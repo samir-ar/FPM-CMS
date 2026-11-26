@@ -109,19 +109,23 @@ class CouncilPollVotersTest extends CouncilTestCase
         $html = $this->get($url)->assertOk()->getContent();
         $this->assertStringContainsString('مرشحة الف', $html);
         $this->assertStringContainsString('مرشحة باء', $html);
-        $this->assertStringContainsString('shared by 2', $html);
-        $this->assertSame(2, substr_count($html, '<strong>Samsung SM-A525F, Android 13</strong>'), 'the model of the two votes that carry one');
-        $this->assertSame(3, substr_count($html, 'class="dev"'), 'one row per vote');
+        // the whole "Phone used" column is hidden on this page: model name, hardware id, app id, shared label
+        $this->assertStringNotContainsString('Phone used', $html);
+        $this->assertStringNotContainsString('shared by 2', $html);
+        $this->assertStringNotContainsString('Samsung SM-A525F', $html);
+        $this->assertStringNotContainsString('HW&nbsp;', $html);
+        $this->assertStringNotContainsString('DEVICE-SHARED-0000-1111', $html);
     }
 
-    public function test_the_report_has_an_app_version_column_and_its_excel_too()
+    public function test_the_app_version_is_in_the_excel_file_but_not_on_the_page()
     {
         DB::table('app_users')->where('name', 'T voter 0')->update(['app_build' => 230040143, 'app_build_seen_at' => now()]);
         $this->actingAs($this->adminUser(), 'admin')->withSession(['ie_results_otp_verified_until' => now()->addMinutes(5)]);
 
         $html = $this->get(route('admin.national-council-poll.votes-report', $this->poll, false))->assertOk()->getContent();
-        $this->assertStringContainsString('<th>App version</th>', $html);
-        $this->assertSame(1, substr_count($html, '<td>4.4.24 (230040143)</td>'), 'only the voter whose app reported a build shows one');
+        // the column is hidden on the page (2026-11-26); the Excel file keeps it
+        $this->assertStringNotContainsString('App version', $html);
+        $this->assertStringNotContainsString('4.4.24 (230040143)', $html);
 
         $file = $this->get(route('admin.national-council-poll.votes-report.export', $this->poll, false))->assertOk()->baseResponse->getFile()->getPathname();
         $rows = \PhpOffice\PhpSpreadsheet\IOFactory::load($file)->getActiveSheet()->toArray();
@@ -136,7 +140,7 @@ class CouncilPollVotersTest extends CouncilTestCase
         $url = route('admin.national-council-poll.votes-report', $this->poll, false);
 
         $forA = $this->get($url . '?answer_id=' . $this->answerA)->assertOk()->getContent();
-        $this->assertSame(2, substr_count($forA, 'class="dev" style='), 'two of the three vote rows');
+        $this->assertSame(2, substr_count($forA, '<strong>مرشحة الف</strong>'), 'two of the three vote rows');
         $this->assertStringNotContainsString('<strong>مرشحة باء</strong>', $forA);
         // the page shows only the table and Back: no export button, no warning, no filters
         $this->assertStringNotContainsString('Export to Excel', $forA);

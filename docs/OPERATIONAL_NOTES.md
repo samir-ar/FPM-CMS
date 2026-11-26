@@ -639,3 +639,13 @@ Package cms_prod_appversion_20261125 (16 files): migration 2026_11_25_150000 ran
 ## 2026-11-26 (19:25) - Votes report table-only: on PRODUCTION
 - Step 1 matched, Step 2 printed TABLEONLY-APPLIED, view fingerprint 73c6f191, /tmp upload deleted. Production backup `/root/votesreport_tableonly_before_20261126.tar.gz` (restores the page with Export and filters).
 - Production, staging and GitHub now match for both votes report changes. Big winner pictures: still staging only.
+
+## 2026-11-26 (19:45) - Votes report: model, hardware id, App version hidden (LOCAL, awaiting approval)
+- `votes_report.blade.php` + `CouncilPollVotersTest` (9 pass). Production, staging and GitHub still show them (fingerprint 73c6f191 on production and staging).
+- 19:50: app id hidden too (user asked); "Phone used" now holds only the "shared by N" label. Still LOCAL, awaiting OK.
+- 19:55: whole "Phone used" column removed (user asked); staging updated (backup `/root/votesreport_columns_before_20261126.tar.gz`). Not on production or GitHub yet.
+
+## 2026-11-26 (19:40) - Votes report columns hidden: on PRODUCTION
+- Package `cms_prod_votesreport_columns_20261126.tar.gz` (745 bytes, sha256 87daf713...88b9). Step 1 matched, Step 2 printed COLUMNS-APPLIED, view fingerprint afc93b43, /tmp upload deleted. Backup `/root/votesreport_columns_before_20261126.tar.gz` (page with Phone used and App version).
+- Production, staging and GitHub match for the votes report. SMS code still off (temporary). Big winner pictures: still staging only.
+
