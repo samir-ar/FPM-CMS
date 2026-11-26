@@ -6,7 +6,7 @@ All notable changes to the FPM-CMS (Laravel backend) are documented in this file
 
 ### Added
 
-- **National Council votes report shows only the table and Back (2026-11-26, approved; on staging, backup `/root/votesreport_tableonly_before_20261126.tar.gz`; production package prepared):** Export to Excel button, confidential warning, filters (incl. "only shared devices") and the vote count line removed from `votes_report.blade.php`; page links and the "shared by N" label in rows stay. The export and filter addresses still work, only the controls are gone (restore from commit c07a400).
+- **National Council votes report shows only the table and Back (2026-11-26, on production and staging, backup `/root/votesreport_tableonly_before_20261126.tar.gz` on each):** Export to Excel button, confidential warning, filters (incl. "only shared devices") and the vote count line removed from `votes_report.blade.php`; page links and the "shared by N" label in rows stay. The export and filter addresses still work, only the controls are gone (restore from commit c07a400).
 
 - **National Council votes report: SMS code switched OFF, temporary (2026-11-26, on production and staging; backups: production `/root/votesreport_nocode_before_20261126.tar.gz`, staging `/root/novotesotp_before_20261126.tar.gz`):** `/admin/national-council-poll/{id}/votes-report` and its Excel download open with only the admin sign-in and the permission "Council Poll - Votes Report". Page still unlinked. Internal Election report and Reset votes keep their codes. The user will have it locked again later: put `'ie-results-otp'` back on the two routes in `routes/web.php` and restore the old test.
 

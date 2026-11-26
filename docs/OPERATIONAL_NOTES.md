@@ -635,3 +635,7 @@ Package cms_prod_appversion_20261125 (16 files): migration 2026_11_25_150000 ran
 ## 2026-11-26 (19:35) - Votes report table-only: approved, staging + GitHub, production package ready
 - Staging view fingerprint aa0977bb -> 73c6f191, backup `/root/votesreport_tableonly_before_20261126.tar.gz`.
 - Production package on the Desktop `cms_prod_votesreport_tableonly_20261126.tar.gz` (1096 bytes, sha256 01df0c2c...3d8a, 1 file; production should show aa0977bb before). NOT yet applied on production.
+
+## 2026-11-26 (19:25) - Votes report table-only: on PRODUCTION
+- Step 1 matched, Step 2 printed TABLEONLY-APPLIED, view fingerprint 73c6f191, /tmp upload deleted. Production backup `/root/votesreport_tableonly_before_20261126.tar.gz` (restores the page with Export and filters).
+- Production, staging and GitHub now match for both votes report changes. Big winner pictures: still staging only.
