@@ -667,3 +667,7 @@ Package cms_prod_appversion_20261125 (16 files): migration 2026_11_25_150000 ran
 - Fix on STAGING: `app/Support/MemberPhoto.php` (new) + `getMemberPhoto` in the V2 ApiController. 6 tests pass. Backup `/root/memberphoto_before_20261127.tar.gz`. Owner confirmed on staging and asked for production: committed, package `cms_prod_memberphoto_20261127.tar.gz` on the Desktop (2 files), production NOT applied yet.
 - Staging demo (cut production photo on member 1600600177) undone the same night: the old staging photo is back.
 - Same bug, not fixed: the member's own photo on Home (login returns `app_users.image`).
+
+## 2026-11-27 (22:45) - Cut member photos fix: PRODUCTION
+- Package `cms_prod_memberphoto_20261127.tar.gz` (35140 bytes, sha256 676946dd961832b7df95718603749ef1c39f2f1136c9b6f59880239a07254fff): `ApiController.php` (bf7ec7e8 -> 3363c60e) and new `app/Support/MemberPhoto.php` (aae5e262). Check matched; output MEMBERPHOTO-APPLIED; backup `/root/memberphoto_before_20261127.tar.gz`.
+- Production, staging, local and GitHub match for this fix. Open: owner's visual check, delete the `/tmp` package, TWH resend of the 690 cut photos, same repair for the member's own Home photo. Big winner pictures: still staging only.
