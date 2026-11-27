@@ -6,7 +6,7 @@ All notable changes to the FPM-CMS (Laravel backend) are documented in this file
 
 ### Added
 
-- **Council roster: Export to Excel follows the filters (2026-11-28, on staging, owner asked for production; package `cms_prod_rosterexport_20261128.tar.gz` prepared, not applied yet; staging backup `/root/rosterexport_before_20261128.tar.gz`):** with any filter on, the file holds exactly the rows on screen; without a filter, everybody. `CouncilRosterController@export` (?ids=) and the roster view; test in `AppVersionColumnsTest`.
+- **Council roster: Export to Excel follows the filters (2026-11-28, on production and staging; backup `/root/rosterexport_before_20261128.tar.gz` on each):** with any filter on, the file holds exactly the rows on screen; without a filter, everybody. `CouncilRosterController@export` (?ids=) and the roster view; test in `AppVersionColumnsTest`.
 
 - **Council roster: "App" filter (2026-11-28, on production and staging; backup `/root/rosterfilter_before_20261128.tar.gz` on each):** All members / Logged in / Not logged in yet, same answer as the App column, combines with the other filters and shows the count and weight. Only `council_roster/index.blade.php`; test in `AppVersionColumnsTest`.
 

@@ -679,3 +679,4 @@ Package cms_prod_appversion_20261125 (16 files): migration 2026_11_25_150000 ran
 
 ## 2026-11-28 - Council roster Excel follows the filters: STAGING only
 - `CouncilRosterController.php` and `council_roster/index.blade.php`; staging backup `/root/rosterexport_before_20261128.tar.gz`. Roster tests pass (31). Owner asked for production: committed, package `cms_prod_rosterexport_20261128.tar.gz` on the Desktop, production NOT applied yet.
+- PRODUCTION 2026-11-28 01:02: package `cms_prod_rosterexport_20261128.tar.gz` (6235 bytes, sha256 0e38ed5ee7b9838da269e1a9b3c215cd768f204aa1e5b56dd20a5bff95a4850e), check matched (1bc902be / 24374a99), output ROSTEREXPORT-APPLIED, `/tmp` upload removed, backup `/root/rosterexport_before_20261128.tar.gz`. Production = staging = GitHub (f83962cc / 9b404dad).
