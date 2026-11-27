@@ -108,6 +108,32 @@ class AppVersionColumnsTest extends CouncilTestCase
         }
     }
 
+    public function test_the_roster_excel_follows_the_filtered_rows()
+    {
+        [$first, $second] = $this->sampleMemberIds(2);
+        CouncilRosterMember::whereNotNull('id')->delete();
+        $a = CouncilRosterMember::create(['member_id' => $first, 'weight' => 5]);
+        $b = CouncilRosterMember::create(['member_id' => $second, 'weight' => 1]);
+        $this->actingAs($this->adminUser(), 'admin');
+
+        $exported = function (string $query) {
+            // two downloads in one test: each must start clean
+            $file = $this->get('/admin/council-roster/export' . $query)->assertOk()->baseResponse->getFile()->getPathname();
+            $rows = \PhpOffice\PhpSpreadsheet\IOFactory::load($file)->getActiveSheet()->toArray();
+
+            return array_map(fn($r) => (string) $r[0], array_slice($rows, 1));
+        };
+
+        $this->assertSame([$first, $second], $exported(''), 'no filter: everybody');
+        $this->assertSame([$second], $exported('?ids=' . $b->id), 'only the row on screen');
+        $this->assertSame([$first, $second], $exported('?ids=' . $a->id . ',' . $b->id));
+        $this->assertSame([], $exported('?ids=0'), 'a filter that matches nobody');
+
+        $html = $this->get('/admin/council-roster')->getContent();
+        $this->assertStringContainsString('id="exportLink"', $html);
+        $this->assertStringContainsString('<tr data-id="' . $a->id . '"', $html);
+    }
+
     public function test_the_user_activity_popup_and_its_excel_have_mobile_and_app_version()
     {
         $this->actingAs($this->adminUser(), 'admin');

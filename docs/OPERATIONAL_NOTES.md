@@ -676,3 +676,6 @@ Package cms_prod_appversion_20261125 (16 files): migration 2026_11_25_150000 ran
 ## 2026-11-28 - Council roster "App" logged-in filter: STAGING only
 - View `resources/views/cms/council_roster/index.blade.php` (fingerprint ea9f1858 -> 24374a99); backup `/root/rosterfilter_before_20261128.tar.gz`. Roster tests pass (30). Owner confirmed on staging: committed, package `cms_prod_rosterfilter_20261128.tar.gz` on the Desktop, production NOT applied yet.
 - PRODUCTION 2026-11-28 00:57: package `cms_prod_rosterfilter_20261128.tar.gz` (4210 bytes, sha256 a87d9780afcdc6f85e9474baf21a7279129e28bd6a48c3000dc206ac555b75e6), check matched (ea9f1858), output ROSTERFILTER-APPLIED, `/tmp` upload removed, backup `/root/rosterfilter_before_20261128.tar.gz`. Production = staging = GitHub for this view (24374a99).
+
+## 2026-11-28 - Council roster Excel follows the filters: STAGING only
+- `CouncilRosterController.php` and `council_roster/index.blade.php`; staging backup `/root/rosterexport_before_20261128.tar.gz`. Roster tests pass (31). Owner asked for production: committed, package `cms_prod_rosterexport_20261128.tar.gz` on the Desktop, production NOT applied yet.

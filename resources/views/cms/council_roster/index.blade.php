@@ -64,7 +64,7 @@
             var role = $('#filterRole').val(), sector = $('#filterSector').val(), district = $('#filterDistrict').val();
             var text = $.trim($('#filterText').val()).toLowerCase();
             var app = $('#filterApp').val();
-            var shown = 0, weight = 0, total = 0;
+            var shown = 0, weight = 0, total = 0, ids = [];
 
             $('#rosterTable tbody tr').each(function () {
                 var tr = $(this);
@@ -75,13 +75,17 @@
                       && (!app || tr.attr('data-app') === app)
                       && (!text || String(tr.attr('data-search')).indexOf(text) !== -1);
                 tr.toggle(ok);
-                if (ok) { shown++; weight += parseInt(tr.find('.f-weight').val(), 10) || 0; }
+                if (ok) { shown++; ids.push(tr.attr('data-id')); weight += parseInt(tr.find('.f-weight').val(), 10) || 0; }
             });
 
             var filtering = role || sector || district || text || app;
             $('#filterSummary').text(filtering
                 ? 'Showing ' + shown + ' of ' + total + ' members (total weight ' + weight + ')'
                 : '');
+
+            // the Excel button gives what is on the screen: the filtered rows, or everybody
+            var link = $('#exportLink');
+            link.attr('href', link.attr('data-all') + (filtering ? '?ids=' + (ids.join(',') || '0') : ''));
         }
         $('#filterRole, #filterSector, #filterDistrict, #filterApp').on('change', applyFilters);
         $('#filterText').on('input', applyFilters);
@@ -107,7 +111,7 @@
 <div class="box box-default">
     <div class="box-header with-border">
         <h3 class="box-title">National Council members</h3>
-        <a href="{{ route('admin.council-roster.export') }}" class="btn btn-success pull-right" style="margin-left:4px;">Export to Excel</a>
+        <a id="exportLink" href="{{ route('admin.council-roster.export') }}" data-all="{{ route('admin.council-roster.export') }}" class="btn btn-success pull-right" style="margin-left:4px;">Export to Excel</a>
         <a href="{{ route('admin.council-meetings.index') }}" class="btn btn-default pull-right" style="margin-left:4px;">Meetings</a>
     </div>
     <div class="box-body">
@@ -221,7 +225,7 @@
             <tbody>
             @foreach($members as $i => $m)
                 @php($d = $details[$m->member_id] ?? null)
-                <tr data-url="{{ route('admin.council-roster.update', $m->id) }}" data-name="{{ $d->UserFullName ?? $m->member_id }}"
+                <tr data-id="{{ $m->id }}" data-url="{{ route('admin.council-roster.update', $m->id) }}" data-name="{{ $d->UserFullName ?? $m->member_id }}"
                     data-role="{{ trim((string) $m->role) }}" data-sector="{{ trim((string) $m->sector) }}" data-district="{{ trim((string) $m->district) }}"
                     data-app="{{ isset($loggedIn[(string) $m->member_id]) ? 'in' : 'no' }}"
                     data-search="{{ mb_strtolower(($d->UserFullName ?? '') . ' ' . $m->member_id . ' ' . ($d->MobileNumber ?? '')) }}"

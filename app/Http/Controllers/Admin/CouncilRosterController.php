@@ -141,9 +141,13 @@ class CouncilRosterController extends Controller
         return CouncilMemberLookup::photoResponse($memberId);
     }
 
-    public function export()
+    // Everybody, or - when the page is filtered - exactly the rows it is showing, sent as ?ids=1,2,3
+    // (an empty or unknown list gives a file with the headings only).
+    public function export(Request $request)
     {
-        $members = CouncilRosterMember::orderBy('id')->get();
+        $members = CouncilRosterMember::orderBy('id')
+            ->when($request->has('ids'), fn($q) => $q->whereIn('id', array_map('intval', explode(',', (string) $request->query('ids')))))
+            ->get();
         $details = CouncilMemberLookup::detailsFor($members->pluck('member_id')->all());
 
         $rows = $members->map(fn($m) => [
