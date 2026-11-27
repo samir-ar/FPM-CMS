@@ -85,6 +85,29 @@ class AppVersionColumnsTest extends CouncilTestCase
         $this->assertStringContainsString('Apple iPhone 17 Pro Max, iOS 27.2.1', $html);
     }
 
+    public function test_the_roster_can_be_filtered_by_logged_in_or_not()
+    {
+        $ids = $this->sampleMemberIds(40);
+        $seen = \App\Support\CouncilMemberLookup::activitySince($ids)['last_seen'];
+        $other = collect($ids)->first(fn($id) => $id !== (string) $this->memberId && !isset($seen[$id]));
+        CouncilRosterMember::whereNotNull('id')->delete();
+        CouncilRosterMember::create(['member_id' => $this->memberId, 'weight' => 5]);
+        CouncilRosterMember::create(['member_id' => $other, 'weight' => 1]);
+        $this->actingAs($this->adminUser(), 'admin');
+
+        $html = $this->get('/admin/council-roster')->assertOk()->getContent();
+
+        $this->assertStringContainsString('id="filterApp"', $html);
+        $this->assertStringContainsString('value="in">Logged in<', $html);
+        $this->assertStringContainsString('value="no">Not logged in yet<', $html);
+        // every row carries the same answer as its App column
+        preg_match_all('/data-app="(in|no)".*?(logged in|not logged in yet)<\/span>/s', $html, $m, PREG_SET_ORDER);
+        $this->assertCount(2, $m);
+        foreach ($m as $row) {
+            $this->assertSame($row[1] === 'in' ? 'logged in' : 'not logged in yet', $row[2]);
+        }
+    }
+
     public function test_the_user_activity_popup_and_its_excel_have_mobile_and_app_version()
     {
         $this->actingAs($this->adminUser(), 'admin');

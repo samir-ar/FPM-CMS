@@ -59,10 +59,11 @@
             }).done(function (r) { flash(true, r.message); setTimeout(function () { location.reload(); }, 600); })
               .fail(function (xhr) { flash(false, (xhr.responseJSON && xhr.responseJSON.message) || 'Something went wrong'); });
         });
-        // ---- filters: role / sector / district / free text, all combined ----
+        // ---- filters: role / sector / district / free text / logged in the app, all combined ----
         function applyFilters() {
             var role = $('#filterRole').val(), sector = $('#filterSector').val(), district = $('#filterDistrict').val();
             var text = $.trim($('#filterText').val()).toLowerCase();
+            var app = $('#filterApp').val();
             var shown = 0, weight = 0, total = 0;
 
             $('#rosterTable tbody tr').each(function () {
@@ -71,20 +72,21 @@
                 var ok = (!role || tr.attr('data-role') === role)
                       && (!sector || tr.attr('data-sector') === sector)
                       && (!district || tr.attr('data-district') === district)
+                      && (!app || tr.attr('data-app') === app)
                       && (!text || String(tr.attr('data-search')).indexOf(text) !== -1);
                 tr.toggle(ok);
                 if (ok) { shown++; weight += parseInt(tr.find('.f-weight').val(), 10) || 0; }
             });
 
-            var filtering = role || sector || district || text;
+            var filtering = role || sector || district || text || app;
             $('#filterSummary').text(filtering
                 ? 'Showing ' + shown + ' of ' + total + ' members (total weight ' + weight + ')'
                 : '');
         }
-        $('#filterRole, #filterSector, #filterDistrict').on('change', applyFilters);
+        $('#filterRole, #filterSector, #filterDistrict, #filterApp').on('change', applyFilters);
         $('#filterText').on('input', applyFilters);
         $('#filterClear').on('click', function () {
-            $('#filterRole, #filterSector, #filterDistrict').val('');
+            $('#filterRole, #filterSector, #filterDistrict, #filterApp').val('');
             $('#filterText').val('');
             applyFilters();
         });
@@ -181,6 +183,14 @@
                 <input type="text" id="filterText" class="form-control" style="width:220px;" dir="auto" placeholder="Name, member ID or phone">
             </div>
             <div>
+                <label>App</label>
+                <select id="filterApp" class="form-control" style="width:180px;">
+                    <option value="">All members</option>
+                    <option value="in">Logged in</option>
+                    <option value="no">Not logged in yet</option>
+                </select>
+            </div>
+            <div>
                 <button type="button" id="filterClear" class="btn btn-default">Clear filters</button>
             </div>
             <div id="filterSummary" class="text-muted" style="padding-bottom:7px;"></div>
@@ -213,6 +223,7 @@
                 @php($d = $details[$m->member_id] ?? null)
                 <tr data-url="{{ route('admin.council-roster.update', $m->id) }}" data-name="{{ $d->UserFullName ?? $m->member_id }}"
                     data-role="{{ trim((string) $m->role) }}" data-sector="{{ trim((string) $m->sector) }}" data-district="{{ trim((string) $m->district) }}"
+                    data-app="{{ isset($loggedIn[(string) $m->member_id]) ? 'in' : 'no' }}"
                     data-search="{{ mb_strtolower(($d->UserFullName ?? '') . ' ' . $m->member_id . ' ' . ($d->MobileNumber ?? '')) }}"
                     @if(!$m->is_active) style="opacity:.5" @endif>
                     <td>{{ $i + 1 }}</td>

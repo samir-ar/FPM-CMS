@@ -6,6 +6,8 @@ All notable changes to the FPM-CMS (Laravel backend) are documented in this file
 
 ### Added
 
+- **Council roster: "App" filter (2026-11-28, on staging, confirmed by the owner; production package `cms_prod_rosterfilter_20261128.tar.gz` prepared, not applied yet; staging backup `/root/rosterfilter_before_20261128.tar.gz`):** All members / Logged in / Not logged in yet, same answer as the App column, combines with the other filters and shows the count and weight. Only `council_roster/index.blade.php`; test in `AppVersionColumnsTest`.
+
 - **Cut-off member photos now show in the app (2026-11-27, on production and staging; backup `/root/memberphoto_before_20261127.tar.gz` on each):** photos in `fpm_users.PersonImage` cut at exactly 65,535 bytes (690 on production) open in a browser but the app refuses them. `member-photo` now sends a repaired complete copy (new `App\Support\MemberPhoto`: bottom grey strip trimmed unless more than 60% is missing, camera rotation kept, cached one day). Stored photos are not changed; whole photos are sent as they are. No app update needed. Test `MemberPhotoTest`. Not covered: the member's own Home photo (it comes from `app_users.image` at login).
 
 - **National Council votes report put back as it was (2026-11-26 evening, on production and staging):** the three changes below (SMS code off, table and Back only, hidden columns) are all REVERTED at the user's request: the page and its Excel export ask for the SMS code again and show the export button, warning, filters and all columns. Files equal commit 7f05d30. Production state just before the restore is in `/root/votesreport_restore_before_20261126.tar.gz`.
