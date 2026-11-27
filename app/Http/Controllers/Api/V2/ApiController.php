@@ -1642,6 +1642,9 @@ class ApiController extends Controller
             abort(404);
         }
 
+        // a photo cut off at 65,535 bytes is sent as a complete copy, or the app shows nothing
+        $bytes = \App\Support\MemberPhoto::servable($bytes);
+
         return response($bytes, 200)
             ->header('Content-Type', 'image/jpeg')
             ->header('Content-Length', (string) strlen($bytes))

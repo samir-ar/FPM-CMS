@@ -658,3 +658,12 @@ Package cms_prod_appversion_20261125 (16 files): migration 2026_11_25_150000 ran
 - Restored from `/root/votesreport_nocode_before_20261126.tar.gz` (no upload). Output VOTESREPORT-RESTORED, fingerprints d4bcd06e / 6dcd5356 / 98aa4bad. State just before: `/root/votesreport_restore_before_20261126.tar.gz`.
 - Production, staging, local and GitHub match: SMS code ON again, nothing left to lock. Four `/root/votesreport_*` backups on production stay until the user says.
 - Still staging only, uncommitted: big winner pictures on the results board.
+
+## 2026-11-27 - Date correction: the National Council session is 1 December 2026
+- The owner corrected it: 1 Dec, not 29 Nov. Read "29 Nov" in earlier entries as 1 Dec. No code or data changed.
+
+## 2026-11-27 - Representatives photos missing in the app: cut photos
+- Cause (proven with the saved production file for member 1600600177): `fpm_users.PersonImage` is exactly 65,535 bytes; a browser draws the part there is, the app's image reader fails. Production column is now `mediumblob`, 690 photos still cut (682 on 20/11), 3 bigger than the limit (max 83,297): TWH must resend and check their sync (message drafted for the user).
+- Fix on STAGING: `app/Support/MemberPhoto.php` (new) + `getMemberPhoto` in the V2 ApiController. 6 tests pass. Backup `/root/memberphoto_before_20261127.tar.gz`. Owner confirmed on staging and asked for production: committed, package `cms_prod_memberphoto_20261127.tar.gz` on the Desktop (2 files), production NOT applied yet.
+- Staging demo (cut production photo on member 1600600177) undone the same night: the old staging photo is back.
+- Same bug, not fixed: the member's own photo on Home (login returns `app_users.image`).
